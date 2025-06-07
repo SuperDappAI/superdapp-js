@@ -1,0 +1,28 @@
+name = "superdapp-agent"
+main = "dist/index.js"
+compatibility_date = "2024-11-21"
+node_compat = true
+
+[env.production]
+name = "superdapp-agent-production"
+
+[env.staging]
+name = "superdapp-agent-staging"
+
+# Environment variables
+[vars]
+NODE_ENV = "production"
+
+# Secrets (set these via wrangler secret put)
+# API_TOKEN
+# API_BASE_URL
+
+# WebSocket support
+[durable_objects]
+bindings = [
+  { name = "AGENT_STATE", class_name = "AgentState" }
+]
+
+# Resource limits
+[limits]
+cpu_ms = 50

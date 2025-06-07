@@ -1,0 +1,26 @@
+# NPM Publishing Configuration
+
+# Files to include in package
+include:
+  - dist/
+  - README.md
+  - CHANGELOG.md
+  - LICENSE
+  - package.json
+
+# Files to exclude from package
+exclude:
+  - src/
+  - tests/
+  - .github/
+  - deploy/
+  - scripts/
+  - examples/
+  - *.test.js
+  - *.spec.js
+  - tsconfig.json
+  - jest.config.js
+  - eslint.config.js
+  - .prettierrc.js
+  - .env*
+  - .git*
