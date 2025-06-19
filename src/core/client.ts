@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import FormData from 'form-data';
+import FormData = require('form-data');
 import {
   BotConfig,
   ApiResponse,

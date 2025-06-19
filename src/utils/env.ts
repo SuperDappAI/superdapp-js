@@ -6,10 +6,7 @@ const envSchema = z.object({
   API_TOKEN: z.string().min(1, 'API_TOKEN is required'),
 });
 
-export interface EnvConfig {
-  API_BASE_URL?: string | undefined;
-  API_TOKEN: string;
-}
+export type EnvConfig = z.infer<typeof envSchema>;
 
 /**
  * Validate and parse environment variables

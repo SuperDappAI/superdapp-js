@@ -1,7 +1,7 @@
 import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/api';
 import { signIn } from 'aws-amplify/auth';
-import querystring from 'querystring';
+import * as querystring from 'querystring';
 import { SuperDappClient } from './client';
 import {
   BotConfig,
