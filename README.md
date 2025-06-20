@@ -8,7 +8,7 @@ A professional-grade Node.js/TypeScript SDK and CLI for building AI agents on th
 
 ---
 
-## 🆕 Webhook-Based Agent Architecture (v2)
+## 🚀 Webhook-Based Agent Architecture (v2)
 
 **SuperDapp agents can now be built using a webhook-based architecture for maximum portability and simplicity.**
 
@@ -22,18 +22,64 @@ A professional-grade Node.js/TypeScript SDK and CLI for building AI agents on th
 
 ---
 
-## 🚀 Features
+## 🚦 CLI Usage
 
-- **🤖 Model-Agnostic AI Integration**: Seamlessly work with OpenAI, Gemini, Claude, and other LLMs
-- **💬 Real-time Messaging**: Built-in support for channels and direct messages
-- **🔧 CLI Tools**: AWS Amplify-inspired CLI for project management and deployment
-- **📱 Command Handling**: Structured command routing and message processing
-- **🔄 GraphQL Subscriptions**: Real-time message listening via AWS AppSync
-- **💰 Wallet Integration**: Built-in crypto wallet functionality
-- **📸 Media Support**: Send photos and handle file uploads
-- **⚡ Serverless Ready**: Deploy to Cloudflare Workers, AWS Lambda, or Vercel
-- **🛠 TypeScript First**: Full type safety with comprehensive TypeScript support
-- **🧪 Testing Ready**: Jest setup with comprehensive test utilities
+### Project Initialization
+
+You can now use a positional argument for the project directory:
+
+```bash
+superagent init my-awesome-agent
+superagent init /tmp/my-temp-agent --template webhook -y
+```
+
+Or use the legacy flag:
+
+```bash
+superagent init --name my-awesome-agent
+```
+
+### CLI Templates
+
+- `basic` – Minimal agent with command handling
+- `webhook` – Webhook-ready agent
+- `news` – AI-powered news agent
+- `trading` – Crypto trading agent
+
+### Example
+
+```bash
+superagent init my-agent --template webhook -y
+cd my-agent
+npm install
+superagent configure
+superagent run
+```
+
+---
+
+## 🧑‍💻 CLI Commands
+
+- `superagent init [directory]` – Initialize a new agent project (supports positional or --name)
+- `superagent configure` – Configure API keys and environment variables
+- `superagent run` – Run the agent locally for testing
+- `superagent deploy` – Deploy agent to serverless platforms (cloudflare, aws, vercel)
+- `superagent status` – Check the status of the deployed agent
+
+---
+
+## 🎯 Features
+
+- 🤖 Model-Agnostic AI Integration: Seamlessly work with OpenAI, Gemini, Claude, and other LLMs
+- 💬 Real-time Messaging: Built-in support for channels and direct messages
+- 🔧 CLI Tools: AWS Amplify-inspired CLI for project management and deployment
+- 📱 Command Handling: Structured command routing and message processing
+- 🔄 GraphQL Subscriptions: Real-time message listening via AWS AppSync
+- 💰 Wallet Integration: Built-in crypto wallet functionality
+- 📸 Media Support: Send photos and handle file uploads
+- ⚡ Serverless Ready: Deploy to Cloudflare Workers, AWS Lambda, or Vercel
+- 🛠️ TypeScript First: Full type safety with comprehensive TypeScript support
+- 🧪 Testing Ready: Jest setup with comprehensive test utilities
 
 ## 📦 Installation
 
@@ -57,7 +103,7 @@ pnpm add @superdapp/agents
 npm install -g @superdapp/agents
 ```
 
-## 🎯 Quick Start
+## 🎉 Quick Start
 
 ### 1. Initialize a New Project
 
@@ -163,83 +209,6 @@ main();
 
 ```bash
 superagent run --watch
-```
-
-## 🛠 CLI Commands
-
-The SuperDapp CLI provides powerful tools for agent development and deployment:
-
-### `superagent init`
-Initialize a new agent project with boilerplate code.
-
-```bash
-superagent init [project-name] [options]
-
-Options:
-  -n, --name <name>        Project name
-  -t, --template <type>    Template (basic, webhook, news, trading)
-  -y, --yes               Skip prompts and use defaults
-```
-
-**Examples:**
-```bash
-superagent init my-webhook-bot --template webhook
-superagent init my-trading-bot --template trading
-superagent init news-agent --template news --yes
-```
-
-### `superagent configure`
-Set up API keys and environment variables.
-
-```bash
-superagent configure [options]
-
-Options:
-  --api-token <token>     SuperDapp API token
-  --api-url <url>         API base URL
-  --interactive          Interactive mode (default)
-```
-
-### `superagent run`
-Run the agent locally for development and testing.
-
-```bash
-superagent run [options]
-
-Options:
-  -w, --watch            Watch for changes and restart
-  -p, --port <port>      Development server port (default: 3000)
-  --env <file>           Environment file (default: .env)
-```
-
-### `superagent deploy`
-Deploy your agent to serverless platforms.
-
-```bash
-superagent deploy [options]
-
-Options:
-  -p, --platform <name>   Platform (cloudflare, aws, vercel)
-  --env <environment>     Environment (dev, staging, prod)
-  -y, --yes              Skip confirmation prompts
-```
-
-### `superagent status`
-Check the status of your deployed agent.
-
-```bash
-superagent status [options]
-
-Options:
-  --api-token <token>     Override API token
-  --api-url <url>         Override API URL
-```
-
-### `superagent help`
-Display help information for any command.
-
-```bash
-superagent help [command]
 ```
 
 ## 📚 Core Concepts
