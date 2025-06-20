@@ -110,3 +110,52 @@ export interface AgentCommands {
 export interface AgentMessages {
   [command: string]: any;
 }
+
+export interface MessageReaction {
+  id: string;
+  reactions?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface ChatMessageEvent {
+  id: string;
+  owner?: string | null;
+  isDeleted?: boolean | null;
+  messageReaction?: MessageReaction | null;
+  messageId?: string | null;
+  userId?: string | null;
+  roomId?: string | null;
+  chatId?: string | null;
+  roomParticipantId?: string | null;
+  memberId?: string | null;
+  senderId?: string | null;
+  body: any;
+  type?: string | null;
+  fileKey?: string | null;
+  fileSize?: number | null;
+  fileMime?: string | null;
+  reactions?: string | null;
+  deliveredAt?: string | null;
+  readAt?: string | null;
+  isUploaded?: number | null;
+  isSilent?: boolean | null;
+  isSender?: boolean | null;
+  isReceiver?: boolean | null;
+  isChannel?: boolean | null;
+  isBot?: boolean | null;
+  deletedAt?: string | null;
+  expiresAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export enum FileType {
+  IMAGE = 'image',
+  VIDEO = 'video',
+  AUDIO = 'audio',
+  DOCUMENT = 'document',
+  LINK = 'link',
+  FILE = 'file',
+  OTHER = 'other',
+}
