@@ -6,6 +6,22 @@
 
 A professional-grade Node.js/TypeScript SDK and CLI for building AI agents on the SuperDapp platform. This SDK provides a unified interface for creating intelligent bots that can interact with users, handle commands, and integrate with multiple large language models.
 
+---
+
+## 🆕 Webhook-Based Agent Architecture (v2)
+
+**SuperDapp agents can now be built using a webhook-based architecture for maximum portability and simplicity.**
+
+- Centralized webhook server and command/message routing in the SDK
+- Agent lifecycle (init, ready, shutdown) managed by the SDK
+- Pluggable command and message handlers
+- Signature validation and event dispatch built-in
+- Works with any HTTP hosting (Node.js, serverless, etc.)
+
+**AppSync-based agents are still supported for real-time subscriptions.**
+
+---
+
 ## 🚀 Features
 
 - **🤖 Model-Agnostic AI Integration**: Seamlessly work with OpenAI, Gemini, Claude, and other LLMs
@@ -65,6 +81,8 @@ API_BASE_URL=https://api.superdapp.com
 
 ### 3. Create Your First Agent
 
+#### Option A: AppSync (GraphQL Subscription) Agent
+
 ```typescript
 import 'dotenv/config';
 import { SuperDappAgent, createBotConfig } from '@superdapp/agents';
@@ -101,6 +119,46 @@ async function main() {
 main().catch(console.error);
 ```
 
+#### Option B: Webhook-Based Agent (Recommended)
+
+```typescript
+import 'dotenv/config';
+import { WebhookAgent } from '@superdapp/agents';
+
+async function main() {
+  // Create a webhook-based agent
+  const agent = new WebhookAgent({
+    port: 4000, // or your preferred port
+    secret: process.env.WEBHOOK_SECRET, // optional: for signature validation
+    onInit: async () => console.log('[Agent] Initializing...'),
+    onReady: async () => console.log('[Agent] Ready and listening!'),
+    onShutdown: async () => console.log('[Agent] Shutting down...'),
+  });
+
+  // Register commands
+  agent.addCommand('/start', async (event, req, res) => {
+    res.writeHead(200);
+    res.end('Hello! Webhook agent started.');
+  });
+
+  agent.addCommand('/ping', async (event, req, res) => {
+    res.writeHead(200);
+    res.end('Pong! 🏓');
+  });
+
+  // Register a generic message handler
+  agent.onMessage(async (event, req, res) => {
+    res.writeHead(200);
+    res.end('Received your message!');
+  });
+
+  // Start the webhook server
+  await agent.start();
+}
+
+main();
+```
+
 ### 4. Run Your Agent
 
 ```bash
@@ -119,12 +177,13 @@ superagent init [project-name] [options]
 
 Options:
   -n, --name <name>        Project name
-  -t, --template <type>    Template (basic, news, trading)
+  -t, --template <type>    Template (basic, webhook, news, trading)
   -y, --yes               Skip prompts and use defaults
 ```
 
 **Examples:**
 ```bash
+superagent init my-webhook-bot --template webhook
 superagent init my-trading-bot --template trading
 superagent init news-agent --template news --yes
 ```
@@ -185,7 +244,29 @@ superagent help [command]
 
 ## 📚 Core Concepts
 
-### SuperDappAgent
+### WebhookAgent (Webhook-Based)
+
+The new class for creating webhook-based agents. Handles HTTP POSTs, command routing, and lifecycle events.
+
+```typescript
+import { WebhookAgent } from '@superdapp/agents';
+
+const agent = new WebhookAgent({ port: 4000 });
+
+agent.addCommand('/hello', async (event, req, res) => {
+  res.writeHead(200);
+  res.end('Hello from webhook!');
+});
+
+agent.onMessage(async (event, req, res) => {
+  res.writeHead(200);
+  res.end('Generic message received');
+});
+
+await agent.start();
+```
+
+### SuperDappAgent (AppSync-Based)
 
 The main class for creating and managing your AI agent.
 
@@ -252,45 +333,38 @@ await agent.reactToMessage('channel', messageId, '👍', true);
 
 ### Environment Configuration
 
-Use the built-in environment validation:
-
-```typescript
-import { createBotConfig, validateEnv } from '@superdapp/agents';
-
-// Automatic configuration from process.env
-const config = createBotConfig();
-
-// Custom validation
-const env = validateEnv({
-  API_TOKEN: process.env.API_TOKEN,
-  API_BASE_URL: process.env.API_BASE_URL,
-});
+Add to your `.env`:
+```env
+API_TOKEN=your_superdapp_api_token_here
+API_BASE_URL=https://api.superdapp.com
+WEBHOOK_SECRET=your_webhook_secret_here
 ```
 
 ## 🏗 Project Templates
 
-### Basic Agent Template
-A simple agent with essential commands and message handling.
-
-```bash
-superagent init my-agent --template basic
-```
-
-### News Agent Template
-An AI-powered news agent with content generation and scheduling.
-
-```bash
-superagent init news-bot --template news
-```
-
-### Trading Agent Template
-A crypto trading assistant with price tracking and portfolio management.
-
-```bash
-superagent init trading-bot --template trading
-```
+- **basic**: Minimal agent (supports both AppSync and webhook)
+- **webhook**: Minimal webhook-only agent
+- **news**: AI-powered news agent
+- **trading**: Crypto trading assistant
 
 ## 🔧 Advanced Usage
+
+### Webhook Server Customization
+
+You can customize the webhook server (port, secret, lifecycle hooks) and register any number of command/message handlers.
+
+### API Client Coverage
+
+The SDK client covers all backend API endpoints, including:
+- Channel and connection messages (send, update, fetch)
+- Media uploads
+- Message reactions
+- Group join/leave/search
+- Typing status
+- Channel/member info
+- Wallet and bot info
+
+See the API reference and `/examples` for details.
 
 ### Custom API Client
 
@@ -481,12 +555,9 @@ try {
 
 ## 📋 Examples
 
-Check out the `/examples` directory for complete working examples:
-
-- **Basic Agent**: Simple command handling and responses
-- **Advanced Agent**: Scheduled tasks, subscriptions, and interactive menus
-- **News Agent**: AI-powered content generation and distribution
-- **Trading Bot**: Crypto price tracking and portfolio management
+- **Webhook Agent**: Minimal webhook-based agent ([examples/webhook/index.ts](./examples/webhook/index.ts))
+- **Basic Agent**: AppSync-based agent ([examples/basic/index.ts](./examples/basic/index.ts))
+- **Advanced Agent**: Advanced features ([examples/advanced/index.ts](./examples/advanced/index.ts))
 
 ## 🤝 Contributing
 

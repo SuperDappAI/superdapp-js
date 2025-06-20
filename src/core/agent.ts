@@ -366,7 +366,7 @@ export class SuperDappAgent {
   }
 
   /**
-   * Get the underlying client for advanced usage
+   * Get the underlying API client for advanced usage
    */
   getClient(): SuperDappClient {
     return this.client;

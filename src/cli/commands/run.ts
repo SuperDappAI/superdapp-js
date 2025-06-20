@@ -25,7 +25,6 @@ export class RunCommand extends Command {
     try {
       // Check if package.json exists
       const packagePath = path.join(process.cwd(), 'package.json');
-
       try {
         await fs.access(packagePath);
       } catch {
@@ -35,7 +34,6 @@ export class RunCommand extends Command {
 
       // Check if .env file exists
       const envPath = path.join(process.cwd(), options.env || '.env');
-
       try {
         await fs.access(envPath);
       } catch {
@@ -45,7 +43,6 @@ export class RunCommand extends Command {
 
       // Check if dependencies are installed
       const nodeModulesPath = path.join(process.cwd(), 'node_modules');
-
       try {
         await fs.access(nodeModulesPath);
       } catch {
@@ -53,14 +50,32 @@ export class RunCommand extends Command {
         await this.installDependencies();
       }
 
-      spinner.text = 'Starting agent...';
+      // Detect agent type (webhook or AppSync)
+      let agentType = 'unknown';
+      try {
+        const mainFile = await this.detectMainFile();
+        const mainContent = await fs.readFile(mainFile, 'utf8');
+        if (mainContent.includes('WebhookAgent')) agentType = 'webhook';
+        else if (mainContent.includes('SuperDappAgent')) agentType = 'appsync';
+      } catch {
+        // fallback: unknown
+      }
 
-      // Start the agent
-      const command = options.watch ? 'npm run dev' : 'npm start';
-
+      spinner.text = `Starting ${agentType === 'webhook' ? 'Webhook' : agentType === 'appsync' ? 'AppSync' : 'Unknown'} agent...`;
       spinner.succeed(chalk.green('Agent started successfully!'));
 
       console.log(`\n${chalk.blue('Agent is running...')}`);
+      if (agentType === 'webhook') {
+        console.log(
+          chalk.gray(
+            `Webhook server will listen on the configured port (default: 4000).`
+          )
+        );
+      } else if (agentType === 'appsync') {
+        console.log(
+          chalk.gray('AppSync (GraphQL subscription) agent running.')
+        );
+      }
       console.log(`${chalk.gray('Press Ctrl+C to stop')}\n`);
 
       // Run the command
@@ -94,6 +109,23 @@ export class RunCommand extends Command {
       );
       process.exit(1);
     }
+  }
+
+  private async detectMainFile(): Promise<string> {
+    // Try to find src/index.ts or src/index.js
+    const tsPath = path.join(process.cwd(), 'src', 'index.ts');
+    const jsPath = path.join(process.cwd(), 'src', 'index.js');
+    try {
+      await fs.access(tsPath);
+      return tsPath;
+    } catch {}
+    try {
+      await fs.access(jsPath);
+      return jsPath;
+    } catch {}
+    throw new Error(
+      'Could not find main agent file (src/index.ts or src/index.js)'
+    );
   }
 
   private async installDependencies(): Promise<void> {

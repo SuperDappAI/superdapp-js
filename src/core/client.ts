@@ -228,6 +228,118 @@ export class SuperDappClient {
   }
 
   /**
+   * Get online presence for a user
+   */
+  async getOnlinePresence(userId: string): Promise<ApiResponse> {
+    const response = await this.axios.get(`/online/${userId}`);
+    return response.data;
+  }
+
+  /**
+   * Get direct messages for a dialog
+   */
+  async getDirectMessages(
+    dialogId: string,
+    nextToken?: string
+  ): Promise<ApiResponse> {
+    const params = nextToken ? { nextToken } : {};
+    const response = await this.axios.get(`/messages/dm/${dialogId}`, {
+      params,
+    });
+    return response.data;
+  }
+
+  /**
+   * Get all channels for a user
+   */
+  async getChannels(userId: string): Promise<ApiResponse> {
+    const response = await this.axios.get(`/channels`, { params: { userId } });
+    return response.data;
+  }
+
+  /**
+   * Update a channel message
+   */
+  async updateChannelMessage(
+    channelId: string,
+    messageId: string,
+    data: any
+  ): Promise<ApiResponse> {
+    const response = await this.axios.put(
+      `/messages/channel/${channelId}/${messageId}`,
+      data
+    );
+    return response.data;
+  }
+
+  /**
+   * Get channel members
+   */
+  async getChannelMembers(
+    channelId: string,
+    nextToken?: string
+  ): Promise<ApiResponse> {
+    const params = nextToken ? { nextToken } : {};
+    const response = await this.axios.get(`/members/${channelId}`, { params });
+    return response.data;
+  }
+
+  /**
+   * Send typing status
+   */
+  async sendTypingStatus(
+    type: 'dm' | 'channel',
+    chatId: string,
+    data: any
+  ): Promise<ApiResponse> {
+    const response = await this.axios.post(`/typing/${type}/${chatId}`, data);
+    return response.data;
+  }
+
+  /**
+   * Social group APIs
+   */
+  async getPopularGroups(n?: number): Promise<ApiResponse> {
+    const response = await this.axios.get(`/social-groups/popular`, {
+      params: { n },
+    });
+    return response.data;
+  }
+
+  async searchGroups(q: string, n?: number): Promise<ApiResponse> {
+    const response = await this.axios.get(`/social-groups/search`, {
+      params: { q, n },
+    });
+    return response.data;
+  }
+
+  async getGroupsByTopic(topic: string, n?: number): Promise<ApiResponse> {
+    const response = await this.axios.get(`/social-groups/topic`, {
+      params: { topic, n },
+    });
+    return response.data;
+  }
+
+  async getUserGroups(userId: string): Promise<ApiResponse> {
+    const response = await this.axios.get(
+      `/social-groups/user-groups/${userId}`
+    );
+    return response.data;
+  }
+
+  async getPopularTopics(n?: number): Promise<ApiResponse> {
+    const response = await this.axios.get(`/social-groups/popular-topics`, {
+      params: { n },
+    });
+    return response.data;
+  }
+
+  async getGroup(groupId: string): Promise<ApiResponse> {
+    const response = await this.axios.get(`/social-groups/${groupId}`);
+    return response.data;
+  }
+
+  /**
    * Make a custom API request
    */
   async request<T = any>(

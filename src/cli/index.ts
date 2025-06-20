@@ -33,10 +33,16 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
-// Parse command line arguments
-program.parse();
-
-// Show help if no command provided
-if (!process.argv.slice(2).length) {
-  program.outputHelp();
-}
+(async () => {
+  try {
+    // Parse command line arguments and await async actions
+    await program.parseAsync();
+    // Show help if no command provided
+    if (!process.argv.slice(2).length) {
+      program.outputHelp();
+    }
+  } catch (err) {
+    console.error(chalk.red('CLI Error:'), err);
+    process.exit(1);
+  }
+})();

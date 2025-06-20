@@ -11,3 +11,8 @@ export * from './utils';
 // Re-export commonly used external libraries
 export { z } from 'zod';
 export * as schedule from 'node-schedule';
+
+// Webhook exports
+export * from './webhook/agent';
+export * from './webhook/server';
+export * from './webhook/registry';

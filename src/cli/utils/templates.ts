@@ -35,20 +35,6 @@ export async function createProjectStructure(
   }
 }
 
-export function getTemplateFiles(config: ProjectConfig): TemplateFile[] {
-  const baseFiles = getBaseFiles(config);
-
-  switch (config.template) {
-    case 'news':
-      return [...baseFiles, ...getNewsAgentFiles(config)];
-    case 'trading':
-      return [...baseFiles, ...getTradingAgentFiles(config)];
-    case 'basic':
-    default:
-      return [...baseFiles, ...getBasicAgentFiles(config)];
-  }
-}
-
 function getBaseFiles(config: ProjectConfig): TemplateFile[] {
   return [
     {
@@ -112,6 +98,7 @@ function getBaseFiles(config: ProjectConfig): TemplateFile[] {
       content: `# SuperDapp Agent Configuration
 API_TOKEN=your_api_token_here
 # API_BASE_URL=https://api.superdapp.com
+WEBHOOK_SECRET=your_webhook_secret_here
 `,
     },
     {
@@ -354,6 +341,62 @@ main();
 `,
     },
   ];
+}
+
+function getWebhookAgentFiles(config: ProjectConfig): TemplateFile[] {
+  return [
+    {
+      path: 'src/index.ts',
+      content: `import 'dotenv/config';
+import { WebhookAgent } from '@superdapp/agents';
+
+async function main() {
+  const agent = new WebhookAgent({
+    port: 4000,
+    secret: process.env.WEBHOOK_SECRET,
+    onInit: async () => console.log('[Agent] Initializing...'),
+    onReady: async () => console.log('[Agent] Ready and listening!'),
+    onShutdown: async () => console.log('[Agent] Shutting down...'),
+  });
+
+  agent.addCommand('/start', async (event, req, res) => {
+    res.writeHead(200);
+    res.end('Hello! Webhook agent started.');
+  });
+
+  agent.addCommand('/ping', async (event, req, res) => {
+    res.writeHead(200);
+    res.end('Pong! 🏓');
+  });
+
+  agent.onMessage(async (event, req, res) => {
+    res.writeHead(200);
+    res.end('Received your message!');
+  });
+
+  await agent.start();
+}
+
+main();
+`,
+    },
+  ];
+}
+
+export function getTemplateFiles(config: ProjectConfig): TemplateFile[] {
+  const baseFiles = getBaseFiles(config);
+
+  switch (config.template) {
+    case 'news':
+      return [...baseFiles, ...getNewsAgentFiles(config)];
+    case 'trading':
+      return [...baseFiles, ...getTradingAgentFiles(config)];
+    case 'webhook':
+      return [...baseFiles, ...getWebhookAgentFiles(config)];
+    case 'basic':
+    default:
+      return [...baseFiles, ...getBasicAgentFiles(config)];
+  }
 }
 
 function getReadmeContent(config: ProjectConfig): string {
