@@ -1,23 +1,64 @@
-import axios, { AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import { BotConfig } from '../types';
 
-export async function request(
+export default async function request(
+  config: BotConfig,
   method: string,
   path: string,
-  body?: any,
-  config?: BotConfig
+  body?: any
 ) {
-  const baseUrl = config?.baseUrl || process.env.API_BASE_URL;
-  const token = config?.apiToken || process.env.API_TOKEN;
-  if (!baseUrl || !token) throw new Error('Missing API base URL or token');
+  const baseUrl = config.baseUrl;
+  const apiToken = config.apiToken;
 
-  const url = `${baseUrl}/bot-${token}/${path}`;
-  const axiosConfig: AxiosRequestConfig = {
-    method: method as any,
-    url,
-    headers: { 'Content-Type': 'application/json' },
-    ...(body && { data: body }),
+  const url = `${baseUrl}/${path}`;
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${apiToken}`,
+    'X-Requested-With': 'XMLHttpRequest',
+    'User-Agent': 'SuperDapp-Agent/1.0',
+    'Accept-Language': 'en-US,en;q=0.9',
   };
-  const response = await axios(axiosConfig);
-  return response.data;
+
+  console.log(`[REQUEST] Making ${method} request to ${url}`);
+  console.log('[REQUEST] Headers:', {
+    ...headers,
+    Authorization: 'Bearer ***',
+  }); // Mask token for logging
+
+  if (body) {
+    console.log('[REQUEST] Body:', JSON.stringify(body));
+  }
+
+  try {
+    const response = await axios({
+      method,
+      url,
+      headers,
+      ...(body && { data: body }),
+      validateStatus: () => true, // Accept any status code
+      timeout: 30000, // 30 second timeout
+    });
+
+    console.log(`[REQUEST] Received response: ${response.status}`);
+
+    if (response.status >= 400) {
+      console.error(`[REQUEST] Error response:`, response.data);
+      throw new Error(
+        `HTTP ${response.status}: ${JSON.stringify(response.data)}`
+      );
+    }
+
+    return response.data;
+  } catch (error: any) {
+    console.error(`[REQUEST] Error making request: ${error.message}`);
+    if (error.response) {
+      console.error(`[REQUEST] Response status: ${error.response.status}`);
+      console.error(`[REQUEST] Response data:`, error.response.data);
+    } else if (error.request) {
+      console.error('[REQUEST] No response received:', error.request);
+    } else {
+      console.error('[REQUEST] Error setting up request:', error.message);
+    }
+    throw error;
+  }
 }

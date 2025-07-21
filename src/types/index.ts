@@ -61,6 +61,8 @@ export interface MessageData extends Message {
     t: 'channel' | 'chat';
     m: any;
   };
+  command?: string;
+  messageText?: string;
 }
 
 export interface ChannelMessage {

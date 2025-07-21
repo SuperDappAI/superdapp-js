@@ -1,11 +1,16 @@
 import 'dotenv/config';
-import { SuperDappAgent, createBotConfig } from '../src';
-import { schedule } from 'node-schedule';
+import { SuperDappAgent, createBotConfig } from '../../src';
+import * as schedule from 'node-schedule';
 
 async function main() {
   try {
-    // Initialize the agent
-    const agent = new SuperDappAgent(createBotConfig());
+    // Initialize the agent with webhook configuration
+    const agent = new SuperDappAgent(createBotConfig(), {
+      port: 3001,
+      onReady: async () => {
+        console.log('Advanced agent webhook server is ready!');
+      },
+    });
 
     // Store user subscriptions (in a real app, use a database)
     const userSubscriptions = new Map<string, string[]>();
@@ -166,25 +171,6 @@ Holdings:
       await agent.sendConnectionMessage(roomId, portfolioText);
     });
 
-    agent.addCommand('/debug', async (message, replyMessage, roomId) => {
-      const botInfo = await agent.getBotInfo();
-      const debugText = `🔧 Debug Information:
-
-Bot ID: ${botInfo.data.bot_info?.id || 'N/A'}
-Bot Name: ${botInfo.data.bot_info?.name || 'N/A'}
-Status: ${botInfo.data.bot_info?.isActive ? '🟢 Active' : '🔴 Inactive'}
-User: ${botInfo.data.user?.email || 'N/A'}
-
-Room ID: ${roomId}
-Message ID: ${message.messageId}
-Sender: ${message.senderId}
-
-Uptime: ${process.uptime().toFixed(2)}s
-Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}MB`;
-
-      await agent.sendConnectionMessage(roomId, debugText);
-    });
-
     // Handle general messages with smart routing
     agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
       const text = message.body.m?.body?.toLowerCase() || '';
@@ -252,9 +238,11 @@ Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}MB`;
       }
     });
 
-    // Initialize and start
-    await agent.initialize();
-    console.log('🚀 Advanced agent is running with scheduled tasks...');
+    // Start the webhook server
+    await agent.start();
+    console.log(
+      '🚀 Advanced agent webhook server is running on port 3001 with scheduled tasks...'
+    );
   } catch (error) {
     console.error('❌ Error:', error);
   }

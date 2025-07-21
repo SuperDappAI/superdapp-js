@@ -10,15 +10,16 @@ A professional-grade Node.js/TypeScript SDK and CLI for building AI agents on th
 
 ## 🚀 Webhook-Based Agent Architecture (v2)
 
-**SuperDapp agents can now be built using a webhook-based architecture for maximum portability and simplicity.**
+**SuperDapp agents now use a webhook-based architecture for maximum portability and simplicity.**
 
 - Centralized webhook server and command/message routing in the SDK
 - Agent lifecycle (init, ready, shutdown) managed by the SDK
 - Pluggable command and message handlers
+- Interactive UI support (buttons, multiselect, reply markup)
 - Signature validation and event dispatch built-in
 - Works with any HTTP hosting (Node.js, serverless, etc.)
 
-**AppSync-based agents are still supported for real-time subscriptions.**
+**This is the new default architecture for all SuperDapp agents.**
 
 ---
 
@@ -84,21 +85,25 @@ superagent run
 ## 📦 Installation
 
 ### Using npm
+
 ```bash
 npm install @superdapp/agents
 ```
 
 ### Using yarn
+
 ```bash
 yarn add @superdapp/agents
 ```
 
 ### Using pnpm
+
 ```bash
 pnpm add @superdapp/agents
 ```
 
 ### Global CLI Installation
+
 ```bash
 npm install -g @superdapp/agents
 ```
@@ -120,6 +125,7 @@ superagent configure
 ```
 
 Or manually create a `.env` file:
+
 ```env
 API_TOKEN=your_superdapp_api_token_here
 API_BASE_URL=https://api.superdapp.com
@@ -127,79 +133,76 @@ API_BASE_URL=https://api.superdapp.com
 
 ### 3. Create Your First Agent
 
-#### Option A: AppSync (GraphQL Subscription) Agent
-
 ```typescript
 import 'dotenv/config';
 import { SuperDappAgent, createBotConfig } from '@superdapp/agents';
 
 async function main() {
-  // Initialize the agent
-  const agent = new SuperDappAgent(createBotConfig());
+  try {
+    // Initialize the agent with webhook configuration
+    const agent = new SuperDappAgent(createBotConfig(), {
+      port: 3000,
+      onReady: async () => {
+        console.log('Basic agent webhook server is ready!');
+      },
+    });
 
-  // Add command handlers
-  agent.addCommand('/start', async (message, replyMessage, roomId) => {
-    await agent.sendConnectionMessage(roomId, 'Hello! I\'m your SuperDapp agent!');
-  });
+    // Add basic commands
+    agent.addCommand('/start', async (message, replyMessage, roomId) => {
+      await agent.sendConnectionMessage(
+        roomId,
+        "Hello! I'm a basic SuperDapp agent."
+      );
+    });
 
-  agent.addCommand('/help', async (message, replyMessage, roomId) => {
-    const helpText = `Available commands:
-/start - Start the bot
-/help - Show this help
-/ping - Test responsiveness`;
-    
-    await agent.sendConnectionMessage(roomId, helpText);
-  });
+    agent.addCommand('/ping', async (message, replyMessage, roomId) => {
+      await agent.sendConnectionMessage(roomId, 'Pong! 🏓');
+    });
 
-  // Handle general messages
-  agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
-    console.log('Received:', message.body.m?.body);
-    await agent.sendConnectionMessage(roomId, 'Message received! Type /help for commands.');
-  });
+    agent.addCommand('/help', async (message, replyMessage, roomId) => {
+      const helpText = `Available commands:\n/start - Start the bot\n/ping - Test bot responsiveness\n/help - Show this help`;
+      await agent.sendConnectionMessage(roomId, helpText);
+    });
 
-  // Start the agent
-  await agent.initialize();
-  console.log('🚀 Agent is running...');
-}
+    // Add a command with buttons
+    agent.addCommand('/menu', async (message, replyMessage, roomId) => {
+      const buttons = [
+        { text: 'Option 1', callback_data: 'OPTION_1' },
+        { text: 'Option 2', callback_data: 'OPTION_2' },
+      ];
 
-main().catch(console.error);
-```
+      await agent.sendMessageWithButtons(roomId, 'Choose an option:', buttons);
+    });
 
-#### Option B: Webhook-Based Agent (Recommended)
+    // Handle callback queries
+    agent.addCommand(
+      'callback_query',
+      async (message, replyMessage, roomId) => {
+        const callbackData = message.body.m?.body?.callback_query?.data;
+        console.log('Callback query received:', callbackData);
 
-```typescript
-import 'dotenv/config';
-import { WebhookAgent } from '@superdapp/agents';
+        await agent.sendConnectionMessage(
+          roomId,
+          `You selected: ${callbackData}`
+        );
+      }
+    );
 
-async function main() {
-  // Create a webhook-based agent
-  const agent = new WebhookAgent({
-    port: 4000, // or your preferred port
-    secret: process.env.WEBHOOK_SECRET, // optional: for signature validation
-    onInit: async () => console.log('[Agent] Initializing...'),
-    onReady: async () => console.log('[Agent] Ready and listening!'),
-    onShutdown: async () => console.log('[Agent] Shutting down...'),
-  });
+    // Handle general messages
+    agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
+      console.log('Received message:', message.messageText);
+      await agent.sendConnectionMessage(
+        roomId,
+        'I received your message! Type /help for available commands.'
+      );
+    });
 
-  // Register commands
-  agent.addCommand('/start', async (event, req, res) => {
-    res.writeHead(200);
-    res.end('Hello! Webhook agent started.');
-  });
-
-  agent.addCommand('/ping', async (event, req, res) => {
-    res.writeHead(200);
-    res.end('Pong! 🏓');
-  });
-
-  // Register a generic message handler
-  agent.onMessage(async (event, req, res) => {
-    res.writeHead(200);
-    res.end('Received your message!');
-  });
-
-  // Start the webhook server
-  await agent.start();
+    // Start the webhook server
+    await agent.start();
+    console.log('Basic agent webhook server is running on port 3000...');
+  } catch (error) {
+    console.error('Error:', error);
+  }
 }
 
 main();
@@ -213,36 +216,17 @@ superagent run --watch
 
 ## 📚 Core Concepts
 
-### WebhookAgent (Webhook-Based)
+### SuperDappAgent (Webhook-Based)
 
-The new class for creating webhook-based agents. Handles HTTP POSTs, command routing, and lifecycle events.
-
-```typescript
-import { WebhookAgent } from '@superdapp/agents';
-
-const agent = new WebhookAgent({ port: 4000 });
-
-agent.addCommand('/hello', async (event, req, res) => {
-  res.writeHead(200);
-  res.end('Hello from webhook!');
-});
-
-agent.onMessage(async (event, req, res) => {
-  res.writeHead(200);
-  res.end('Generic message received');
-});
-
-await agent.start();
-```
-
-### SuperDappAgent (AppSync-Based)
-
-The main class for creating and managing your AI agent.
+The main class for creating and managing your AI agent with webhook support.
 
 ```typescript
 import { SuperDappAgent, createBotConfig } from '@superdapp/agents';
 
-const agent = new SuperDappAgent(createBotConfig());
+const agent = new SuperDappAgent(createBotConfig(), {
+  port: 3000,
+  secret: process.env.WEBHOOK_SECRET,
+});
 
 // Add commands
 agent.addCommand('/weather', async (message, replyMessage, roomId) => {
@@ -250,8 +234,24 @@ agent.addCommand('/weather', async (message, replyMessage, roomId) => {
   await agent.sendConnectionMessage(roomId, `Current weather: ${weather}`);
 });
 
-// Initialize
-await agent.initialize();
+// Add interactive buttons
+agent.addCommand('/menu', async (message, replyMessage, roomId) => {
+  const buttons = [
+    { text: 'Weather', callback_data: 'GET_WEATHER' },
+    { text: 'News', callback_data: 'GET_NEWS' },
+  ];
+
+  await agent.sendMessageWithButtons(roomId, 'Choose an option:', buttons);
+});
+
+// Handle callback queries
+agent.addCommand('callback_query', async (message, replyMessage, roomId) => {
+  const callbackData = message.body.m?.body?.callback_query?.data;
+  // Handle button clicks
+});
+
+// Start the webhook server
+await agent.start();
 ```
 
 ### Command Handling
@@ -266,9 +266,9 @@ agent.addCommand('/ping', async (message, replyMessage, roomId) => {
 
 // Command with arguments
 agent.addCommand('/price', async (message, replyMessage, roomId) => {
-  const args = message.body.m?.body?.split(' ').slice(1) || [];
+  const args = message.messageText?.split(' ').slice(1) || [];
   const symbol = args[0] || 'BTC';
-  
+
   const price = await getCryptoPrice(symbol);
   await agent.sendConnectionMessage(roomId, `${symbol}: $${price}`);
 });
@@ -276,8 +276,51 @@ agent.addCommand('/price', async (message, replyMessage, roomId) => {
 // Handle all messages
 agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
   // Process any message that doesn't match a specific command
-  const response = await processWithAI(message.body.m?.body);
+  const response = await processWithAI(message.messageText);
   await agent.sendConnectionMessage(roomId, response);
+});
+```
+
+### Interactive UI
+
+The SDK supports interactive UI elements like buttons and multiselect options.
+
+```typescript
+// Send message with buttons
+agent.addCommand('/menu', async (message, replyMessage, roomId) => {
+  const buttons = [
+    { text: 'Option 1', callback_data: 'OPTION_1' },
+    { text: 'Option 2', callback_data: 'OPTION_2' },
+  ];
+
+  await agent.sendMessageWithButtons(roomId, 'Choose an option:', buttons);
+});
+
+// Send message with multiselect
+agent.addCommand('/topics', async (message, replyMessage, roomId) => {
+  const options = [
+    { text: 'Crypto', callback_data: 'TOPIC_CRYPTO' },
+    { text: 'Tech', callback_data: 'TOPIC_TECH' },
+    { text: 'News', callback_data: 'TOPIC_NEWS' },
+  ];
+
+  await agent.sendMessageWithMultiselect(roomId, 'Select topics:', options);
+});
+
+// Handle callback queries
+agent.addCommand('callback_query', async (message, replyMessage, roomId) => {
+  const callbackData = message.body.m?.body?.callback_query?.data;
+
+  switch (callbackData) {
+    case 'OPTION_1':
+      await agent.sendConnectionMessage(roomId, 'You selected Option 1!');
+      break;
+    case 'OPTION_2':
+      await agent.sendConnectionMessage(roomId, 'You selected Option 2!');
+      break;
+    default:
+      await agent.sendConnectionMessage(roomId, 'Unknown option selected.');
+  }
 });
 ```
 
@@ -292,10 +335,6 @@ await agent.sendConnectionMessage(roomId, 'Hello, world!');
 // Send to channel
 await agent.sendChannelMessage(channelId, 'Channel announcement!');
 
-// Send photo with caption
-const imageBuffer = await fs.readFile('image.jpg');
-await agent.sendChannelPhoto(channelId, imageBuffer, 'Check this out!');
-
 // React to message
 await agent.reactToMessage('channel', messageId, '👍', true);
 ```
@@ -303,6 +342,7 @@ await agent.reactToMessage('channel', messageId, '👍', true);
 ### Environment Configuration
 
 Add to your `.env`:
+
 ```env
 API_TOKEN=your_superdapp_api_token_here
 API_BASE_URL=https://api.superdapp.com
@@ -325,6 +365,7 @@ You can customize the webhook server (port, secret, lifecycle hooks) and registe
 ### API Client Coverage
 
 The SDK client covers all backend API endpoints, including:
+
 - Channel and connection messages (send, update, fetch)
 - Media uploads
 - Message reactions
@@ -374,9 +415,13 @@ Built-in utilities for robust error handling:
 import { retry, sleep } from '@superdapp/agents';
 
 // Retry API calls with exponential backoff
-const data = await retry(async () => {
-  return await fetchExternalAPI();
-}, 3, 1000);
+const data = await retry(
+  async () => {
+    return await fetchExternalAPI();
+  },
+  3,
+  1000
+);
 
 // Add delays
 await sleep(2000); // 2 seconds
@@ -387,11 +432,11 @@ await sleep(2000); // 2 seconds
 Full TypeScript support with comprehensive types:
 
 ```typescript
-import type { 
-  MessageData, 
-  CommandHandler, 
+import type {
+  MessageData,
+  CommandHandler,
   BotConfig,
-  ApiResponse 
+  ApiResponse,
 } from '@superdapp/agents';
 
 const handleCommand: CommandHandler = async (message, replyMessage, roomId) => {
@@ -442,7 +487,7 @@ describe('SuperDappAgent', () => {
   beforeEach(() => {
     agent = new SuperDappAgent({
       apiToken: 'test-token',
-      baseUrl: 'https://api.test.com'
+      baseUrl: 'https://api.test.com',
     });
   });
 
@@ -458,45 +503,24 @@ describe('SuperDappAgent', () => {
 ### SuperDappAgent Methods
 
 #### `constructor(config: BotConfig)`
+
 Create a new agent instance.
 
 #### `initialize(): Promise<void>`
+
 Initialize the agent and start listening for messages.
 
 #### `addCommand(command: string, handler: CommandHandler, message?: any): void`
+
 Register a command handler.
 
 #### `sendConnectionMessage(roomId: string, text: string, options?: MessageOptions): Promise<void>`
+
 Send a direct message.
 
 #### `sendChannelMessage(channelId: string, text: string, options?: MessageOptions): Promise<void>`
+
 Send a channel message.
-
-#### `sendChannelPhoto(channelId: string, file: Buffer, caption?: string, options?: MessageOptions): Promise<void>`
-Send a photo to a channel.
-
-#### `reactToMessage(type: 'dm' | 'channel', messageId: string, emoji: string, add?: boolean): Promise<void>`
-React to a message.
-
-#### `getBotInfo(): Promise<ApiResponse<BotCredentials>>`
-Get bot information.
-
-#### `getWallet(): Promise<ApiResponse<WalletKeys>>`
-Get wallet information.
-
-### SuperDappClient Methods
-
-#### `getMe(): Promise<ApiResponse<BotCredentials>>`
-Get bot information.
-
-#### `getChannelMessages(channelId: string, nextToken?: string): Promise<ApiResponse<ChannelMessage>>`
-Retrieve channel messages.
-
-#### `getUpdates(limitChannels?: number, limitConnections?: number): Promise<ApiResponse<UpdatesResponse>>`
-Get recent updates.
-
-#### `request<T>(method: string, endpoint: string, data?: any): Promise<ApiResponse<T>>`
-Make custom API requests.
 
 ## 🛡 Error Handling
 
@@ -561,3 +585,25 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Built with ❤️ by the SuperDapp Team**
+
+### Sending Messages
+
+#### Send a message to a channel
+
+```typescript
+const client = new SuperDappClient({ apiToken: 'YOUR_TOKEN' });
+
+await client.sendChannelMessage('CHANNEL_ID', {
+  message: { body: 'Hello, channel!' },
+});
+```
+
+#### Send a message to a connection (DM)
+
+```typescript
+const client = new SuperDappClient({ apiToken: 'YOUR_TOKEN' });
+
+await client.sendConnectionMessage('ROOM_ID', {
+  message: { body: 'Hello, user!' },
+});
+```

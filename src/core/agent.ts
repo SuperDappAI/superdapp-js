@@ -1,273 +1,68 @@
-import { Amplify } from 'aws-amplify';
-import { generateClient } from 'aws-amplify/api';
-import { signIn } from 'aws-amplify/auth';
-import * as querystring from 'querystring';
+import { WebhookAgent } from '../webhook/agent';
 import { SuperDappClient } from './client';
 import {
   BotConfig,
   MessageData,
+  CommandHandler,
   AgentCommands,
   AgentMessages,
-  GraphQLResponse,
-  CommandHandler,
 } from '../types';
-import { MESSAGE_TYPE } from '../types/constants';
+import { formatBody } from '../utils';
+
+export interface SuperDappAgentOptions {
+  port?: number | undefined;
+  secret?: string | undefined;
+  onInit?: (() => Promise<void>) | undefined;
+  onReady?: (() => Promise<void>) | undefined;
+  onShutdown?: (() => Promise<void>) | undefined;
+}
 
 export class SuperDappAgent {
+  private webhookAgent: WebhookAgent;
   private client: SuperDappClient;
-  private graphqlClient: any;
-  private isListening: boolean = false;
   private commands: AgentCommands = {};
   private messages: AgentMessages = {};
 
-  constructor(config: BotConfig) {
+  constructor(config: BotConfig, options: SuperDappAgentOptions = {}) {
     this.client = new SuperDappClient(config);
+
+    this.webhookAgent = new WebhookAgent({
+      port: options.port,
+      secret: options.secret,
+      onInit: options.onInit,
+      onReady: options.onReady,
+      onShutdown: options.onShutdown,
+    });
+
+    // Register default message handler
+    this.webhookAgent.onMessage(this.handleMessage.bind(this));
   }
 
   /**
-   * Initialize the agent and start listening to messages
+   * Add a command handler
    */
-  async initialize(): Promise<void> {
-    console.log('Initializing SuperDapp Agent...');
-    await this.startListening();
-  }
-
-  /**
-   * Register a command handler
-   */
-  addCommand(command: string, handler: CommandHandler, message?: any): void {
+  addCommand(command: string, handler: CommandHandler) {
     this.commands[command] = handler;
-    if (message) {
-      this.messages[command] = message;
+    this.webhookAgent.addCommand(
+      command,
+      this.createCommandWrapper(handler).bind(this)
+    );
+  }
+
+  /**
+   * Add multiple commands at once
+   */
+  addCommands(commands: AgentCommands) {
+    for (const [command, handler] of Object.entries(commands)) {
+      this.addCommand(command, handler);
     }
   }
 
   /**
-   * Register multiple commands
+   * Add message templates
    */
-  addCommands(commands: AgentCommands, messages?: AgentMessages): void {
-    Object.assign(this.commands, commands);
-    if (messages) {
-      Object.assign(this.messages, messages);
-    }
-  }
-
-  /**
-   * Start listening to AppSync subscriptions
-   */
-  private async startListening(): Promise<void> {
-    if (this.isListening) {
-      console.log('Already listening to AppSync subscriptions');
-      return;
-    }
-
-    try {
-      const credentials = await this.client.getCredentials();
-
-      if (!credentials?.data) {
-        throw new Error('No credentials found');
-      }
-
-      // Configure Amplify
-      Amplify.configure(credentials.data.appsync_connection);
-
-      // Sign in
-      await signIn({
-        username: credentials.data.user.email,
-        password: credentials.data.user.chatPassword || '',
-      });
-
-      this.graphqlClient = generateClient();
-
-      // Subscribe to channel messages
-      this.subscribeToChannelMessages();
-
-      // Subscribe to direct messages
-      this.subscribeToDirectMessages();
-
-      this.isListening = true;
-      console.log('Successfully subscribed to AppSync messages');
-    } catch (error) {
-      console.error('Error starting AppSync listener:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Subscribe to channel messages
-   */
-  private subscribeToChannelMessages(): void {
-    const subscription = `
-      subscription OnCreateChannelMessage {
-        onCreateChannelMessage {
-          messageId
-          senderId
-          memberId
-          owner
-          body
-          timestamp
-          isBot
-          channelId
-        }
-      }
-    `;
-
-    this.graphqlClient.graphql({ query: subscription }).subscribe({
-      next: async ({ data }: GraphQLResponse) => {
-        try {
-          if (
-            data?.onCreateChannelMessage &&
-            !data.onCreateChannelMessage.isBot
-          ) {
-            await this.handleMessage(data.onCreateChannelMessage);
-          }
-        } catch (error) {
-          console.error('Error in channel subscription handler:', error);
-        }
-      },
-      error: (error: Error) => {
-        console.error('Error in channel subscription:', error);
-      },
-    });
-  }
-
-  /**
-   * Subscribe to direct messages
-   */
-  private subscribeToDirectMessages(): void {
-    const subscription = `
-      subscription OnCreateMessageEvent {
-        onCreateMessageEvent {
-          messageId
-          senderId
-          memberId
-          owner
-          body
-          timestamp
-          isBot
-        }
-      }
-    `;
-
-    this.graphqlClient.graphql({ query: subscription }).subscribe({
-      next: async ({ data }: GraphQLResponse) => {
-        try {
-          if (data?.onCreateMessageEvent && !data.onCreateMessageEvent.isBot) {
-            await this.handleMessage(data.onCreateMessageEvent);
-          }
-        } catch (error) {
-          console.error('Error in message subscription handler:', error);
-        }
-      },
-      error: (error: Error) => {
-        console.error('Message subscription error:', error);
-      },
-    });
-  }
-
-  /**
-   * Handle incoming messages
-   */
-  private async handleMessage(message: MessageData): Promise<void> {
-    try {
-      const body =
-        typeof message.body === 'string'
-          ? JSON.parse(message.body)
-          : message.body;
-
-      if (body.m) {
-        body.m = JSON.parse(querystring.unescape(body.m));
-      }
-
-      message.body = body;
-
-      switch (body.t) {
-        case MESSAGE_TYPE.CHANNEL:
-          await this.handleChannelMessage(message);
-          break;
-        case MESSAGE_TYPE.CHAT:
-          await this.handleChatMessage(message);
-          break;
-      }
-    } catch (error) {
-      console.error('Error handling message:', error);
-    }
-  }
-
-  /**
-   * Handle channel messages
-   */
-  private async handleChannelMessage(message: MessageData): Promise<void> {
-    // Override this method in your agent implementation
-    console.log('Channel message received:', message);
-  }
-
-  /**
-   * Handle chat/DM messages
-   */
-  private async handleChatMessage(message: MessageData): Promise<void> {
-    const commands = Object.keys(this.commands);
-    const isCallbackQuery =
-      typeof message.body.m === 'object' && message.body.m.body?.callback_query;
-
-    const messageText = !isCallbackQuery
-      ? message.body.m?.body?.toLowerCase()
-      : '';
-    const cmd = commands.find((command) => messageText?.includes(command));
-
-    if (cmd || isCallbackQuery) {
-      await this.processMessage(
-        message,
-        cmd || 'callback_query',
-        MESSAGE_TYPE.CHAT
-      );
-    } else {
-      // Handle general message
-      if (this.commands['handleMessage']) {
-        await this.processMessage(message, 'handleMessage', MESSAGE_TYPE.CHAT);
-      }
-    }
-  }
-
-  /**
-   * Process a message with the appropriate command handler
-   */
-  private async processMessage(
-    message: MessageData,
-    command: string,
-    type: 'channel' | 'chat'
-  ): Promise<void> {
-    const roomId = this.getRoomId(message);
-
-    if (this.commands[command]) {
-      await this.commands[command](message, this.messages[command], roomId);
-    }
-  }
-
-  /**
-   * Get room ID for the message
-   */
-  private getRoomId(message: MessageData): string {
-    return message.memberId !== message.senderId
-      ? `${message.memberId}-${message.senderId}`
-      : `${message.owner}-${message.senderId}`;
-  }
-
-  /**
-   * Send a message to a channel
-   */
-  async sendChannelMessage(
-    channelId: string,
-    text: string,
-    options?: { isSilent?: boolean; reply?: any }
-  ): Promise<void> {
-    await this.client.sendChannelMessage(channelId, {
-      message: {
-        body: text,
-        reply: options?.reply,
-      },
-      isSilent: options?.isSilent || false,
-    });
+  addMessages(messages: AgentMessages) {
+    this.messages = { ...this.messages, ...messages };
   }
 
   /**
@@ -275,100 +70,223 @@ export class SuperDappAgent {
    */
   async sendConnectionMessage(
     roomId: string,
-    text: string,
-    options?: { isSilent?: boolean; reply?: any }
-  ): Promise<void> {
-    await this.client.sendConnectionMessage(roomId, {
-      message: {
-        body: text,
-        reply: options?.reply,
-      },
+    message: string | any,
+    options?: { isSilent?: boolean }
+  ) {
+    const messageBody =
+      typeof message === 'string' ? { body: message } : message;
+    return this.client.sendConnectionMessage(roomId, {
+      message: messageBody,
       isSilent: options?.isSilent || false,
     });
   }
 
   /**
-   * Send a photo to a channel
+   * Send a message to a channel
    */
-  async sendChannelPhoto(
+  async sendChannelMessage(
     channelId: string,
-    file: Buffer,
-    caption?: string,
-    options?: { isSilent?: boolean; reply?: any }
-  ): Promise<void> {
-    await this.client.sendChannelPhoto(channelId, {
-      file,
-      message: {
-        body: caption || '',
-        reply: options?.reply,
-      },
+    message: string | any,
+    options?: { isSilent?: boolean }
+  ) {
+    const messageBody =
+      typeof message === 'string' ? { body: message } : message;
+    return this.client.sendChannelMessage(channelId, {
+      message: messageBody,
       isSilent: options?.isSilent || false,
     });
   }
 
   /**
-   * React to a message
+   * Send a message with reply markup (buttons, multiselect, etc.)
    */
-  async reactToMessage(
-    type: 'dm' | 'channel',
-    messageId: string,
-    emoji: string,
-    add = true
-  ): Promise<void> {
-    await this.client.sendMessageReaction(type, messageId, {
-      emoji,
-      value: add,
-    });
+  async sendMessageWithReplyMarkup(
+    roomId: string,
+    message: string,
+    replyMarkup: any,
+    options?: { isSilent?: boolean }
+  ) {
+    const formattedMessage = formatBody(message, replyMarkup);
+    return this.sendConnectionMessage(roomId, formattedMessage, options);
   }
 
   /**
-   * Join a channel
+   * Send a message with button actions
    */
-  async joinChannel(channelNameOrId: string): Promise<void> {
-    await this.client.joinChannel(channelNameOrId);
+  async sendMessageWithButtons(
+    roomId: string,
+    message: string,
+    buttons: Array<{ text: string; callback_data: string }>,
+    options?: { isSilent?: boolean }
+  ) {
+    const replyMarkup = {
+      type: 'buttons',
+      actions: buttons.map((button) => [button]),
+    };
+    return this.sendMessageWithReplyMarkup(
+      roomId,
+      message,
+      replyMarkup,
+      options
+    );
   }
 
   /**
-   * Leave a channel
+   * Send a message with multiselect options
    */
-  async leaveChannel(channelNameOrId: string): Promise<void> {
-    await this.client.leaveChannel(channelNameOrId);
+  async sendMessageWithMultiselect(
+    roomId: string,
+    message: string,
+    options: Array<{ text: string; callback_data: string }>,
+    config?: { isSilent?: boolean }
+  ) {
+    const replyMarkup = {
+      type: 'multiselect',
+      actions: options.map((option) => [option]),
+    };
+    return this.sendMessageWithReplyMarkup(
+      roomId,
+      message,
+      replyMarkup,
+      config
+    );
   }
 
   /**
-   * Get wallet information
-   */
-  async getWallet() {
-    return this.client.getWalletKeys();
-  }
-
-  /**
-   * Get bot information
-   */
-  async getBotInfo() {
-    return this.client.getMe();
-  }
-
-  /**
-   * Restart the listener (useful for error recovery)
-   */
-  async restart(): Promise<void> {
-    this.isListening = false;
-    await this.startListening();
-  }
-
-  /**
-   * Stop listening to messages
-   */
-  stop(): void {
-    this.isListening = false;
-    console.log('Agent stopped listening to messages');
-  }
-
-  /**
-   * Get the underlying API client for advanced usage
+   * Get the underlying client for advanced operations
    */
   getClient(): SuperDappClient {
     return this.client;
+  }
+
+  /**
+   * Start the webhook server
+   */
+  async start() {
+    await this.webhookAgent.start();
+  }
+
+  /**
+   * Shutdown the webhook server
+   */
+  async shutdown() {
+    await this.webhookAgent.shutdown();
+  }
+
+  /**
+   * Initialize the agent (alias for start)
+   */
+  async initialize() {
+    await this.start();
+  }
+
+  private createCommandWrapper(handler: CommandHandler) {
+    return async (event: any, req: any, res: any) => {
+      try {
+        const message = this.parseMessage(event);
+        const roomId = this.getRoomId(message);
+        const replyMessage = this.messages[message.command || ''] || null;
+
+        await handler(message, replyMessage, roomId);
+
+        res.writeHead(200);
+        res.end('OK');
+      } catch (error) {
+        console.error('Command handler error:', error);
+        res.writeHead(500);
+        res.end('Internal error');
+      }
+    };
+  }
+
+  private async handleMessage(event: any, req: any, res: any) {
+    try {
+      const message = this.parseMessage(event);
+      const roomId = this.getRoomId(message);
+
+      // Check if it's a callback query
+      const isCallbackQuery = this.isCallbackQuery(event);
+
+      if (isCallbackQuery) {
+        await this.handleCallbackQuery(message, roomId);
+      } else {
+        // Handle as general message
+        const generalHandler = this.commands['handleMessage'];
+        if (generalHandler) {
+          await generalHandler(message, null, roomId);
+        }
+      }
+
+      res.writeHead(200);
+      res.end('OK');
+    } catch (error) {
+      console.error('Message handler error:', error);
+      res.writeHead(500);
+      res.end('Internal error');
+    }
+  }
+
+  private async handleCallbackQuery(message: MessageData, roomId: string) {
+    const callbackHandler = this.commands['callback_query'];
+    if (callbackHandler) {
+      await callbackHandler(message, null, roomId);
+    }
+  }
+
+  private parseMessage(event: any): MessageData {
+    const body = event?.body || event;
+
+    // Parse the message body if it's a string
+    if (typeof body.m === 'string') {
+      try {
+        const decoded = decodeURIComponent(body.m);
+        body.m = JSON.parse(decoded);
+      } catch (error) {
+        // If parsing fails, keep as string
+        console.log('Error parsing message body:', error);
+      }
+    }
+
+    // Extract command from message
+    let command = '';
+    let messageText = '';
+
+    if (body.m && typeof body.m === 'object') {
+      if (body.m.text) {
+        messageText = body.m.text.toLowerCase().trim();
+      } else if (body.m.body) {
+        messageText = body.m.body.toLowerCase().trim();
+      } else if (body.m.message) {
+        messageText = body.m.message.toLowerCase().trim();
+      }
+    } else if (typeof body.m === 'string') {
+      messageText = body.m.toLowerCase().trim();
+    }
+
+    // Find matching command
+    const availableCommands = Object.keys(this.commands);
+    command =
+      availableCommands.find(
+        (cmd) =>
+          messageText === cmd.toLowerCase() ||
+          messageText.startsWith(cmd.toLowerCase() + ' ')
+      ) || '';
+
+    return {
+      ...body,
+      command,
+      messageText,
+    } as MessageData;
+  }
+
+  private getRoomId(message: MessageData): string {
+    return message.memberId !== message.senderId
+      ? `${message.memberId}-${message.senderId}`
+      : `${message.owner}-${message.senderId}`;
+  }
+
+  private isCallbackQuery(event: any): boolean {
+    const body = event?.body || event;
+    return typeof body.m === 'object' && body.m.body?.callback_query;
   }
 }

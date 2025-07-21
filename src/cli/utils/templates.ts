@@ -128,8 +128,14 @@ import { SuperDappAgent, createBotConfig } from '@superdapp/agents';
 
 async function main() {
   try {
-    // Initialize the agent
-    const agent = new SuperDappAgent(createBotConfig());
+    // Initialize the agent with webhook configuration
+    const agent = new SuperDappAgent(createBotConfig(), {
+      port: 3000,
+      secret: process.env.WEBHOOK_SECRET,
+      onReady: async () => {
+        console.log('${config.name} webhook server is ready!');
+      },
+    });
 
     // Add basic commands
     agent.addCommand('/start', async (message, replyMessage, roomId) => {
@@ -141,13 +147,15 @@ async function main() {
 /start - Start the bot
 /help - Show this help message
 /status - Show bot status
-/ping - Check if bot is responsive\`;
+/ping - Check if bot is responsive
+/menu - Show interactive menu\`;
       
       await agent.sendConnectionMessage(roomId, helpText);
     });
 
     agent.addCommand('/status', async (message, replyMessage, roomId) => {
-      const botInfo = await agent.getBotInfo();
+      const client = agent.getClient();
+      const botInfo = await client.getMe();
       const statusText = \`Bot Status:
 Name: \${botInfo.data.bot_info?.name || 'Unknown'}
 Status: \${botInfo.data.bot_info?.isActive ? 'Active' : 'Inactive'}
@@ -160,15 +168,48 @@ User: \${botInfo.data.user?.email || 'Unknown'}\`;
       await agent.sendConnectionMessage(roomId, 'Pong! 🏓');
     });
 
-    // Handle general messages
-    agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
-      console.log('Received message:', message.body.m?.body);
-      // Add your custom message handling logic here
+    agent.addCommand('/menu', async (message, replyMessage, roomId) => {
+      const buttons = [
+        { text: 'Get Status', callback_data: 'GET_STATUS' },
+        { text: 'Help', callback_data: 'GET_HELP' },
+      ];
+      
+      await agent.sendMessageWithButtons(
+        roomId,
+        'Choose an option:',
+        buttons
+      );
     });
 
-    // Initialize and start listening
-    await agent.initialize();
-    console.log('${config.name} is running...');
+    // Handle callback queries
+    agent.addCommand('callback_query', async (message, replyMessage, roomId) => {
+      const callbackData = message.body.m?.body?.callback_query?.data;
+      console.log('Callback query received:', callbackData);
+      
+      switch (callbackData) {
+        case 'GET_STATUS':
+          await agent.sendConnectionMessage(roomId, 'Bot is running smoothly! 🟢');
+          break;
+        case 'GET_HELP':
+          await agent.sendConnectionMessage(roomId, 'Type /help to see all available commands.');
+          break;
+        default:
+          await agent.sendConnectionMessage(roomId, 'Unknown option selected.');
+      }
+    });
+
+    // Handle general messages
+    agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
+      console.log('Received message:', message.messageText);
+      await agent.sendConnectionMessage(
+        roomId,
+        'I received your message! Type /help for available commands.'
+      );
+    });
+
+    // Start the webhook server
+    await agent.start();
+    console.log('${config.name} webhook server is running on port 3000...');
     
   } catch (error) {
     console.error('Fatal error:', error);
@@ -192,8 +233,14 @@ import { NewsGenerator } from './newsGenerator';
 
 async function main() {
   try {
-    // Initialize the agent
-    const agent = new SuperDappAgent(createBotConfig());
+    // Initialize the agent with webhook configuration
+    const agent = new SuperDappAgent(createBotConfig(), {
+      port: 3000,
+      secret: process.env.WEBHOOK_SECRET,
+      onReady: async () => {
+        console.log('${config.name} webhook server is ready!');
+      },
+    });
     const newsGenerator = new NewsGenerator();
 
     // Add news-specific commands
@@ -207,7 +254,8 @@ async function main() {
 /help - Show this help message
 /news - Get latest news
 /topics - List available news topics
-/subscribe <topic> - Subscribe to news updates\`;
+/subscribe <topic> - Subscribe to news updates
+/menu - Show interactive menu\`;
       
       await agent.sendConnectionMessage(roomId, helpText);
     });
@@ -219,12 +267,63 @@ async function main() {
 
     agent.addCommand('/topics', async (message, replyMessage, roomId) => {
       const topics = newsGenerator.getAvailableTopics();
-      await agent.sendConnectionMessage(roomId, \`Available topics: \${topics.join(', ')}\`);
+      const options = topics.map(topic => ({
+        text: topic.charAt(0).toUpperCase() + topic.slice(1),
+        callback_data: \`TOPIC_\${topic.toUpperCase()}\`
+      }));
+      
+      await agent.sendMessageWithMultiselect(
+        roomId,
+        'Select news topics:',
+        options
+      );
     });
 
-    // Initialize and start listening
-    await agent.initialize();
-    console.log('${config.name} is running...');
+    agent.addCommand('/menu', async (message, replyMessage, roomId) => {
+      const buttons = [
+        { text: 'Latest News', callback_data: 'GET_NEWS' },
+        { text: 'Topics', callback_data: 'GET_TOPICS' },
+        { text: 'Subscribe', callback_data: 'SUBSCRIBE' },
+      ];
+      
+      await agent.sendMessageWithButtons(
+        roomId,
+        'News Agent Menu:',
+        buttons
+      );
+    });
+
+    // Handle callback queries
+    agent.addCommand('callback_query', async (message, replyMessage, roomId) => {
+      const callbackData = message.body.m?.body?.callback_query?.data;
+      console.log('Callback query received:', callbackData);
+      
+      if (callbackData.startsWith('TOPIC_')) {
+        const topic = callbackData.replace('TOPIC_', '').toLowerCase();
+        const news = await newsGenerator.generateNewsForTopic(topic);
+        await agent.sendConnectionMessage(roomId, news);
+      } else {
+        switch (callbackData) {
+          case 'GET_NEWS':
+            const news = await newsGenerator.getLatestNews();
+            await agent.sendConnectionMessage(roomId, news);
+            break;
+          case 'GET_TOPICS':
+            const topics = newsGenerator.getAvailableTopics();
+            await agent.sendConnectionMessage(roomId, \`Available topics: \${topics.join(', ')}\`);
+            break;
+          case 'SUBSCRIBE':
+            await agent.sendConnectionMessage(roomId, 'Use /subscribe <topic> to subscribe to news updates.');
+            break;
+          default:
+            await agent.sendConnectionMessage(roomId, 'Unknown option selected.');
+        }
+      }
+    });
+
+    // Start the webhook server
+    await agent.start();
+    console.log('${config.name} webhook server is running on port 3000...');
     
   } catch (error) {
     console.error('Fatal error:', error);
@@ -269,8 +368,14 @@ import { TradingAssistant } from './tradingAssistant';
 
 async function main() {
   try {
-    // Initialize the agent
-    const agent = new SuperDappAgent(createBotConfig());
+    // Initialize the agent with webhook configuration
+    const agent = new SuperDappAgent(createBotConfig(), {
+      port: 3000,
+      secret: process.env.WEBHOOK_SECRET,
+      onReady: async () => {
+        console.log('${config.name} webhook server is ready!');
+      },
+    });
     const tradingAssistant = new TradingAssistant();
 
     // Add trading-specific commands
@@ -284,13 +389,14 @@ async function main() {
 /help - Show this help message
 /price <symbol> - Get current price
 /portfolio - View portfolio summary
-/alerts - Manage price alerts\`;
+/alerts - Manage price alerts
+/menu - Show interactive menu\`;
       
       await agent.sendConnectionMessage(roomId, helpText);
     });
 
     agent.addCommand('/price', async (message, replyMessage, roomId) => {
-      const symbol = message.body.m?.body?.split(' ')[1] || 'BTC';
+      const symbol = message.messageText?.split(' ')[1] || 'BTC';
       const price = await tradingAssistant.getPrice(symbol);
       await agent.sendConnectionMessage(roomId, \`\${symbol.toUpperCase()}: $\${price}\`);
     });
@@ -300,9 +406,50 @@ async function main() {
       await agent.sendConnectionMessage(roomId, portfolio);
     });
 
-    // Initialize and start listening
-    await agent.initialize();
-    console.log('${config.name} is running...');
+    agent.addCommand('/menu', async (message, replyMessage, roomId) => {
+      const buttons = [
+        { text: 'BTC Price', callback_data: 'PRICE_BTC' },
+        { text: 'ETH Price', callback_data: 'PRICE_ETH' },
+        { text: 'Portfolio', callback_data: 'GET_PORTFOLIO' },
+        { text: 'Set Alert', callback_data: 'SET_ALERT' },
+      ];
+      
+      await agent.sendMessageWithButtons(
+        roomId,
+        'Trading Assistant Menu:',
+        buttons
+      );
+    });
+
+    // Handle callback queries
+    agent.addCommand('callback_query', async (message, replyMessage, roomId) => {
+      const callbackData = message.body.m?.body?.callback_query?.data;
+      console.log('Callback query received:', callbackData);
+      
+      switch (callbackData) {
+        case 'PRICE_BTC':
+          const btcPrice = await tradingAssistant.getPrice('BTC');
+          await agent.sendConnectionMessage(roomId, \`BTC: $\${btcPrice}\`);
+          break;
+        case 'PRICE_ETH':
+          const ethPrice = await tradingAssistant.getPrice('ETH');
+          await agent.sendConnectionMessage(roomId, \`ETH: $\${ethPrice}\`);
+          break;
+        case 'GET_PORTFOLIO':
+          const portfolio = await tradingAssistant.getPortfolioSummary();
+          await agent.sendConnectionMessage(roomId, portfolio);
+          break;
+        case 'SET_ALERT':
+          await agent.sendConnectionMessage(roomId, 'Use /alerts to manage price alerts.');
+          break;
+        default:
+          await agent.sendConnectionMessage(roomId, 'Unknown option selected.');
+      }
+    });
+
+    // Start the webhook server
+    await agent.start();
+    console.log('${config.name} webhook server is running on port 3000...');
     
   } catch (error) {
     console.error('Fatal error:', error);
@@ -343,46 +490,6 @@ main();
   ];
 }
 
-function getWebhookAgentFiles(config: ProjectConfig): TemplateFile[] {
-  return [
-    {
-      path: 'src/index.ts',
-      content: `import 'dotenv/config';
-import { WebhookAgent } from '@superdapp/agents';
-
-async function main() {
-  const agent = new WebhookAgent({
-    port: 4000,
-    secret: process.env.WEBHOOK_SECRET,
-    onInit: async () => console.log('[Agent] Initializing...'),
-    onReady: async () => console.log('[Agent] Ready and listening!'),
-    onShutdown: async () => console.log('[Agent] Shutting down...'),
-  });
-
-  agent.addCommand('/start', async (event, req, res) => {
-    res.writeHead(200);
-    res.end('Hello! Webhook agent started.');
-  });
-
-  agent.addCommand('/ping', async (event, req, res) => {
-    res.writeHead(200);
-    res.end('Pong! 🏓');
-  });
-
-  agent.onMessage(async (event, req, res) => {
-    res.writeHead(200);
-    res.end('Received your message!');
-  });
-
-  await agent.start();
-}
-
-main();
-`,
-    },
-  ];
-}
-
 export function getTemplateFiles(config: ProjectConfig): TemplateFile[] {
   const baseFiles = getBaseFiles(config);
 
@@ -391,8 +498,6 @@ export function getTemplateFiles(config: ProjectConfig): TemplateFile[] {
       return [...baseFiles, ...getNewsAgentFiles(config)];
     case 'trading':
       return [...baseFiles, ...getTradingAgentFiles(config)];
-    case 'webhook':
-      return [...baseFiles, ...getWebhookAgentFiles(config)];
     case 'basic':
     default:
       return [...baseFiles, ...getBasicAgentFiles(config)];
