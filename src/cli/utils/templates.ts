@@ -323,8 +323,8 @@ async function main() {
     agent.addCommand('/test-image', async ({ message, roomId }) => {
       const fs = require('fs');
       const path = require('path');
-      const filePath = path.join(__dirname, 'test-image.jpg');
-      const channelId = message.data || '';
+      const filePath = path.join(__dirname, '/path-to-image/test-image.jpg');
+      const channelId = (message.data?.split(' ')[1] || '').trim();
 
       if (!fs.existsSync(filePath)) {
         await agent.sendConnectionMessage(roomId, '❌ **Image file not found.**');
