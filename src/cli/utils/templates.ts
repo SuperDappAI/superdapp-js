@@ -97,8 +97,10 @@ function getBaseFiles(config: ProjectConfig): TemplateFile[] {
       path: '.env.example',
       content: `# SuperDapp Agent Configuration
 API_TOKEN=your_api_token_here
-# API_BASE_URL=https://api.superdapp.com
+# API_BASE_URL=https://api.superdapp.ai
 WEBHOOK_SECRET=your_webhook_secret_here
+NODE_ENV=development # or production
+PORT=8787
 `,
     },
     {
@@ -130,7 +132,7 @@ async function main() {
   try {
     // Initialize the agent with webhook configuration
     const agent = new SuperDappAgent(createBotConfig(), {
-      port: 3000,
+      port: 8787,
       secret: process.env.WEBHOOK_SECRET,
       onReady: async () => {
         console.log('${config.name} webhook server is ready!');
@@ -138,79 +140,211 @@ async function main() {
     });
 
     // Add basic commands
-    agent.addCommand('/start', async (message, replyMessage, roomId) => {
-      await agent.sendConnectionMessage(roomId, 'Hello! I\\'m your SuperDapp agent. Type /help to see available commands.');
+    agent.addCommand('/start', async ({ roomId }) => {
+      await agent.sendConnectionMessage(
+        roomId,
+        "👋 **Hello!** I'm your SuperDapp agent. Type \`/help\` to see available commands."
+      );
     });
 
-    agent.addCommand('/help', async (message, replyMessage, roomId) => {
-      const helpText = \`Available commands:
-/start - Start the bot
-/help - Show this help message
-/status - Show bot status
-/ping - Check if bot is responsive
-/menu - Show interactive menu\`;
-      
+    agent.addCommand('/help', async ({ roomId }) => {
+      const helpText = \`📋 **Available Commands**
+
+🚀 \\\`/start\\\` - Start the bot
+❓ \\\`/help\\\` - Show this help message
+📊 \\\`/status\\\` - Show bot status
+🏓 \\\`/ping\\\` - Check if bot is responsive
+📱 \\\`/menu\\\` - Show interactive menu
+🔗 \\\`/join\\\` - Join a channel
+🚪 \\\`/leave\\\` - Leave a channel
+📝 \\\`/test-multiselect\\\` - Test multiselect functionality
+🖼️ \\\`/test-image\\\` - Test image sending\`;
+
       await agent.sendConnectionMessage(roomId, helpText);
     });
 
-    agent.addCommand('/status', async (message, replyMessage, roomId) => {
+    agent.addCommand('/status', async ({ roomId }) => {
       const client = agent.getClient();
       const botInfo = await client.getMe();
-      const statusText = \`Bot Status:
-Name: \${botInfo.data.bot_info?.name || 'Unknown'}
-Status: \${botInfo.data.bot_info?.isActive ? 'Active' : 'Inactive'}
-User: \${botInfo.data.user?.email || 'Unknown'}\`;
-      
+      console.log(botInfo);
+      const statusText = \`🤖 **Bot Status**
+
+📛 **Name:** \${botInfo.data.username || 'Unknown'}
+🟢 **Status:** \${botInfo.data.enabled ? 'Active' : 'Inactive'}
+📅 **Created:** \${new Date(botInfo.data.created_at).toLocaleDateString()}
+🔗 **Webhook:** \${botInfo.data.webhook_url || 'Not configured'}\`;
+
       await agent.sendConnectionMessage(roomId, statusText);
     });
 
-    agent.addCommand('/ping', async (message, replyMessage, roomId) => {
-      await agent.sendConnectionMessage(roomId, 'Pong! 🏓');
+    agent.addCommand('/ping', async ({ roomId }) => {
+      await agent.sendConnectionMessage(
+        roomId,
+        '🏓 **Pong!** Bot is responsive!'
+      );
     });
 
-    agent.addCommand('/menu', async (message, replyMessage, roomId) => {
+    // ⚠️ IMPORTANT: Use COMMAND:VALUE format with colon separator when mapping multiple commands with different values
+    agent.addCommand('/menu', async ({ roomId }) => {
       const buttons = [
-        { text: 'Get Status', callback_data: 'GET_STATUS' },
-        { text: 'Help', callback_data: 'GET_HELP' },
+        { text: '📊 Get Status', callback_data: 'GET_STATUS' },
+        { text: '❓ Help', callback_data: 'GET_HELP' },
       ];
-      
-      await agent.sendMessageWithButtons(
+
+      await agent.sendReplyMarkupMessage(
+        'buttons',
         roomId,
-        'Choose an option:',
-        buttons
+        '🎯 **Choose an option:**',
+        [buttons]
+      );
+    });
+
+    agent.addCommand('/test-multiselect', async ({ roomId }) => {
+      const topics = ['Crypto', 'Tech', 'News', 'Sports', 'Politics'];
+
+      const topicsReplyMarkup = {
+        type: 'multiselect',
+        actions: [
+          ...topics.map((topic, idx) => [
+            {
+              index: \`\${idx + 1}\`,
+              text: \`\${idx + 1} - \${topic}\`,
+              callback_data: \`TOPIC_SELECTION:\${topic}\`,
+            },
+          ]),
+          // the last button is the confirm button
+          [
+            {
+              text: '✅ Confirm',
+              callback_data: 'CONFIRM_TOPICS:',
+            },
+          ],
+        ],
+      };
+
+      await agent.sendReplyMarkupMessage(
+        'multiselect',
+        roomId,
+        '📝 **Select topics:**',
+        topicsReplyMarkup.actions
+      );
+    });
+
+    // join bot to channel user is owner of
+    agent.addCommand('/join', async ({ message, roomId }) => {
+      const client = agent.getClient();
+      const channels = await client.getChannels(message.rawMessage.senderId);
+
+      const replyMarkup = channels.data.map((channel: any) => [
+        {
+          text: channel.name,
+          callback_data: \`JOIN_CHANNEL:\${channel.name}\`,
+        },
+      ]);
+
+      await agent.sendReplyMarkupMessage(
+        'buttons',
+        roomId,
+        '🎯 **Choose a group to join:**',
+        replyMarkup
+      );
+    });
+
+    // leave channel bot is in
+    agent.addCommand('/leave', async ({ roomId }) => {
+      const client = agent.getClient();
+      const botInfo = await client.getMe();
+      const channels = await client.getBotChannels();
+
+      const replyMarkup = channels.data.map((channel: any) => [
+        {
+          text: channel.name,
+          callback_data: \`LEAVE_CHANNEL:\${channel.id}\`,
+        },
+      ]);
+
+      await agent.sendReplyMarkupMessage(
+        'buttons',
+        roomId,
+        '🎯 **Choose a group to leave:**',
+        replyMarkup
       );
     });
 
     // Handle callback queries
-    agent.addCommand('callback_query', async (message, replyMessage, roomId) => {
-      const callbackData = message.body.m?.body?.callback_query?.data;
-      console.log('Callback query received:', callbackData);
-      
-      switch (callbackData) {
+    // ✅ The callback_data is automatically parsed into message.callback_command and message.data
+    // Format: COMMAND:VALUE (e.g., "JOIN_CHANNEL:my-channel" → callback_command="JOIN_CHANNEL", data="my-channel")
+    agent.addCommand('callback_query', async ({ message, roomId }) => {
+      const client = agent.getClient();
+      const channelId = message.data;
+
+      console.log('Callback query received:', message);
+
+      switch (message.callback_command) {
+        case 'JOIN_CHANNEL':
+          if (!channelId) return;
+
+          await client.joinChannel(channelId, message.rawMessage.id);
+          await agent.sendConnectionMessage(roomId, '✅ **Joined channel!**');
+          break;
+        case 'LEAVE_CHANNEL':
+          if (!channelId) return;
+
+          await client.leaveChannel(channelId, message.rawMessage.id);
+          await agent.sendConnectionMessage(roomId, '🚪 **Left channel!**');
+          break;
         case 'GET_STATUS':
-          await agent.sendConnectionMessage(roomId, 'Bot is running smoothly! 🟢');
+          await agent.sendConnectionMessage(
+            roomId,
+            '🟢 **Bot is running smoothly!** Everything is working perfectly.'
+          );
           break;
         case 'GET_HELP':
-          await agent.sendConnectionMessage(roomId, 'Type /help to see all available commands.');
+          await agent.sendConnectionMessage(
+            roomId,
+            '❓ Type \`/help\` to see all available commands.'
+          );
+          break;
+        case 'CONFIRM_TOPICS':
+          await agent.sendConnectionMessage(
+            roomId,
+            '✅ **Topics confirmed!** Your selections have been saved successfully.'
+          );
           break;
         default:
-          await agent.sendConnectionMessage(roomId, 'Unknown option selected.');
+          await agent.sendConnectionMessage(
+            roomId,
+            '❌ **Unknown option selected.** Please try again.'
+          );
       }
     });
 
-    // Handle general messages
-    agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
-      console.log('Received message:', message.messageText);
-      await agent.sendConnectionMessage(
-        roomId,
-        'I received your message! Type /help for available commands.'
+    // send image
+    agent.addCommand('/test-image', async ({ message, roomId }) => {
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(__dirname, 'test-image.jpg');
+      const channelId = message.data || '';
+
+      if (!fs.existsSync(filePath)) {
+        await agent.sendConnectionMessage(roomId, '❌ **Image file not found.**');
+        return;
+      }
+
+      if (!channelId) return;
+
+      const fileStream = fs.createReadStream(filePath);
+      await agent.sendChannelImage(
+        channelId,
+        fileStream,
+        '🖼️ **Here is a test image!**'
       );
+      await agent.sendConnectionMessage(roomId, '✅ **Image sent to channel!**');
     });
 
     // Start the webhook server
     await agent.start();
-    console.log('${config.name} webhook server is running on port 3000...');
-    
+    console.log('Server is running on port ' + (process.env.PORT));
   } catch (error) {
     console.error('Fatal error:', error);
     process.exit(1);
@@ -235,7 +369,7 @@ async function main() {
   try {
     // Initialize the agent with webhook configuration
     const agent = new SuperDappAgent(createBotConfig(), {
-      port: 3000,
+      port: 8787,
       secret: process.env.WEBHOOK_SECRET,
       onReady: async () => {
         console.log('${config.name} webhook server is ready!');
@@ -244,87 +378,158 @@ async function main() {
     const newsGenerator = new NewsGenerator();
 
     // Add news-specific commands
-    agent.addCommand('/start', async (message, replyMessage, roomId) => {
-      await agent.sendConnectionMessage(roomId, 'Hello! I\\'m your AI News agent. Type /help to see available commands.');
-    });
-
-    agent.addCommand('/help', async (message, replyMessage, roomId) => {
-      const helpText = \`Available commands:
-/start - Start the bot
-/help - Show this help message
-/news - Get latest news
-/topics - List available news topics
-/subscribe <topic> - Subscribe to news updates
-/menu - Show interactive menu\`;
-      
-      await agent.sendConnectionMessage(roomId, helpText);
-    });
-
-    agent.addCommand('/news', async (message, replyMessage, roomId) => {
-      const news = await newsGenerator.getLatestNews();
-      await agent.sendConnectionMessage(roomId, news);
-    });
-
-    agent.addCommand('/topics', async (message, replyMessage, roomId) => {
-      const topics = newsGenerator.getAvailableTopics();
-      const options = topics.map(topic => ({
-        text: topic.charAt(0).toUpperCase() + topic.slice(1),
-        callback_data: \`TOPIC_\${topic.toUpperCase()}\`
-      }));
-      
-      await agent.sendMessageWithMultiselect(
+    agent.addCommand('/start', async ({ roomId }) => {
+      await agent.sendConnectionMessage(
         roomId,
-        'Select news topics:',
-        options
+        "👋 **Hello!** I'm your AI News agent. Type \`/help\` to see available commands."
       );
     });
 
-    agent.addCommand('/menu', async (message, replyMessage, roomId) => {
-      const buttons = [
-        { text: 'Latest News', callback_data: 'GET_NEWS' },
-        { text: 'Topics', callback_data: 'GET_TOPICS' },
-        { text: 'Subscribe', callback_data: 'SUBSCRIBE' },
-      ];
+    agent.addCommand('/help', async ({ roomId }) => {
+      const helpText = \`📋 **Available Commands**
+
+🚀 \\\`/start\\\` - Start the bot
+❓ \\\`/help\\\` - Show this help message
+📰 \\\`/news\\\` - Get latest news
+📂 \\\`/topics\\\` - List available news topics
+🔔 \\\`/subscribe <topic>\\\` - Subscribe to news updates
+📱 \\\`/menu\\\` - Show interactive menu
+📝 \\\`/test-multiselect\\\` - Test topic selection\`;
+
+      await agent.sendConnectionMessage(roomId, helpText);
+    });
+
+    agent.addCommand('/news', async ({ roomId }) => {
+      const news = await newsGenerator.getLatestNews();
+      await agent.sendConnectionMessage(roomId, \`📰 **Latest News**\n\n\${news}\`);
+    });
+
+    // ⚠️ IMPORTANT: Use COMMAND:VALUE format with colon separator when mapping multiple commands with different values
+    agent.addCommand('/topics', async ({ roomId }) => {
+      const topics = newsGenerator.getAvailableTopics();
+      const options = topics.map(topic => ({
+        text: topic.charAt(0).toUpperCase() + topic.slice(1),
+        callback_data: \`TOPIC:\${topic.toUpperCase()}\`
+      }));
       
-      await agent.sendMessageWithButtons(
+      await agent.sendReplyMarkupMessage(
+        'buttons',
         roomId,
-        'News Agent Menu:',
-        buttons
+        '📂 **Select news topics:**',
+        [options]
+      );
+    });
+
+    agent.addCommand('/test-multiselect', async ({ roomId }) => {
+      const topics = newsGenerator.getAvailableTopics();
+
+      const topicsReplyMarkup = {
+        type: 'multiselect',
+        actions: [
+          ...topics.map((topic, idx) => [
+            {
+              index: \`\${idx + 1}\`,
+              text: \`\${idx + 1} - \${topic.charAt(0).toUpperCase() + topic.slice(1)}\`,
+              callback_data: \`TOPIC_SELECTION:\${topic}\`,
+            },
+          ]),
+          [
+            {
+              text: '✅ Confirm Selection',
+              callback_data: 'CONFIRM_TOPICS:',
+            },
+          ],
+        ],
+      };
+
+      await agent.sendReplyMarkupMessage(
+        'multiselect',
+        roomId,
+        '📝 **Select news topics:**',
+        topicsReplyMarkup.actions
+      );
+    });
+
+    // ⚠️ IMPORTANT: Use COMMAND:VALUE format with colon separator when mapping multiple commands with different values
+    agent.addCommand('/menu', async ({ roomId }) => {
+      const buttons = [
+        { text: '📰 Latest News', callback_data: 'GET_NEWS' },
+        { text: '📂 Topics', callback_data: 'GET_TOPICS' },
+        { text: '🔔 Subscribe', callback_data: 'SUBSCRIBE' },
+        { text: '📝 Test Multiselect', callback_data: 'TEST_MULTISELECT' },
+      ];
+
+      await agent.sendReplyMarkupMessage(
+        'buttons',
+        roomId,
+        '📱 **News Agent Menu:**',
+        [buttons]
       );
     });
 
     // Handle callback queries
-    agent.addCommand('callback_query', async (message, replyMessage, roomId) => {
-      const callbackData = message.body.m?.body?.callback_query?.data;
-      console.log('Callback query received:', callbackData);
-      
-      if (callbackData.startsWith('TOPIC_')) {
-        const topic = callbackData.replace('TOPIC_', '').toLowerCase();
+    // ✅ The callback_data is automatically parsed into message.callback_command and message.data
+    // Format: COMMAND:VALUE (e.g., "TOPIC:CRYPTO" → callback_command="TOPIC", data="CRYPTO")
+    agent.addCommand('callback_query', async ({ message, roomId }) => {
+      console.log('Callback query received:', message);
+
+      if (message.callback_command === 'TOPIC') {
+        const topic = message.data?.toLowerCase() || '';
         const news = await newsGenerator.generateNewsForTopic(topic);
-        await agent.sendConnectionMessage(roomId, news);
+        await agent.sendConnectionMessage(roomId, \`📰 **\${topic.charAt(0).toUpperCase() + topic.slice(1)} News**\n\n\${news}\`);
+      } else if (message.callback_command === 'TOPIC_SELECTION') {
+        const topic = message.data || '';
+        const news = await newsGenerator.generateNewsForTopic(topic);
+        await agent.sendConnectionMessage(roomId, \`📰 **\${topic.charAt(0).toUpperCase() + topic.slice(1)} News**\n\n\${news}\`);
       } else {
-        switch (callbackData) {
+        switch (message.callback_command) {
           case 'GET_NEWS':
             const news = await newsGenerator.getLatestNews();
-            await agent.sendConnectionMessage(roomId, news);
+            await agent.sendConnectionMessage(roomId, \`📰 **Latest News**\n\n\${news}\`);
             break;
           case 'GET_TOPICS':
             const topics = newsGenerator.getAvailableTopics();
-            await agent.sendConnectionMessage(roomId, \`Available topics: \${topics.join(', ')}\`);
+            await agent.sendConnectionMessage(roomId, \`📂 **Available topics:** \${topics.join(', ')}\`);
             break;
           case 'SUBSCRIBE':
-            await agent.sendConnectionMessage(roomId, 'Use /subscribe <topic> to subscribe to news updates.');
+            await agent.sendConnectionMessage(roomId, '🔔 **Use** \`/subscribe <topic>\` **to subscribe to news updates.**');
+            break;
+          case 'TEST_MULTISELECT':
+            const topicsForMultiselect = newsGenerator.getAvailableTopics();
+            const multiselectActions = [
+              ...topicsForMultiselect.map((topic, idx) => [
+                {
+                  index: \`\${idx + 1}\`,
+                  text: \`\${idx + 1} - \${topic.charAt(0).toUpperCase() + topic.slice(1)}\`,
+                  callback_data: \`TOPIC_SELECTION:\${topic}\`,
+                },
+              ]),
+              [
+                {
+                  text: '✅ Confirm Selection',
+                  callback_data: 'CONFIRM_TOPICS:',
+                },
+              ],
+            ];
+            await agent.sendReplyMarkupMessage(
+              'multiselect',
+              roomId,
+              '📝 **Select news topics:**',
+              multiselectActions
+            );
+            break;
+          case 'CONFIRM_TOPICS':
+            await agent.sendConnectionMessage(roomId, '✅ **Topics confirmed!** Your selections have been saved successfully.');
             break;
           default:
-            await agent.sendConnectionMessage(roomId, 'Unknown option selected.');
+            await agent.sendConnectionMessage(roomId, '❌ **Unknown option selected.** Please try again.');
         }
       }
     });
 
     // Start the webhook server
     await agent.start();
-    console.log('${config.name} webhook server is running on port 3000...');
-    
+    console.log('Server is running on port ' + (process.env.PORT));
   } catch (error) {
     console.error('Fatal error:', error);
     process.exit(1);
@@ -341,7 +546,7 @@ main();
 
   async getLatestNews(): Promise<string> {
     // Implement your news generation logic here
-    return 'Latest crypto news: Bitcoin reaches new highs as institutional adoption increases.';
+    return 'Bitcoin reaches new highs as institutional adoption increases. Ethereum 2.0 continues to show promising results with improved scalability and reduced energy consumption.';
   }
 
   getAvailableTopics(): string[] {
@@ -350,7 +555,15 @@ main();
 
   async generateNewsForTopic(topic: string): Promise<string> {
     // Implement topic-specific news generation
-    return \`Latest news for \${topic}: [Generated content would go here]\`;
+    const newsByTopic: { [key: string]: string } = {
+      crypto: 'Bitcoin and Ethereum lead the market with strong performance. Altcoins show mixed results as market sentiment improves.',
+      blockchain: 'New blockchain innovations emerge with focus on scalability and interoperability. Layer 2 solutions gain traction.',
+      defi: 'DeFi protocols see increased TVL as yield farming opportunities expand. New lending platforms launch with innovative features.',
+      nft: 'NFT market shows signs of recovery with high-profile sales. Gaming NFTs continue to dominate the space.',
+      tech: 'AI and blockchain convergence accelerates. New partnerships between tech giants and crypto companies announced.'
+    };
+    
+    return newsByTopic[topic] || \`Latest news for \${topic}: [Generated content would go here]\`;
   }
 }
 `,
@@ -370,7 +583,7 @@ async function main() {
   try {
     // Initialize the agent with webhook configuration
     const agent = new SuperDappAgent(createBotConfig(), {
-      port: 3000,
+      port: 8787,
       secret: process.env.WEBHOOK_SECRET,
       onReady: async () => {
         console.log('${config.name} webhook server is ready!');
@@ -379,78 +592,113 @@ async function main() {
     const tradingAssistant = new TradingAssistant();
 
     // Add trading-specific commands
-    agent.addCommand('/start', async (message, replyMessage, roomId) => {
-      await agent.sendConnectionMessage(roomId, 'Hello! I\\'m your AI Trading assistant. Type /help to see available commands.');
+    agent.addCommand('/start', async ({ roomId }) => {
+      await agent.sendConnectionMessage(
+        roomId,
+        "👋 **Hello!** I'm your AI Trading assistant. Type \`/help\` to see available commands."
+      );
     });
 
-    agent.addCommand('/help', async (message, replyMessage, roomId) => {
-      const helpText = \`Available commands:
-/start - Start the bot
-/help - Show this help message
-/price <symbol> - Get current price
-/portfolio - View portfolio summary
-/alerts - Manage price alerts
-/menu - Show interactive menu\`;
-      
+    agent.addCommand('/help', async ({ roomId }) => {
+      const helpText = \`📋 **Available Commands**
+
+🚀 \\\`/start\\\` - Start the bot
+❓ \\\`/help\\\` - Show this help message
+💰 \\\`/price <symbol>\\\` - Get current price
+📊 \\\`/portfolio\\\` - View portfolio summary
+🔔 \\\`/alerts\\\` - Manage price alerts
+📱 \\\`/menu\\\` - Show interactive menu
+📈 \\\`/watchlist\\\` - Manage watchlist\`;
+
       await agent.sendConnectionMessage(roomId, helpText);
     });
 
-    agent.addCommand('/price', async (message, replyMessage, roomId) => {
+    agent.addCommand('/price', async ({ message, roomId }) => {
       const symbol = message.messageText?.split(' ')[1] || 'BTC';
       const price = await tradingAssistant.getPrice(symbol);
-      await agent.sendConnectionMessage(roomId, \`\${symbol.toUpperCase()}: $\${price}\`);
+      await agent.sendConnectionMessage(roomId, \`💰 **\${symbol.toUpperCase()} Price:** \${price}\`);
     });
 
-    agent.addCommand('/portfolio', async (message, replyMessage, roomId) => {
+    agent.addCommand('/portfolio', async ({ roomId }) => {
       const portfolio = await tradingAssistant.getPortfolioSummary();
-      await agent.sendConnectionMessage(roomId, portfolio);
+      await agent.sendConnectionMessage(roomId, \`📊 **Portfolio Summary**\n\n\${portfolio}\`);
     });
 
-    agent.addCommand('/menu', async (message, replyMessage, roomId) => {
-      const buttons = [
-        { text: 'BTC Price', callback_data: 'PRICE_BTC' },
-        { text: 'ETH Price', callback_data: 'PRICE_ETH' },
-        { text: 'Portfolio', callback_data: 'GET_PORTFOLIO' },
-        { text: 'Set Alert', callback_data: 'SET_ALERT' },
-      ];
+    // ⚠️ IMPORTANT: Use COMMAND:VALUE format with colon separator when mapping multiple commands with different values
+    agent.addCommand('/watchlist', async ({ roomId }) => {
+      const watchlist = tradingAssistant.getWatchlist();
+      const options = watchlist.map(symbol => ({
+        text: symbol,
+        callback_data: \`PRICE:\${symbol}\`
+      }));
       
-      await agent.sendMessageWithButtons(
+      await agent.sendReplyMarkupMessage(
+        'buttons',
         roomId,
-        'Trading Assistant Menu:',
-        buttons
+        '📈 **Select from watchlist:**',
+        [options]
+      );
+    });
+
+    // ⚠️ IMPORTANT: Use COMMAND:VALUE format with colon separator when mapping multiple commands with different values
+    agent.addCommand('/menu', async ({ roomId }) => {
+      const buttons = [
+        { text: '💰 BTC Price', callback_data: 'PRICE:BTC' },
+        { text: '💰 ETH Price', callback_data: 'PRICE:ETH' },
+        { text: '📊 Portfolio', callback_data: 'GET_PORTFOLIO' },
+        { text: '🔔 Set Alert', callback_data: 'SET_ALERT' },
+        { text: '📈 Watchlist', callback_data: 'GET_WATCHLIST' },
+      ];
+
+      await agent.sendReplyMarkupMessage(
+        'buttons',
+        roomId,
+        '📱 **Trading Assistant Menu:**',
+        [buttons]
       );
     });
 
     // Handle callback queries
-    agent.addCommand('callback_query', async (message, replyMessage, roomId) => {
-      const callbackData = message.body.m?.body?.callback_query?.data;
-      console.log('Callback query received:', callbackData);
-      
-      switch (callbackData) {
-        case 'PRICE_BTC':
-          const btcPrice = await tradingAssistant.getPrice('BTC');
-          await agent.sendConnectionMessage(roomId, \`BTC: $\${btcPrice}\`);
-          break;
-        case 'PRICE_ETH':
-          const ethPrice = await tradingAssistant.getPrice('ETH');
-          await agent.sendConnectionMessage(roomId, \`ETH: $\${ethPrice}\`);
-          break;
-        case 'GET_PORTFOLIO':
-          const portfolio = await tradingAssistant.getPortfolioSummary();
-          await agent.sendConnectionMessage(roomId, portfolio);
-          break;
-        case 'SET_ALERT':
-          await agent.sendConnectionMessage(roomId, 'Use /alerts to manage price alerts.');
-          break;
-        default:
-          await agent.sendConnectionMessage(roomId, 'Unknown option selected.');
+    // ✅ The callback_data is automatically parsed into message.callback_command and message.data
+    // Format: COMMAND:VALUE (e.g., "PRICE:BTC" → callback_command="PRICE", data="BTC")
+    agent.addCommand('callback_query', async ({ message, roomId }) => {
+      console.log('Callback query received:', message);
+
+      if (message.callback_command === 'PRICE') {
+        const symbol = message.data || '';
+        const price = await tradingAssistant.getPrice(symbol);
+        await agent.sendConnectionMessage(roomId, \`💰 **\${symbol} Price:** \${price}\`);
+      } else {
+        switch (message.callback_command) {
+          case 'GET_PORTFOLIO':
+            const portfolio = await tradingAssistant.getPortfolioSummary();
+            await agent.sendConnectionMessage(roomId, \`📊 **Portfolio Summary**\n\n\${portfolio}\`);
+            break;
+          case 'SET_ALERT':
+            await agent.sendConnectionMessage(roomId, '🔔 **Use** \`/alerts\` **to manage price alerts.**');
+            break;
+          case 'GET_WATCHLIST':
+            const watchlist = tradingAssistant.getWatchlist();
+            const options = watchlist.map(symbol => ({
+              text: symbol,
+              callback_data: \`PRICE:\${symbol}\`
+            }));
+            await agent.sendReplyMarkupMessage(
+              'buttons',
+              roomId,
+              '📈 **Select from watchlist:**',
+              [options]
+            );
+            break;
+          default:
+            await agent.sendConnectionMessage(roomId, '❌ **Unknown option selected.** Please try again.');
+        }
       }
     });
 
     // Start the webhook server
     await agent.start();
-    console.log('${config.name} webhook server is running on port 3000...');
-    
+    console.log('Server is running on port ' + (process.env.PORT));
   } catch (error) {
     console.error('Fatal error:', error);
     process.exit(1);
@@ -463,6 +711,8 @@ main();
     {
       path: 'src/tradingAssistant.ts',
       content: `export class TradingAssistant {
+  private watchlist = ['BTC', 'ETH', 'ADA', 'SOL', 'DOT'];
+
   async getPrice(symbol: string): Promise<string> {
     // Implement price fetching logic here
     // This is a mock implementation
@@ -470,6 +720,8 @@ main();
       BTC: 65000,
       ETH: 3200,
       ADA: 0.45,
+      SOL: 95.50,
+      DOT: 6.80,
     };
     
     return (mockPrices[symbol.toUpperCase()] || 0).toLocaleString();
@@ -477,12 +729,43 @@ main();
 
   async getPortfolioSummary(): Promise<string> {
     // Implement portfolio summary logic
-    return 'Portfolio Summary:\\nTotal Value: $10,000\\nBTC: 0.1 ($6,500)\\nETH: 1.0 ($3,200)\\nCash: $300';
+    return \`💰 **Total Value:** $15,250.00
+
+📈 **Holdings:**
+• BTC: 0.1 ($6,500.00)
+• ETH: 1.0 ($3,200.00)
+• ADA: 1000 ($450.00)
+• SOL: 10 ($955.00)
+• DOT: 100 ($680.00)
+
+💵 **Cash:** $3,465.00
+
+📊 **24h Change:** +2.5%\`;
+  }
+
+  getWatchlist(): string[] {
+    return this.watchlist;
   }
 
   async setPriceAlert(symbol: string, price: number): Promise<void> {
     // Implement price alert logic
-    console.log(\`Price alert set for \${symbol} at $\${price}\`);
+    console.log(\`🔔 Price alert set for \${symbol} at \${price}\`);
+  }
+
+  async getMarketOverview(): Promise<string> {
+    return \`📊 **Market Overview**
+
+🟢 **Top Gainers:**
+• SOL: +8.5%
+• DOT: +5.2%
+• ADA: +3.1%
+
+🔴 **Top Losers:**
+• BTC: -1.2%
+• ETH: -0.8%
+
+📈 **Market Cap:** $2.1T
+  💹 **24h Volume:** $85.2B\`;
   }
 }
 `,
@@ -532,7 +815,7 @@ Copy \`.env.example\` to \`.env\` and fill in your configuration:
 
 \`\`\`
 API_TOKEN=your_superdapp_api_token
-API_BASE_URL=https://api.superdapp.com
+API_BASE_URL=https://api.superdapp.ai
 \`\`\`
 
 ## Commands

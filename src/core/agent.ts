@@ -70,11 +70,10 @@ export class SuperDappAgent {
    */
   async sendConnectionMessage(
     roomId: string,
-    message: string | any,
+    message: string,
     options?: { isSilent?: boolean }
   ) {
-    const messageBody =
-      typeof message === 'string' ? { body: message } : message;
+    const messageBody = { body: formatBody(message) };
     return this.client.sendConnectionMessage(roomId, {
       message: messageBody,
       isSilent: options?.isSilent || false,
@@ -86,49 +85,34 @@ export class SuperDappAgent {
    */
   async sendChannelMessage(
     channelId: string,
-    message: string | any,
+    message: string,
     options?: { isSilent?: boolean }
   ) {
-    const messageBody =
-      typeof message === 'string' ? { body: message } : message;
+    const messageBody = { body: formatBody(message) };
     return this.client.sendChannelMessage(channelId, {
       message: messageBody,
       isSilent: options?.isSilent || false,
     });
   }
 
-  /**
-   * Send a message with reply markup (buttons, multiselect, etc.)
-   */
-  async sendMessageWithReplyMarkup(
+  async sendReplyMarkupMessage(
+    type: 'buttons' | 'multiselect',
     roomId: string,
     message: string,
     replyMarkup: any,
     options?: { isSilent?: boolean }
   ) {
-    const formattedMessage = formatBody(message, replyMarkup);
-    return this.sendConnectionMessage(roomId, formattedMessage, options);
-  }
-
-  /**
-   * Send a message with button actions
-   */
-  async sendMessageWithButtons(
-    roomId: string,
-    message: string,
-    buttons: Array<{ text: string; callback_data: string }>,
-    options?: { isSilent?: boolean }
-  ) {
-    const replyMarkup = {
-      type: 'buttons',
-      actions: buttons.map((button) => [button]),
+    const markup = {
+      ...(type === 'multiselect' ? { type } : {}),
+      actions: replyMarkup,
     };
-    return this.sendMessageWithReplyMarkup(
-      roomId,
-      message,
-      replyMarkup,
-      options
-    );
+
+    const formattedMessage = formatBody(message, markup);
+    const messageBody = { body: formattedMessage };
+    return this.client.sendConnectionMessage(roomId, {
+      message: messageBody,
+      isSilent: options?.isSilent || false,
+    });
   }
 
   /**
@@ -140,16 +124,33 @@ export class SuperDappAgent {
     options: Array<{ text: string; callback_data: string }>,
     config?: { isSilent?: boolean }
   ) {
-    const replyMarkup = {
-      type: 'multiselect',
-      actions: options.map((option) => [option]),
-    };
-    return this.sendMessageWithReplyMarkup(
+    const replyMarkup = options.map((option) => [option]);
+    return this.sendReplyMarkupMessage(
+      'multiselect',
       roomId,
       message,
       replyMarkup,
       config
     );
+  }
+
+  /**
+   * Send an image to a channel
+   */
+  async sendChannelImage(
+    channelId: string,
+    file: Buffer | NodeJS.ReadableStream,
+    message: string,
+    options?: { isSilent?: boolean }
+  ) {
+    const payload: any = {
+      file,
+      message: { body: message },
+    };
+    if (typeof options?.isSilent === 'boolean') {
+      payload.isSilent = options.isSilent;
+    }
+    return this.client.sendChannelImage(channelId, payload);
   }
 
   /**
@@ -181,13 +182,17 @@ export class SuperDappAgent {
   }
 
   private createCommandWrapper(handler: CommandHandler) {
-    return async (event: any, req: any, res: any) => {
+    return async (rawMessage: any, req: any, res: any) => {
       try {
-        const message = this.parseMessage(event);
+        const message = this.parseMessage(rawMessage);
         const roomId = this.getRoomId(message);
         const replyMessage = this.messages[message.command || ''] || null;
 
-        await handler(message, replyMessage, roomId);
+        await handler({
+          message,
+          replyMessage,
+          roomId,
+        });
 
         res.writeHead(200);
         res.end('OK');
@@ -199,21 +204,25 @@ export class SuperDappAgent {
     };
   }
 
-  private async handleMessage(event: any, req: any, res: any) {
+  private async handleMessage(rawMessage: any, req: any, res: any) {
     try {
-      const message = this.parseMessage(event);
+      const message = this.parseMessage(rawMessage);
       const roomId = this.getRoomId(message);
 
       // Check if it's a callback query
-      const isCallbackQuery = this.isCallbackQuery(event);
+      const isCallbackQuery = this.isCallbackQuery(rawMessage);
 
       if (isCallbackQuery) {
         await this.handleCallbackQuery(message, roomId);
       } else {
         // Handle as general message
-        const generalHandler = this.commands['handleMessage'];
-        if (generalHandler) {
-          await generalHandler(message, null, roomId);
+        const handler = this.commands[message.command || ''];
+        if (handler) {
+          await handler({
+            message,
+            replyMessage: null,
+            roomId,
+          });
         }
       }
 
@@ -229,18 +238,20 @@ export class SuperDappAgent {
   private async handleCallbackQuery(message: MessageData, roomId: string) {
     const callbackHandler = this.commands['callback_query'];
     if (callbackHandler) {
-      await callbackHandler(message, null, roomId);
+      await callbackHandler({
+        message,
+        replyMessage: null,
+        roomId,
+      });
     }
   }
 
-  private parseMessage(event: any): MessageData {
-    const body = event?.body || event;
-
+  private parseMessage(rawMessage: any): MessageData {
     // Parse the message body if it's a string
-    if (typeof body.m === 'string') {
+    if (typeof rawMessage.body.m === 'string') {
       try {
-        const decoded = decodeURIComponent(body.m);
-        body.m = JSON.parse(decoded);
+        const decoded = decodeURIComponent(rawMessage.body.m);
+        rawMessage.body.m = JSON.parse(decoded);
       } catch (error) {
         // If parsing fails, keep as string
         console.log('Error parsing message body:', error);
@@ -249,44 +260,57 @@ export class SuperDappAgent {
 
     // Extract command from message
     let command = '';
-    let messageText = '';
+    let callback_command = '';
+    let data = '';
 
-    if (body.m && typeof body.m === 'object') {
-      if (body.m.text) {
-        messageText = body.m.text.toLowerCase().trim();
-      } else if (body.m.body) {
-        messageText = body.m.body.toLowerCase().trim();
-      } else if (body.m.message) {
-        messageText = body.m.message.toLowerCase().trim();
+    // Check if it's a callback query first
+    const isCallbackQuery = this.isCallbackQuery(rawMessage);
+
+    if (isCallbackQuery) {
+      // For callback queries, set command to 'callback_query' and extract data
+      command = 'callback_query';
+      [callback_command, data] =
+        rawMessage.body.m.body.callback_query.split(':');
+    } else if (rawMessage.body.m && typeof rawMessage.body.m === 'object') {
+      if (rawMessage.body.m.text) {
+        data = rawMessage.body.m.text.toLowerCase().trim();
+      } else if (rawMessage.body.m.body) {
+        data = rawMessage.body.m.body.toLowerCase().trim();
+      } else if (rawMessage.body.m.message) {
+        data = rawMessage.body.m.message.toLowerCase().trim();
       }
-    } else if (typeof body.m === 'string') {
-      messageText = body.m.toLowerCase().trim();
+    } else if (typeof rawMessage.body.m === 'string') {
+      data = rawMessage.body.m.toLowerCase().trim();
     }
 
-    // Find matching command
-    const availableCommands = Object.keys(this.commands);
-    command =
-      availableCommands.find(
-        (cmd) =>
-          messageText === cmd.toLowerCase() ||
-          messageText.startsWith(cmd.toLowerCase() + ' ')
-      ) || '';
+    // Find matching command (only for non-callback queries)
+    if (!isCallbackQuery) {
+      const availableCommands = Object.keys(this.commands);
+      command =
+        availableCommands.find(
+          (cmd) =>
+            data === cmd.toLowerCase() ||
+            data.startsWith(cmd.toLowerCase() + ' ')
+        ) || '';
+    }
 
     return {
-      ...body,
+      rawMessage,
+      body: rawMessage.body,
       command,
-      messageText,
+      callback_command,
+      data,
     } as MessageData;
   }
 
   private getRoomId(message: MessageData): string {
-    return message.memberId !== message.senderId
-      ? `${message.memberId}-${message.senderId}`
-      : `${message.owner}-${message.senderId}`;
+    return message.rawMessage.memberId !== message.rawMessage.senderId
+      ? `${message.rawMessage.memberId}-${message.rawMessage.senderId}`
+      : `${message.rawMessage.owner}-${message.rawMessage.senderId}`;
   }
 
-  private isCallbackQuery(event: any): boolean {
-    const body = event?.body || event;
+  private isCallbackQuery(rawMessage: any): boolean {
+    const body = rawMessage?.body || rawMessage;
     return typeof body.m === 'object' && body.m.body?.callback_query;
   }
 }

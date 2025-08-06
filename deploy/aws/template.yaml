@@ -8,15 +8,15 @@ Parameters:
     Default: staging
     AllowedValues: [staging, production]
     Description: Deployment environment
-  
+
   ApiToken:
     Type: String
     NoEcho: true
     Description: SuperDapp API Token
-  
+
   ApiBaseUrl:
     Type: String
-    Default: https://api.superdapp.com
+    Default: https://api.superdapp.ai
     Description: SuperDapp API Base URL
 
 Resources:
@@ -58,7 +58,7 @@ Outputs:
     Value: !Sub https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/
     Export:
       Name: !Sub SuperDappAgent-${Environment}-ApiEndpoint
-  
+
   FunctionArn:
     Description: Lambda Function ARN
     Value: !GetAtt SuperDappAgentFunction.Arn

@@ -2,7 +2,6 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
 import { SuperDappClient } from '../../core/client';
-import { createBotConfig } from '../../utils/env';
 import { BotConfig } from '../../types';
 
 export class StatusCommand extends Command {
@@ -19,20 +18,23 @@ export class StatusCommand extends Command {
 
     try {
       // Create client configuration
-      const config: BotConfig = options.apiToken
-        ? {
-            apiToken: options.apiToken,
-            baseUrl: options.apiUrl || 'https://api.superdapp.com',
-          }
-        : createBotConfig(options.apiUrl);
+      let config: BotConfig;
+      
+      if (options.apiToken) {
+        config = {
+          apiToken: options.apiToken,
+          baseUrl: options.apiUrl || 'https://api.superdapp.ai',
+        };
+      } else {
+        // Import createBotConfig lazily to avoid environment validation during module load
+        const { createBotConfig } = await import('../../utils/env');
+        config = createBotConfig(options.apiUrl);
+      }
 
       const client = new SuperDappClient(config);
 
       // Get bot information
       const botInfo = await client.getMe();
-
-      // Get recent updates
-      const updates = await client.getUpdates(5, 5);
 
       spinner.succeed(chalk.green('Agent status retrieved successfully!'));
 
@@ -43,46 +45,20 @@ export class StatusCommand extends Command {
       console.log(
         `  Status: ${botInfo.data.bot_info?.isActive ? chalk.green('Active') : chalk.red('Inactive')}`
       );
-      console.log(`  User: ${botInfo.data.user?.email || 'N/A'}`);
 
-      if (updates.data) {
-        console.log(`\n${chalk.blue('Recent Activity:')}`);
-        console.log(
-          `  Channel Messages: ${updates.data.channels_messages?.length || 0}`
-        );
-        console.log(
-          `  Connection Messages: ${updates.data.connections_messages?.length || 0}`
-        );
-
-        if (updates.data.channels_messages?.length > 0) {
-          console.log(`\n${chalk.blue('Latest Channel Messages:')}`);
-          updates.data.channels_messages.slice(0, 3).forEach((msg, i) => {
-            console.log(
-              `  ${i + 1}. ${msg.messageId} - ${new Date(msg.timestamp).toLocaleString()}`
-            );
-          });
+      const user: import('../../types').User = botInfo.data.user;
+      if (user) {
+        console.log(`\n${chalk.blue('User Info:')}`);
+        console.log(`  ID: ${user.id ?? 'N/A'}`);
+        console.log(`  Username: ${user.username ?? 'N/A'}`);
+        console.log(`  Email: ${user.email ?? 'N/A'}`);
+        console.log(`  Cognito ID: ${user.cognito_id ?? 'N/A'}`);
+        console.log(`  Type: ${user.type ?? 'N/A'}`);
+        if (user.bot) {
+          console.log(`  Bot: ${JSON.stringify(user.bot)}`);
+        } else {
+          console.log('  Bot: N/A');
         }
-
-        if (updates.data.connections_messages?.length > 0) {
-          console.log(`\n${chalk.blue('Latest Connection Messages:')}`);
-          updates.data.connections_messages.slice(0, 3).forEach((msg, i) => {
-            console.log(
-              `  ${i + 1}. ${msg.messageId} - ${new Date(msg.timestamp).toLocaleString()}`
-            );
-          });
-        }
-      }
-
-      // Try to get wallet info
-      try {
-        const wallet = await client.getWalletKeys();
-        console.log(`\n${chalk.blue('Wallet:')}`);
-        console.log(`  Address: ${wallet.data.address || 'N/A'}`);
-        console.log(
-          `  Public Key: ${wallet.data.publicKey ? '***' + wallet.data.publicKey.slice(-8) : 'N/A'}`
-        );
-      } catch (error) {
-        console.log(`\n${chalk.yellow('Wallet: Not accessible')}`);
       }
     } catch (error) {
       spinner.fail('Failed to check agent status');

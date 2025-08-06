@@ -1,7 +1,6 @@
 import http from 'http';
 import { IncomingMessage, ServerResponse } from 'http';
 import crypto from 'crypto';
-import { z } from 'zod';
 
 export type WebhookHandler = (
   event: any,
@@ -13,6 +12,7 @@ export type LifecycleHandler = () => Promise<void>;
 interface WebhookServerOptions {
   port?: number | undefined;
   secret?: string | undefined;
+  host?: string | undefined;
   onInit?: LifecycleHandler | undefined;
   onReady?: LifecycleHandler | undefined;
   onShutdown?: LifecycleHandler | undefined;
@@ -34,10 +34,10 @@ export class WebhookServer {
   async start() {
     if (this.options.onInit) await this.options.onInit();
     this.server = http.createServer(this.requestListener.bind(this));
-    this.server.listen(this.options.port || 3000, async () => {
+    this.server.listen(this.options.port, async () => {
       if (this.options.onReady) await this.options.onReady();
       console.log(
-        `[WebhookServer] Listening on port ${this.options.port || 3000}`
+        `[WebhookServer] Listening on port ${this.options.port || 8787}`
       );
     });
     process.on('SIGINT', async () => {
@@ -70,7 +70,12 @@ export class WebhookServer {
           }
         }
         const event = JSON.parse(body);
-        const type = event?.type || event?.t;
+
+        const eventBody =
+          typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+        event.body = eventBody;
+
+        const type = event?.body?.t;
         if (type && this.handlers[type]) {
           await this.handlers[type](event, req, res);
         } else {

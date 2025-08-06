@@ -31,7 +31,7 @@ You can now use a positional argument for the project directory:
 
 ```bash
 superagent init my-awesome-agent
-superagent init /tmp/my-temp-agent --template webhook -y
+superagent init /tmp/my-temp-agent --template news -y
 ```
 
 Or use the legacy flag:
@@ -42,15 +42,14 @@ superagent init --name my-awesome-agent
 
 ### CLI Templates
 
-- `basic` – Minimal agent with command handling
-- `webhook` – Webhook-ready agent
+- `basic` – Minimal agent with command handling (default)
 - `news` – AI-powered news agent
 - `trading` – Crypto trading agent
 
 ### Example
 
 ```bash
-superagent init my-agent --template webhook -y
+superagent init my-agent --template news -y
 cd my-agent
 npm install
 superagent configure
@@ -99,6 +98,10 @@ yarn add @superdapp/agents
 ### Using pnpm
 
 ```bash
+
+## 🛠️ Development
+
+For local development and testing, see [DEVELOPMENT.md](./DEVELOPMENT.md) for instructions on setting up the development environment using `npm link`.
 pnpm add @superdapp/agents
 ```
 
@@ -128,7 +131,7 @@ Or manually create a `.env` file:
 
 ```env
 API_TOKEN=your_superdapp_api_token_here
-API_BASE_URL=https://api.superdapp.com
+API_BASE_URL=https://api.superdapp.ai
 ```
 
 ### 3. Create Your First Agent
@@ -148,52 +151,64 @@ async function main() {
     });
 
     // Add basic commands
-    agent.addCommand('/start', async (message, replyMessage, roomId) => {
+    agent.addCommand('/start', async ({ roomId }) => {
       await agent.sendConnectionMessage(
         roomId,
-        "Hello! I'm a basic SuperDapp agent."
+        "👋 **Hello!** I'm a basic SuperDapp agent."
       );
     });
 
-    agent.addCommand('/ping', async (message, replyMessage, roomId) => {
-      await agent.sendConnectionMessage(roomId, 'Pong! 🏓');
+    agent.addCommand('/ping', async ({ roomId }) => {
+      await agent.sendConnectionMessage(
+        roomId,
+        '🏓 **Pong!** Bot is responsive!'
+      );
     });
 
-    agent.addCommand('/help', async (message, replyMessage, roomId) => {
-      const helpText = `Available commands:\n/start - Start the bot\n/ping - Test bot responsiveness\n/help - Show this help`;
+    agent.addCommand('/help', async ({ roomId }) => {
+      const helpText = `📋 **Available Commands**
+
+🚀 \`/start\` - Start the bot
+🏓 \`/ping\` - Test bot responsiveness
+❓ \`/help\` - Show this help`;
       await agent.sendConnectionMessage(roomId, helpText);
     });
 
     // Add a command with buttons
-    agent.addCommand('/menu', async (message, replyMessage, roomId) => {
+    agent.addCommand('/menu', async ({ roomId }) => {
       const buttons = [
-        { text: 'Option 1', callback_data: 'OPTION_1' },
-        { text: 'Option 2', callback_data: 'OPTION_2' },
+        { text: '🔘 Option 1', callback_data: 'OPTION_1' },
+        { text: '🔘 Option 2', callback_data: 'OPTION_2' },
       ];
 
-      await agent.sendMessageWithButtons(roomId, 'Choose an option:', buttons);
+      await agent.sendReplyMarkupMessage(
+        'buttons',
+        roomId,
+        '🎯 **Choose an option:**',
+        [buttons] // Array de arrays para compatibilidade
+      );
     });
 
     // Handle callback queries
-    agent.addCommand(
-      'callback_query',
-      async (message, replyMessage, roomId) => {
-        const callbackData = message.body.m?.body?.callback_query?.data;
-        console.log('Callback query received:', callbackData);
+    agent.addCommand('callback_query', async ({ message, roomId }) => {
+      console.log('Callback query received:', message);
 
-        await agent.sendConnectionMessage(
-          roomId,
-          `You selected: ${callbackData}`
-        );
-      }
-    );
+      // The callback_data is automatically parsed into:
+      // - message.callback_command: The command part (before the colon)
+      // - message.data: The value part (after the colon)
+
+      await agent.sendConnectionMessage(
+        roomId,
+        `✅ **You selected:** ${message.callback_command} with value: ${message.data}`
+      );
+    });
 
     // Handle general messages
-    agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
+    agent.addCommand('handleMessage', async ({ message, roomId }) => {
       console.log('Received message:', message.messageText);
       await agent.sendConnectionMessage(
         roomId,
-        'I received your message! Type /help for available commands.'
+        '📨 **I received your message!** Type `/help` for available commands.'
       );
     });
 
@@ -206,6 +221,134 @@ async function main() {
 }
 
 main();
+```
+
+## 🔗 Callback Query Best Practices
+
+### ⚠️ **IMPORTANT: Use the `COMMAND:VALUE` format when needed**
+
+When creating interactive buttons and handling callback queries, use the colon (`:`) separator in your `callback_data` when you need to map multiple commands with different values. This enables proper parsing and command routing.
+
+### ✅ **Correct Format:**
+
+```typescript
+// Define buttons with proper COMMAND:VALUE format
+const buttons = [
+  { text: '💰 BTC Price', callback_data: 'PRICE:BTC' },
+  { text: '📰 Latest News', callback_data: 'GET_NEWS:' },
+  { text: '📂 Topics', callback_data: 'GET_TOPICS:' },
+  { text: '🔔 Subscribe', callback_data: 'SUBSCRIBE:' },
+];
+
+// Handle callback queries using message.callback_command
+agent.addCommand('callback_query', async ({ message, roomId }) => {
+  console.log('Callback query received:', message);
+
+  // The callback_data is automatically parsed into:
+  // - message.callback_command: The command part (before the colon)
+  // - message.data: The value part (after the colon)
+
+  switch (message.callback_command) {
+    case 'PRICE':
+      const symbol = message.data || '';
+      const price = await getPrice(symbol);
+      await agent.sendConnectionMessage(
+        roomId,
+        `💰 **${symbol} Price:** ${price}`
+      );
+      break;
+
+    case 'GET_NEWS':
+      const news = await getLatestNews();
+      await agent.sendConnectionMessage(
+        roomId,
+        `📰 **Latest News**\n\n${news}`
+      );
+      break;
+
+    case 'GET_TOPICS':
+      const topics = await getAvailableTopics();
+      await agent.sendConnectionMessage(
+        roomId,
+        `📂 **Available topics:** ${topics.join(', ')}`
+      );
+      break;
+
+    default:
+      await agent.sendConnectionMessage(
+        roomId,
+        '❌ **Unknown option selected.**'
+      );
+  }
+});
+```
+
+### ❌ **Incorrect Format (Avoid):**
+
+```typescript
+// DON'T do this - no colon separator
+const buttons = [
+  { text: '💰 BTC Price', callback_data: 'PRICE_BTC' }, // ❌ Wrong
+  { text: '📰 Latest News', callback_data: 'GET_NEWS' }, // ❌ Wrong
+];
+
+// DON'T use callbackData?.startsWith() - deprecated
+agent.addCommand('callback_query', async ({ message, roomId }) => {
+  const callbackData = message.data;
+
+  if (callbackData?.startsWith('PRICE_')) {
+    // ❌ Deprecated
+    // ...
+  }
+});
+```
+
+### 🎯 **When to Use This Format:**
+
+1. **Multiple Commands with Values**: When you have the same command type but different values (e.g., `PRICE:BTC`, `PRICE:ETH`)
+2. **Dynamic Content**: When generating buttons from arrays or lists
+3. **Command Parameters**: When you need to pass data to your command handlers
+4. **Automatic Parsing**: The SDK automatically parses `COMMAND:VALUE` format into `message.callback_command` and `message.data`
+5. **Cleaner Code**: No need for string manipulation with `startsWith()` or `replace()`
+
+### 📝 **When to Use COMMAND:VALUE Format:**
+
+#### ✅ **Use when you have multiple commands with different values:**
+
+```typescript
+// Multiple price buttons for different cryptocurrencies
+callback_data: 'PRICE:BTC';
+callback_data: 'PRICE:ETH';
+callback_data: 'PRICE:ADA';
+
+// Multiple topic buttons
+callback_data: 'TOPIC:CRYPTO';
+callback_data: 'TOPIC:BLOCKCHAIN';
+callback_data: 'TOPIC:DEFI';
+
+// Channel management
+callback_data: 'JOIN_CHANNEL:my-channel';
+callback_data: 'LEAVE_CHANNEL:12345';
+```
+
+#### ✅ **Use for dynamic content from arrays:**
+
+```typescript
+const topics = ['crypto', 'blockchain', 'defi'];
+const options = topics.map((topic) => ({
+  text: topic,
+  callback_data: `TOPIC:${topic.toUpperCase()}`,
+}));
+```
+
+#### ❌ **Don't use when you have simple, unique commands:**
+
+```typescript
+// Simple unique commands - no colon needed
+callback_data: 'GET_NEWS';
+callback_data: 'GET_TOPICS';
+callback_data: 'SUBSCRIBE';
+callback_data: 'CONFIRM_TOPICS';
 ```
 
 ### 4. Run Your Agent
@@ -229,25 +372,42 @@ const agent = new SuperDappAgent(createBotConfig(), {
 });
 
 // Add commands
-agent.addCommand('/weather', async (message, replyMessage, roomId) => {
+agent.addCommand('/weather', async ({ roomId }) => {
   const weather = await getWeatherData();
-  await agent.sendConnectionMessage(roomId, `Current weather: ${weather}`);
+  await agent.sendConnectionMessage(
+    roomId,
+    `🌤️ **Current weather:** ${weather}`
+  );
 });
 
 // Add interactive buttons
-agent.addCommand('/menu', async (message, replyMessage, roomId) => {
+agent.addCommand('/menu', async ({ roomId }) => {
   const buttons = [
-    { text: 'Weather', callback_data: 'GET_WEATHER' },
-    { text: 'News', callback_data: 'GET_NEWS' },
+    { text: '🌤️ Weather', callback_data: 'GET_WEATHER' },
+    { text: '📰 News', callback_data: 'GET_NEWS' },
   ];
 
-  await agent.sendMessageWithButtons(roomId, 'Choose an option:', buttons);
+  await agent.sendReplyMarkupMessage(
+    'buttons',
+    roomId,
+    '🎯 **Choose an option:**',
+    [buttons] // Array de arrays para compatibilidade
+  );
 });
 
 // Handle callback queries
-agent.addCommand('callback_query', async (message, replyMessage, roomId) => {
-  const callbackData = message.body.m?.body?.callback_query?.data;
-  // Handle button clicks
+agent.addCommand('callback_query', async ({ message, roomId }) => {
+  // The callback_data is automatically parsed into message.callback_command and message.data
+  switch (message.callback_command) {
+    case 'GET_WEATHER':
+      const weather = await getWeatherData();
+      await agent.sendConnectionMessage(roomId, `🌤️ **Weather:** ${weather}`);
+      break;
+    case 'GET_NEWS':
+      const news = await getLatestNews();
+      await agent.sendConnectionMessage(roomId, `📰 **News:** ${news}`);
+      break;
+  }
 });
 
 // Start the webhook server
@@ -260,21 +420,21 @@ Commands are the primary way users interact with your agent.
 
 ```typescript
 // Simple command
-agent.addCommand('/ping', async (message, replyMessage, roomId) => {
-  await agent.sendConnectionMessage(roomId, 'Pong! 🏓');
+agent.addCommand('/ping', async ({ roomId }) => {
+  await agent.sendConnectionMessage(roomId, '🏓 **Pong!** Bot is responsive!');
 });
 
 // Command with arguments
-agent.addCommand('/price', async (message, replyMessage, roomId) => {
+agent.addCommand('/price', async ({ message, roomId }) => {
   const args = message.messageText?.split(' ').slice(1) || [];
   const symbol = args[0] || 'BTC';
 
   const price = await getCryptoPrice(symbol);
-  await agent.sendConnectionMessage(roomId, `${symbol}: $${price}`);
+  await agent.sendConnectionMessage(roomId, `💰 **${symbol}:** $${price}`);
 });
 
 // Handle all messages
-agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
+agent.addCommand('handleMessage', async ({ message, roomId }) => {
   // Process any message that doesn't match a specific command
   const response = await processWithAI(message.messageText);
   await agent.sendConnectionMessage(roomId, response);
@@ -287,39 +447,85 @@ The SDK supports interactive UI elements like buttons and multiselect options.
 
 ```typescript
 // Send message with buttons
-agent.addCommand('/menu', async (message, replyMessage, roomId) => {
+agent.addCommand('/menu', async ({ roomId }) => {
   const buttons = [
-    { text: 'Option 1', callback_data: 'OPTION_1' },
-    { text: 'Option 2', callback_data: 'OPTION_2' },
+    { text: '🔘 Option 1', callback_data: 'OPTION_1' },
+    { text: '🔘 Option 2', callback_data: 'OPTION_2' },
   ];
 
-  await agent.sendMessageWithButtons(roomId, 'Choose an option:', buttons);
+  await agent.sendReplyMarkupMessage(
+    'buttons',
+    roomId,
+    '🎯 **Choose an option:**',
+    [buttons] // Array de arrays para compatibilidade
+  );
 });
 
 // Send message with multiselect
-agent.addCommand('/topics', async (message, replyMessage, roomId) => {
-  const options = [
-    { text: 'Crypto', callback_data: 'TOPIC_CRYPTO' },
-    { text: 'Tech', callback_data: 'TOPIC_TECH' },
-    { text: 'News', callback_data: 'TOPIC_NEWS' },
-  ];
+agent.addCommand('/topics', async ({ roomId }) => {
+  const topics = ['Crypto', 'Tech', 'News', 'Sports', 'Politics'];
 
-  await agent.sendMessageWithMultiselect(roomId, 'Select topics:', options);
+  const topicsReplyMarkup = {
+    type: 'multiselect',
+    actions: [
+      ...topics.map((topic, idx) => [
+        {
+          index: `${idx + 1}`,
+          text: `${idx + 1} - ${topic}`,
+          callback_data: `TOPIC_SELECTION:${topic}`,
+        },
+      ]),
+      [
+        {
+          text: '✅ Confirm Selection',
+          callback_data: 'CONFIRM_TOPICS:',
+        },
+      ],
+    ],
+  };
+
+  await agent.sendReplyMarkupMessage(
+    'multiselect',
+    roomId,
+    '📝 **Select topics:**',
+    topicsReplyMarkup.actions
+  );
 });
 
 // Handle callback queries
-agent.addCommand('callback_query', async (message, replyMessage, roomId) => {
-  const callbackData = message.body.m?.body?.callback_query?.data;
+agent.addCommand('callback_query', async ({ message, roomId }) => {
+  const callbackData = message.data;
 
   switch (callbackData) {
     case 'OPTION_1':
-      await agent.sendConnectionMessage(roomId, 'You selected Option 1!');
+      await agent.sendConnectionMessage(
+        roomId,
+        '✅ **You selected Option 1!**'
+      );
       break;
     case 'OPTION_2':
-      await agent.sendConnectionMessage(roomId, 'You selected Option 2!');
+      await agent.sendConnectionMessage(
+        roomId,
+        '✅ **You selected Option 2!**'
+      );
+      break;
+    case 'CONFIRM_TOPICS:':
+      await agent.sendConnectionMessage(roomId, '✅ **Topics confirmed!**');
       break;
     default:
-      await agent.sendConnectionMessage(roomId, 'Unknown option selected.');
+      // Handle topic selection (e.g., "TOPIC_SELECTION:Crypto")
+      if (callbackData?.startsWith('TOPIC_SELECTION:')) {
+        const topic = callbackData.split(':')[1];
+        await agent.sendConnectionMessage(
+          roomId,
+          `📌 **Topic "${topic}" selected!**`
+        );
+      } else {
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ **Unknown option selected.**'
+        );
+      }
   }
 });
 ```
@@ -345,9 +551,17 @@ Add to your `.env`:
 
 ```env
 API_TOKEN=your_superdapp_api_token_here
-API_BASE_URL=https://api.superdapp.com
+API_BASE_URL=https://api.superdapp.ai
 WEBHOOK_SECRET=your_webhook_secret_here
+NODE_ENV=development  # Optional: 'development', 'production', or 'test'
 ```
+
+**SSL Configuration:**
+
+- In `development` mode (`NODE_ENV=development`): SSL verification is disabled for easier local development
+- In `production` mode (`NODE_ENV=production`): SSL verification is enabled for security
+- In `test` mode (`NODE_ENV=test`): SSL verification is enabled for secure testing
+- When `NODE_ENV` is not set: SSL verification is enabled by default (secure behavior)
 
 ## 🏗 Project Templates
 
@@ -445,6 +659,32 @@ const handleCommand: CommandHandler = async (message, replyMessage, roomId) => {
   // ... handler logic
 };
 ```
+
+### SSL Configuration Testing
+
+You can test the SSL configuration behavior using the provided demo:
+
+```bash
+# Test in development mode (SSL disabled)
+NODE_ENV=development node examples/ssl-config-demo.ts
+
+# Test in production mode (SSL enabled)
+NODE_ENV=production node examples/ssl-config-demo.ts
+
+# Test in test mode (SSL enabled)
+NODE_ENV=test node examples/ssl-config-demo.ts
+
+# Test with no NODE_ENV (SSL enabled by default)
+node examples/ssl-config-demo.ts
+```
+
+**Security Best Practices:**
+
+- Always use `NODE_ENV=production` in production environments
+- Use `NODE_ENV=development` only for local development
+- SSL verification is automatically enabled in production, test, and when NODE_ENV is not set
+- Use valid SSL certificates in production
+- Monitor SSL certificate expiration dates
 
 ## 🚀 Deployment
 

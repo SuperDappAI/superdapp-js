@@ -1,17 +1,16 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import https from 'node:https';
 import FormData = require('form-data');
+import { fileTypeFromBuffer } from 'file-type';
 import {
   BotConfig,
   ApiResponse,
-  BotCredentials,
-  ChannelMessage,
   SendMessageOptions,
   PhotoMessageOptions,
-  ReactionData,
-  WalletKeys,
-  UpdatesResponse,
 } from '../types';
 import { DEFAULT_CONFIG } from '../types/constants';
+import { formatBody } from '../utils';
+import Thumbnail from '../utils/thumbnail';
 
 // Define constants for repeated endpoint resources
 const AGENT_BOTS_ENDPOINT = 'v1/agent-bots/';
@@ -23,6 +22,7 @@ const SOCIAL_GROUPS_LEAVE_ENDPOINT = `${AGENT_BOTS_ENDPOINT}social-groups/leave`
 export class SuperDappClient {
   private axios: AxiosInstance;
   private config: BotConfig;
+  private thumbnail: ReturnType<typeof Thumbnail>;
 
   constructor(config: BotConfig) {
     this.config = {
@@ -31,12 +31,19 @@ export class SuperDappClient {
     };
 
     this.axios = axios.create({
-      baseURL: `${this.config.baseUrl}/bot-${this.config.apiToken}`,
+      baseURL: `${this.config.baseUrl}`,
       timeout: DEFAULT_CONFIG.REQUEST_TIMEOUT,
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.config.apiToken}`,
+        'User-Agent': 'SuperDapp-Agent/1.0',
       },
     });
+
+    // Initialize thumbnail utility
+    this.thumbnail = Thumbnail();
+    this.thumbnail.setDimensions(150, 150); // Default thumbnail size
+    this.thumbnail.setQuality(0.7); // Default quality
 
     this.setupInterceptors();
   }
@@ -48,6 +55,15 @@ export class SuperDappClient {
         console.log(
           `Making ${config.method?.toUpperCase()} request to: ${config.url}`
         );
+
+        // Configure SSL verification based on environment
+        if (!DEFAULT_CONFIG.SSL.REJECT_UNAUTHORIZED) {
+          config.httpsAgent = new https.Agent({
+            rejectUnauthorized: false,
+          });
+        }
+
+        console.log('data:', config.data);
         return config;
       },
       (error) => {
@@ -76,7 +92,7 @@ export class SuperDappClient {
     options: SendMessageOptions
   ): Promise<ApiResponse> {
     const response = await this.axios.post(
-      `${AGENT_BOTS_CHANNELS_ENDPOINT}/${channelId}/messages`,
+      `${AGENT_BOTS_CHANNELS_ENDPOINT}/${encodeURIComponent(channelId)}/messages`,
       options
     );
     return response.data;
@@ -190,21 +206,159 @@ export class SuperDappClient {
     return response.data;
   }
 
-  /**
-   * Make a custom API request
-   */
-  async request<T = any>(
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
-    endpoint: string,
-    data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<ApiResponse<T>> {
-    const response = await this.axios.request({
-      method,
-      url: endpoint,
-      data,
-      ...config,
-    });
+  /** Get user channels list */
+  async getChannels(userId: string): Promise<ApiResponse> {
+    const response = await this.axios.get(
+      `${AGENT_BOTS_ENDPOINT}channels?userId=${userId}`
+    );
     return response.data;
+  }
+
+  /**
+   * Get bot channels list
+   */
+  async getBotChannels(): Promise<ApiResponse> {
+    const response = await this.axios.get(`${AGENT_BOTS_ENDPOINT}channels/bot`);
+    return response.data;
+  }
+
+  /**
+   * Send an image to a channel
+   */
+  async sendChannelImage(
+    channelId: string,
+    options: PhotoMessageOptions
+  ): Promise<ApiResponse> {
+    // Step 1: Process file and validate
+    const file = options.file;
+    let fileToUpload: Buffer;
+
+    if (Buffer.isBuffer(file)) {
+      fileToUpload = file;
+    } else {
+      // Convert ReadableStream to buffer
+      const chunks: Buffer[] = [];
+      for await (const chunk of file) {
+        chunks.push(Buffer.from(chunk));
+      }
+      fileToUpload = Buffer.concat(chunks);
+    }
+
+    // Validate image file type
+    const fileType = await fileTypeFromBuffer(fileToUpload);
+    if (!fileType || !fileType.mime.startsWith('image/')) {
+      throw new Error(
+        'Invalid image file type. Only image files are supported.'
+      );
+    }
+
+    const fileSize = fileToUpload.length;
+    const fileMime = fileType.mime;
+
+    // Step 2: Request pre-signed URL from backend
+    const uploadRequest = {
+      message: {
+        body: formatBody(options.message?.body || ''),
+        fileSize,
+        fileMime,
+        type: encodeURIComponent(fileMime),
+      },
+    };
+
+    const uploadResponse = await this.axios.post(
+      `${AGENT_BOTS_CHANNELS_ENDPOINT}/${channelId}/messages`,
+      uploadRequest
+    );
+
+    const { message, fileUrl, fileKey } = uploadResponse.data;
+
+    // Step 3: Upload file to the pre-signed URL
+    const formData = new FormData();
+    Object.entries(fileUrl.fields).forEach(([key, value]) => {
+      formData.append(key, value as string);
+    });
+    formData.append('file', fileToUpload);
+
+    await axios({
+      method: 'POST',
+      url: fileUrl.url,
+      data: formData,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+
+    // Step 4: Generate thumbnail
+    let thumbnailData = '';
+    try {
+      const thumbnailResult = await this.thumbnail.createFromFile(
+        fileToUpload,
+        fileMime,
+        true // Maintain aspect ratio
+      );
+
+      if (thumbnailResult.data && thumbnailResult.buffer) {
+        thumbnailData = thumbnailResult.data;
+      }
+    } catch (error) {
+      // Continue without thumbnail if generation fails
+    }
+
+    // Step 5: Update the message with attachment metadata
+    const fileExtension = fileType.ext || 'jpg';
+    const updateData = {
+      body: options.message?.body || '',
+      attachment: {
+        id: fileKey,
+        uuid: fileKey,
+        name: `image_${Date.now()}.${fileExtension}`,
+        size: fileSize,
+        type: encodeURIComponent(fileMime),
+        hmac: fileUrl.fields?.x_amz_meta_hmac || '',
+        key: null,
+        thumbnail: thumbnailData,
+      },
+    };
+
+    const updateDataString = JSON.stringify({
+      m: encodeURIComponent(JSON.stringify(updateData)),
+      t: 'chat',
+    });
+
+    const finalResponse = await this.axios.put(
+      `${AGENT_BOTS_CHANNELS_ENDPOINT}/${channelId}/messages/${message.id}`,
+      { body: updateDataString }
+    );
+
+    return finalResponse.data;
+  }
+
+  /**
+   * Get info about the authenticated bot
+   */
+  async getBotInfo(): Promise<ApiResponse> {
+    const response = await this.axios.get(`${AGENT_BOTS_ENDPOINT}bot-info`);
+    return response.data;
+  }
+
+  /**
+   * Alias for getBotInfo (compatibilidade)
+   */
+  async getMe(): Promise<ApiResponse> {
+    return this.getBotInfo();
+  }
+
+  /**
+   * Configure thumbnail settings
+   */
+  setThumbnailDimensions(width: number, height: number): void {
+    this.thumbnail.setDimensions(height, width);
+  }
+
+  /**
+   * Configure thumbnail quality
+   */
+  setThumbnailQuality(quality: number): void {
+    this.thumbnail.setQuality(quality);
   }
 }

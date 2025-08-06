@@ -4,6 +4,7 @@ import { BotConfig } from '../types';
 const envSchema = z.object({
   API_BASE_URL: z.string().url().optional(),
   API_TOKEN: z.string().min(1, 'API_TOKEN is required'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
@@ -42,6 +43,20 @@ export function createBotConfig(customBaseUrl?: string): BotConfig {
 
   return {
     apiToken: env.API_TOKEN,
-    baseUrl: customBaseUrl || env.API_BASE_URL || 'https://api.superdapp.com',
+    baseUrl: customBaseUrl || env.API_BASE_URL || 'https://api.superdapp.ai',
   };
+}
+
+/**
+ * Check if SSL verification should be disabled
+ * Only disabled in development environment for easier local development
+ */
+export function shouldDisableSSLVerification(): boolean {
+  try {
+    const env = loadEnvConfig();
+    return env.NODE_ENV === 'development';
+  } catch (error) {
+    // If environment validation fails (e.g., during CLI init), default to secure behavior
+    return process.env.NODE_ENV === 'development';
+  }
 }

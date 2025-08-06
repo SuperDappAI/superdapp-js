@@ -41,12 +41,12 @@ export interface SendMessageOptions {
 
 export interface PhotoMessageOptions {
   file: Buffer | NodeJS.ReadableStream;
-  message: MessageBody;
+  message?: MessageBody;
   isSilent?: boolean;
 }
 
 export interface Message {
-  messageId: string;
+  id: string;
   senderId: string;
   memberId?: string;
   owner?: string;
@@ -56,13 +56,15 @@ export interface Message {
   channelId?: string;
 }
 
-export interface MessageData extends Message {
+export interface MessageData {
   body: {
     t: 'channel' | 'chat';
     m: any;
   };
   command?: string;
-  messageText?: string;
+  rawMessage: Message;
+  callback_command?: string;
+  data?: string;
 }
 
 export interface ChannelMessage {
@@ -102,7 +104,11 @@ export interface GraphQLResponse {
 export type MessageType = 'channel' | 'chat';
 
 export interface CommandHandler {
-  (message: MessageData, replyMessage: any, roomId: string): Promise<void>;
+  (params: {
+    message: MessageData;
+    replyMessage: any;
+    roomId: string;
+  }): Promise<void>;
 }
 
 export interface AgentCommands {
@@ -160,4 +166,27 @@ export enum FileType {
   LINK = 'link',
   FILE = 'file',
   OTHER = 'other',
+}
+
+export interface UserBot {
+  id: string;
+  user_id: string;
+  owner_id: string;
+  username: string;
+  profile_picture: string | null;
+  enabled: number;
+  is_private: number;
+  api_token: string;
+  webhook_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface User {
+  id: string | null;
+  username: string | null;
+  email: string | null;
+  cognito_id: string | null;
+  type: string | null;
+  bot: UserBot | null;
 }
