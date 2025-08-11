@@ -63,7 +63,6 @@ export class SuperDappClient {
           });
         }
 
-        console.log('data:', config.data);
         return config;
       },
       (error) => {
