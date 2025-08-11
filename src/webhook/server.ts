@@ -12,7 +12,6 @@ export type LifecycleHandler = () => Promise<void>;
 interface WebhookServerOptions {
   port?: number | undefined;
   secret?: string | undefined;
-  host?: string | undefined;
   onInit?: LifecycleHandler | undefined;
   onReady?: LifecycleHandler | undefined;
   onShutdown?: LifecycleHandler | undefined;
@@ -34,7 +33,7 @@ export class WebhookServer {
   async start() {
     if (this.options.onInit) await this.options.onInit();
     this.server = http.createServer(this.requestListener.bind(this));
-    this.server.listen(this.options.port, async () => {
+    this.server.listen(this.options.port || 8787, async () => {
       if (this.options.onReady) await this.options.onReady();
       console.log(
         `[WebhookServer] Listening on port ${this.options.port || 8787}`
