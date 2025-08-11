@@ -107,11 +107,6 @@ export function validateWebhookEvent(event: unknown) {
   }
 }
 
-// Utility validation functions
-export function isValidImageType(mimeType: string): boolean {
-  return SUPPORTED_IMAGE_TYPES.includes(mimeType as any);
-}
-
 export function isValidFileSize(size: number): boolean {
   return size <= DEFAULT_CONFIG.MAX_FILE_SIZE;
 }
