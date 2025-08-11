@@ -37,7 +37,7 @@ export const fileUploadSchema = z.object({
 // Image file validation
 export const imageFileSchema = z.object({
   buffer: z.instanceof(Buffer),
-  mimeType: z.enum(SUPPORTED_IMAGE_TYPES as unknown as [string, ...string[]]),
+  mimeType: z.enum([...SUPPORTED_IMAGE_TYPES]),
   size: z
     .number()
     .max(
