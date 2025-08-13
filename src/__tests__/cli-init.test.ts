@@ -52,7 +52,7 @@ describe('CLI: superagent init', () => {
     const mainPath = path.join(testDir, 'src', 'index.ts');
     await waitForFile(mainPath);
     const main = await fs.readFile(mainPath, 'utf8');
-    expect(main).toContain('WebhookAgent');
+    expect(main).toContain('SuperDappAgent');
     await fs.rm(testDir, { recursive: true, force: true });
   });
 });

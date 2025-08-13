@@ -2,11 +2,11 @@ import { WebhookServer, WebhookHandler, LifecycleHandler } from './server';
 import { CommandRegistry } from './registry';
 
 export interface WebhookAgentOptions {
-  port?: number;
-  secret?: string;
-  onInit?: LifecycleHandler;
-  onReady?: LifecycleHandler;
-  onShutdown?: LifecycleHandler;
+  port?: number | undefined;
+  secret?: string | undefined;
+  onInit?: LifecycleHandler | undefined;
+  onReady?: LifecycleHandler | undefined;
+  onShutdown?: LifecycleHandler | undefined;
 }
 
 export class WebhookAgent {

@@ -1,16 +1,16 @@
-// Generic manager for tracking pending questions or state per user (agent-agnostic)
-export interface PendingQuestion<T = any> {
+// Manager for tracking pending questions or state per user
+export interface PendingQuestion {
   userId: string;
-  groupId: string;
-  chatId: string;
-  messageId: string;
-  data?: T; // agent-specific payload (e.g., frequency, topics, etc.)
-  type?: string; // agent-defined question type (e.g., 'FREQUENCY', 'TOPICS', etc.)
+  questionType: string;
+  groupNameOrId?: string;
+  frequency?: string;
+  topics?: string[];
+  availableChannels?: any[];
   timestamp: number;
 }
 
-export class PendingQuestionsManager<T = any> {
-  private pendingQuestions: Map<string, PendingQuestion<T>>;
+export class PendingQuestionsManager {
+  private pendingQuestions: Map<string, PendingQuestion>;
   private readonly TIMEOUT_MS: number;
 
   constructor(timeoutMs = 5 * 60 * 1000) {
@@ -18,11 +18,11 @@ export class PendingQuestionsManager<T = any> {
     this.TIMEOUT_MS = timeoutMs;
   }
 
-  addPendingQuestion(question: PendingQuestion<T>): void {
+  addPendingQuestion(question: PendingQuestion): void {
     this.pendingQuestions.set(question.userId, question);
   }
 
-  getPendingQuestion(userId: string): PendingQuestion<T> | undefined {
+  getPendingQuestion(userId: string): PendingQuestion | undefined {
     const question = this.pendingQuestions.get(userId);
     if (!question) return undefined;
     if (Date.now() - question.timestamp > this.TIMEOUT_MS) {

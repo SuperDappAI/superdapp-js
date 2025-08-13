@@ -7,6 +7,13 @@ export * from './types';
 
 // Utility exports
 export * from './utils';
+export { formatBody } from './utils/messageFormatter';
+
+// Error handling exports
+export * from './utils/errors';
+
+// Validation exports
+export * from './utils/validation';
 
 // Re-export commonly used external libraries
 export { z } from 'zod';

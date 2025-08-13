@@ -10,15 +10,16 @@ A professional-grade Node.js/TypeScript SDK and CLI for building AI agents on th
 
 ## 🚀 Webhook-Based Agent Architecture (v2)
 
-**SuperDapp agents can now be built using a webhook-based architecture for maximum portability and simplicity.**
+**SuperDapp agents now use a webhook-based architecture for maximum portability and simplicity.**
 
 - Centralized webhook server and command/message routing in the SDK
 - Agent lifecycle (init, ready, shutdown) managed by the SDK
 - Pluggable command and message handlers
+- Interactive UI support (buttons, multiselect, reply markup)
 - Signature validation and event dispatch built-in
 - Works with any HTTP hosting (Node.js, serverless, etc.)
 
-**AppSync-based agents are still supported for real-time subscriptions.**
+**This is the new default architecture for all SuperDapp agents.**
 
 ---
 
@@ -30,7 +31,7 @@ You can now use a positional argument for the project directory:
 
 ```bash
 superagent init my-awesome-agent
-superagent init /tmp/my-temp-agent --template webhook -y
+superagent init /tmp/my-temp-agent --template news -y
 ```
 
 Or use the legacy flag:
@@ -41,15 +42,14 @@ superagent init --name my-awesome-agent
 
 ### CLI Templates
 
-- `basic` – Minimal agent with command handling
-- `webhook` – Webhook-ready agent
+- `basic` – Minimal agent with command handling (default)
 - `news` – AI-powered news agent
 - `trading` – Crypto trading agent
 
 ### Example
 
 ```bash
-superagent init my-agent --template webhook -y
+superagent init my-agent --template news -y
 cd my-agent
 npm install
 superagent configure
@@ -84,21 +84,29 @@ superagent run
 ## 📦 Installation
 
 ### Using npm
+
 ```bash
 npm install @superdapp/agents
 ```
 
 ### Using yarn
+
 ```bash
 yarn add @superdapp/agents
 ```
 
 ### Using pnpm
+
 ```bash
+
+## 🛠️ Development
+
+For local development and testing, see [DEVELOPMENT.md](./DEVELOPMENT.md) for instructions on setting up the development environment using `npm link`.
 pnpm add @superdapp/agents
 ```
 
 ### Global CLI Installation
+
 ```bash
 npm install -g @superdapp/agents
 ```
@@ -120,89 +128,227 @@ superagent configure
 ```
 
 Or manually create a `.env` file:
+
 ```env
 API_TOKEN=your_superdapp_api_token_here
-API_BASE_URL=https://api.superdapp.com
+API_BASE_URL=https://api.superdapp.ai
 ```
 
 ### 3. Create Your First Agent
-
-#### Option A: AppSync (GraphQL Subscription) Agent
 
 ```typescript
 import 'dotenv/config';
 import { SuperDappAgent, createBotConfig } from '@superdapp/agents';
 
 async function main() {
-  // Initialize the agent
-  const agent = new SuperDappAgent(createBotConfig());
+  try {
+    // Initialize the agent with webhook configuration
+    const agent = new SuperDappAgent(createBotConfig(), {
+      port: 3000,
+      onReady: async () => {
+        console.log('Basic agent webhook server is ready!');
+      },
+    });
 
-  // Add command handlers
-  agent.addCommand('/start', async (message, replyMessage, roomId) => {
-    await agent.sendConnectionMessage(roomId, 'Hello! I\'m your SuperDapp agent!');
-  });
+    // Add basic commands
+    agent.addCommand('/start', async ({ roomId }) => {
+      await agent.sendConnectionMessage(
+        roomId,
+        "👋 **Hello!** I'm a basic SuperDapp agent."
+      );
+    });
 
-  agent.addCommand('/help', async (message, replyMessage, roomId) => {
-    const helpText = `Available commands:
-/start - Start the bot
-/help - Show this help
-/ping - Test responsiveness`;
-    
-    await agent.sendConnectionMessage(roomId, helpText);
-  });
+    agent.addCommand('/ping', async ({ roomId }) => {
+      await agent.sendConnectionMessage(
+        roomId,
+        '🏓 **Pong!** Bot is responsive!'
+      );
+    });
 
-  // Handle general messages
-  agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
-    console.log('Received:', message.body.m?.body);
-    await agent.sendConnectionMessage(roomId, 'Message received! Type /help for commands.');
-  });
+    agent.addCommand('/help', async ({ roomId }) => {
+      const helpText = `📋 **Available Commands**
 
-  // Start the agent
-  await agent.initialize();
-  console.log('🚀 Agent is running...');
-}
+🚀 \`/start\` - Start the bot
+🏓 \`/ping\` - Test bot responsiveness
+❓ \`/help\` - Show this help`;
+      await agent.sendConnectionMessage(roomId, helpText);
+    });
 
-main().catch(console.error);
-```
+    // Add a command with buttons
+    agent.addCommand('/menu', async ({ roomId }) => {
+      const buttons = [
+        { text: '🔘 Option 1', callback_data: 'OPTION_1' },
+        { text: '🔘 Option 2', callback_data: 'OPTION_2' },
+      ];
 
-#### Option B: Webhook-Based Agent (Recommended)
+      await agent.sendReplyMarkupMessage(
+        'buttons',
+        roomId,
+        '🎯 **Choose an option:**',
+        [buttons] // Array de arrays para compatibilidade
+      );
+    });
 
-```typescript
-import 'dotenv/config';
-import { WebhookAgent } from '@superdapp/agents';
+    // Handle callback queries
+    agent.addCommand('callback_query', async ({ message, roomId }) => {
+      console.log('Callback query received:', message);
 
-async function main() {
-  // Create a webhook-based agent
-  const agent = new WebhookAgent({
-    port: 4000, // or your preferred port
-    secret: process.env.WEBHOOK_SECRET, // optional: for signature validation
-    onInit: async () => console.log('[Agent] Initializing...'),
-    onReady: async () => console.log('[Agent] Ready and listening!'),
-    onShutdown: async () => console.log('[Agent] Shutting down...'),
-  });
+      // The callback_data is automatically parsed into:
+      // - message.callback_command: The command part (before the colon)
+      // - message.data: The value part (after the colon)
 
-  // Register commands
-  agent.addCommand('/start', async (event, req, res) => {
-    res.writeHead(200);
-    res.end('Hello! Webhook agent started.');
-  });
+      await agent.sendConnectionMessage(
+        roomId,
+        `✅ **You selected:** ${message.callback_command} with value: ${message.data}`
+      );
+    });
 
-  agent.addCommand('/ping', async (event, req, res) => {
-    res.writeHead(200);
-    res.end('Pong! 🏓');
-  });
+    // Handle general messages
+    agent.addCommand('handleMessage', async ({ message, roomId }) => {
+      console.log('Received message:', message.messageText);
+      await agent.sendConnectionMessage(
+        roomId,
+        '📨 **I received your message!** Type `/help` for available commands.'
+      );
+    });
 
-  // Register a generic message handler
-  agent.onMessage(async (event, req, res) => {
-    res.writeHead(200);
-    res.end('Received your message!');
-  });
-
-  // Start the webhook server
-  await agent.start();
+    // Start the webhook server
+    await agent.start();
+    console.log('Basic agent webhook server is running on port 3000...');
+  } catch (error) {
+    console.error('Error:', error);
+  }
 }
 
 main();
+```
+
+## 🔗 Callback Query Best Practices
+
+### ⚠️ **IMPORTANT: Use the `COMMAND:VALUE` format when needed**
+
+When creating interactive buttons and handling callback queries, use the colon (`:`) separator in your `callback_data` when you need to map multiple commands with different values. This enables proper parsing and command routing.
+
+### ✅ **Correct Format:**
+
+```typescript
+// Define buttons with proper COMMAND:VALUE format
+const buttons = [
+  { text: '💰 BTC Price', callback_data: 'PRICE:BTC' },
+  { text: '📰 Latest News', callback_data: 'GET_NEWS:' },
+  { text: '📂 Topics', callback_data: 'GET_TOPICS:' },
+  { text: '🔔 Subscribe', callback_data: 'SUBSCRIBE:' },
+];
+
+// Handle callback queries using message.callback_command
+agent.addCommand('callback_query', async ({ message, roomId }) => {
+  console.log('Callback query received:', message);
+
+  // The callback_data is automatically parsed into:
+  // - message.callback_command: The command part (before the colon)
+  // - message.data: The value part (after the colon)
+
+  switch (message.callback_command) {
+    case 'PRICE':
+      const symbol = message.data || '';
+      const price = await getPrice(symbol);
+      await agent.sendConnectionMessage(
+        roomId,
+        `💰 **${symbol} Price:** ${price}`
+      );
+      break;
+
+    case 'GET_NEWS':
+      const news = await getLatestNews();
+      await agent.sendConnectionMessage(
+        roomId,
+        `📰 **Latest News**\n\n${news}`
+      );
+      break;
+
+    case 'GET_TOPICS':
+      const topics = await getAvailableTopics();
+      await agent.sendConnectionMessage(
+        roomId,
+        `📂 **Available topics:** ${topics.join(', ')}`
+      );
+      break;
+
+    default:
+      await agent.sendConnectionMessage(
+        roomId,
+        '❌ **Unknown option selected.**'
+      );
+  }
+});
+```
+
+### ❌ **Incorrect Format (Avoid):**
+
+```typescript
+// DON'T do this - no colon separator
+const buttons = [
+  { text: '💰 BTC Price', callback_data: 'PRICE_BTC' }, // ❌ Wrong
+  { text: '📰 Latest News', callback_data: 'GET_NEWS' }, // ❌ Wrong
+];
+
+// DON'T use callbackData?.startsWith() - deprecated
+agent.addCommand('callback_query', async ({ message, roomId }) => {
+  const callbackData = message.data;
+
+  if (callbackData?.startsWith('PRICE_')) {
+    // ❌ Deprecated
+    // ...
+  }
+});
+```
+
+### 🎯 **When to Use This Format:**
+
+1. **Multiple Commands with Values**: When you have the same command type but different values (e.g., `PRICE:BTC`, `PRICE:ETH`)
+2. **Dynamic Content**: When generating buttons from arrays or lists
+3. **Command Parameters**: When you need to pass data to your command handlers
+4. **Automatic Parsing**: The SDK automatically parses `COMMAND:VALUE` format into `message.callback_command` and `message.data`
+5. **Cleaner Code**: No need for string manipulation with `startsWith()` or `replace()`
+
+### 📝 **When to Use COMMAND:VALUE Format:**
+
+#### ✅ **Use when you have multiple commands with different values:**
+
+```typescript
+// Multiple price buttons for different cryptocurrencies
+callback_data: 'PRICE:BTC';
+callback_data: 'PRICE:ETH';
+callback_data: 'PRICE:ADA';
+
+// Multiple topic buttons
+callback_data: 'TOPIC:CRYPTO';
+callback_data: 'TOPIC:BLOCKCHAIN';
+callback_data: 'TOPIC:DEFI';
+
+// Channel management
+callback_data: 'JOIN_CHANNEL:my-channel';
+callback_data: 'LEAVE_CHANNEL:12345';
+```
+
+#### ✅ **Use for dynamic content from arrays:**
+
+```typescript
+const topics = ['crypto', 'blockchain', 'defi'];
+const options = topics.map((topic) => ({
+  text: topic,
+  callback_data: `TOPIC:${topic.toUpperCase()}`,
+}));
+```
+
+#### ❌ **Don't use when you have simple, unique commands:**
+
+```typescript
+// Simple unique commands - no colon needed
+callback_data: 'GET_NEWS';
+callback_data: 'GET_TOPICS';
+callback_data: 'SUBSCRIBE';
+callback_data: 'CONFIRM_TOPICS';
 ```
 
 ### 4. Run Your Agent
@@ -213,45 +359,59 @@ superagent run --watch
 
 ## 📚 Core Concepts
 
-### WebhookAgent (Webhook-Based)
+### SuperDappAgent (Webhook-Based)
 
-The new class for creating webhook-based agents. Handles HTTP POSTs, command routing, and lifecycle events.
-
-```typescript
-import { WebhookAgent } from '@superdapp/agents';
-
-const agent = new WebhookAgent({ port: 4000 });
-
-agent.addCommand('/hello', async (event, req, res) => {
-  res.writeHead(200);
-  res.end('Hello from webhook!');
-});
-
-agent.onMessage(async (event, req, res) => {
-  res.writeHead(200);
-  res.end('Generic message received');
-});
-
-await agent.start();
-```
-
-### SuperDappAgent (AppSync-Based)
-
-The main class for creating and managing your AI agent.
+The main class for creating and managing your AI agent with webhook support.
 
 ```typescript
 import { SuperDappAgent, createBotConfig } from '@superdapp/agents';
 
-const agent = new SuperDappAgent(createBotConfig());
-
-// Add commands
-agent.addCommand('/weather', async (message, replyMessage, roomId) => {
-  const weather = await getWeatherData();
-  await agent.sendConnectionMessage(roomId, `Current weather: ${weather}`);
+const agent = new SuperDappAgent(createBotConfig(), {
+  port: 3000,
+  secret: process.env.WEBHOOK_SECRET,
 });
 
-// Initialize
-await agent.initialize();
+// Add commands
+agent.addCommand('/weather', async ({ roomId }) => {
+  const weather = await getWeatherData();
+  await agent.sendConnectionMessage(
+    roomId,
+    `🌤️ **Current weather:** ${weather}`
+  );
+});
+
+// Add interactive buttons
+agent.addCommand('/menu', async ({ roomId }) => {
+  const buttons = [
+    { text: '🌤️ Weather', callback_data: 'GET_WEATHER' },
+    { text: '📰 News', callback_data: 'GET_NEWS' },
+  ];
+
+  await agent.sendReplyMarkupMessage(
+    'buttons',
+    roomId,
+    '🎯 **Choose an option:**',
+    [buttons] // Array de arrays para compatibilidade
+  );
+});
+
+// Handle callback queries
+agent.addCommand('callback_query', async ({ message, roomId }) => {
+  // The callback_data is automatically parsed into message.callback_command and message.data
+  switch (message.callback_command) {
+    case 'GET_WEATHER':
+      const weather = await getWeatherData();
+      await agent.sendConnectionMessage(roomId, `🌤️ **Weather:** ${weather}`);
+      break;
+    case 'GET_NEWS':
+      const news = await getLatestNews();
+      await agent.sendConnectionMessage(roomId, `📰 **News:** ${news}`);
+      break;
+  }
+});
+
+// Start the webhook server
+await agent.start();
 ```
 
 ### Command Handling
@@ -260,24 +420,113 @@ Commands are the primary way users interact with your agent.
 
 ```typescript
 // Simple command
-agent.addCommand('/ping', async (message, replyMessage, roomId) => {
-  await agent.sendConnectionMessage(roomId, 'Pong! 🏓');
+agent.addCommand('/ping', async ({ roomId }) => {
+  await agent.sendConnectionMessage(roomId, '🏓 **Pong!** Bot is responsive!');
 });
 
 // Command with arguments
-agent.addCommand('/price', async (message, replyMessage, roomId) => {
-  const args = message.body.m?.body?.split(' ').slice(1) || [];
+agent.addCommand('/price', async ({ message, roomId }) => {
+  const args = message.messageText?.split(' ').slice(1) || [];
   const symbol = args[0] || 'BTC';
-  
+
   const price = await getCryptoPrice(symbol);
-  await agent.sendConnectionMessage(roomId, `${symbol}: $${price}`);
+  await agent.sendConnectionMessage(roomId, `💰 **${symbol}:** $${price}`);
 });
 
 // Handle all messages
-agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
+agent.addCommand('handleMessage', async ({ message, roomId }) => {
   // Process any message that doesn't match a specific command
-  const response = await processWithAI(message.body.m?.body);
+  const response = await processWithAI(message.messageText);
   await agent.sendConnectionMessage(roomId, response);
+});
+```
+
+### Interactive UI
+
+The SDK supports interactive UI elements like buttons and multiselect options.
+
+```typescript
+// Send message with buttons
+agent.addCommand('/menu', async ({ roomId }) => {
+  const buttons = [
+    { text: '🔘 Option 1', callback_data: 'OPTION_1' },
+    { text: '🔘 Option 2', callback_data: 'OPTION_2' },
+  ];
+
+  await agent.sendReplyMarkupMessage(
+    'buttons',
+    roomId,
+    '🎯 **Choose an option:**',
+    [buttons] // Array de arrays para compatibilidade
+  );
+});
+
+// Send message with multiselect
+agent.addCommand('/topics', async ({ roomId }) => {
+  const topics = ['Crypto', 'Tech', 'News', 'Sports', 'Politics'];
+
+  const topicsReplyMarkup = {
+    type: 'multiselect',
+    actions: [
+      ...topics.map((topic, idx) => [
+        {
+          index: `${idx + 1}`,
+          text: `${idx + 1} - ${topic}`,
+          callback_data: `TOPIC_SELECTION:${topic}`,
+        },
+      ]),
+      [
+        {
+          text: '✅ Confirm Selection',
+          callback_data: 'CONFIRM_TOPICS:',
+        },
+      ],
+    ],
+  };
+
+  await agent.sendReplyMarkupMessage(
+    'multiselect',
+    roomId,
+    '📝 **Select topics:**',
+    topicsReplyMarkup.actions
+  );
+});
+
+// Handle callback queries
+agent.addCommand('callback_query', async ({ message, roomId }) => {
+  const callbackData = message.data;
+
+  switch (callbackData) {
+    case 'OPTION_1':
+      await agent.sendConnectionMessage(
+        roomId,
+        '✅ **You selected Option 1!**'
+      );
+      break;
+    case 'OPTION_2':
+      await agent.sendConnectionMessage(
+        roomId,
+        '✅ **You selected Option 2!**'
+      );
+      break;
+    case 'CONFIRM_TOPICS:':
+      await agent.sendConnectionMessage(roomId, '✅ **Topics confirmed!**');
+      break;
+    default:
+      // Handle topic selection (e.g., "TOPIC_SELECTION:Crypto")
+      if (callbackData?.startsWith('TOPIC_SELECTION:')) {
+        const topic = callbackData.split(':')[1];
+        await agent.sendConnectionMessage(
+          roomId,
+          `📌 **Topic "${topic}" selected!**`
+        );
+      } else {
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ **Unknown option selected.**'
+        );
+      }
+  }
 });
 ```
 
@@ -292,10 +541,6 @@ await agent.sendConnectionMessage(roomId, 'Hello, world!');
 // Send to channel
 await agent.sendChannelMessage(channelId, 'Channel announcement!');
 
-// Send photo with caption
-const imageBuffer = await fs.readFile('image.jpg');
-await agent.sendChannelPhoto(channelId, imageBuffer, 'Check this out!');
-
 // React to message
 await agent.reactToMessage('channel', messageId, '👍', true);
 ```
@@ -303,11 +548,20 @@ await agent.reactToMessage('channel', messageId, '👍', true);
 ### Environment Configuration
 
 Add to your `.env`:
+
 ```env
 API_TOKEN=your_superdapp_api_token_here
-API_BASE_URL=https://api.superdapp.com
+API_BASE_URL=https://api.superdapp.ai
 WEBHOOK_SECRET=your_webhook_secret_here
+NODE_ENV=development  # Optional: 'development', 'production', or 'test'
 ```
+
+**SSL Configuration:**
+
+- In `development` mode (`NODE_ENV=development`): SSL verification is disabled for easier local development
+- In `production` mode (`NODE_ENV=production`): SSL verification is enabled for security
+- In `test` mode (`NODE_ENV=test`): SSL verification is enabled for secure testing
+- When `NODE_ENV` is not set: SSL verification is enabled by default (secure behavior)
 
 ## 🏗 Project Templates
 
@@ -325,6 +579,7 @@ You can customize the webhook server (port, secret, lifecycle hooks) and registe
 ### API Client Coverage
 
 The SDK client covers all backend API endpoints, including:
+
 - Channel and connection messages (send, update, fetch)
 - Media uploads
 - Message reactions
@@ -374,9 +629,13 @@ Built-in utilities for robust error handling:
 import { retry, sleep } from '@superdapp/agents';
 
 // Retry API calls with exponential backoff
-const data = await retry(async () => {
-  return await fetchExternalAPI();
-}, 3, 1000);
+const data = await retry(
+  async () => {
+    return await fetchExternalAPI();
+  },
+  3,
+  1000
+);
 
 // Add delays
 await sleep(2000); // 2 seconds
@@ -387,11 +646,11 @@ await sleep(2000); // 2 seconds
 Full TypeScript support with comprehensive types:
 
 ```typescript
-import type { 
-  MessageData, 
-  CommandHandler, 
+import type {
+  MessageData,
+  CommandHandler,
   BotConfig,
-  ApiResponse 
+  ApiResponse,
 } from '@superdapp/agents';
 
 const handleCommand: CommandHandler = async (message, replyMessage, roomId) => {
@@ -400,6 +659,32 @@ const handleCommand: CommandHandler = async (message, replyMessage, roomId) => {
   // ... handler logic
 };
 ```
+
+### SSL Configuration Testing
+
+You can test the SSL configuration behavior using the provided demo:
+
+```bash
+# Test in development mode (SSL disabled)
+NODE_ENV=development node examples/ssl-config-demo.ts
+
+# Test in production mode (SSL enabled)
+NODE_ENV=production node examples/ssl-config-demo.ts
+
+# Test in test mode (SSL enabled)
+NODE_ENV=test node examples/ssl-config-demo.ts
+
+# Test with no NODE_ENV (SSL enabled by default)
+node examples/ssl-config-demo.ts
+```
+
+**Security Best Practices:**
+
+- Always use `NODE_ENV=production` in production environments
+- Use `NODE_ENV=development` only for local development
+- SSL verification is automatically enabled in production, test, and when NODE_ENV is not set
+- Use valid SSL certificates in production
+- Monitor SSL certificate expiration dates
 
 ## 🚀 Deployment
 
@@ -442,7 +727,7 @@ describe('SuperDappAgent', () => {
   beforeEach(() => {
     agent = new SuperDappAgent({
       apiToken: 'test-token',
-      baseUrl: 'https://api.test.com'
+      baseUrl: 'https://api.test.com',
     });
   });
 
@@ -458,45 +743,24 @@ describe('SuperDappAgent', () => {
 ### SuperDappAgent Methods
 
 #### `constructor(config: BotConfig)`
+
 Create a new agent instance.
 
 #### `initialize(): Promise<void>`
+
 Initialize the agent and start listening for messages.
 
 #### `addCommand(command: string, handler: CommandHandler, message?: any): void`
+
 Register a command handler.
 
 #### `sendConnectionMessage(roomId: string, text: string, options?: MessageOptions): Promise<void>`
+
 Send a direct message.
 
 #### `sendChannelMessage(channelId: string, text: string, options?: MessageOptions): Promise<void>`
+
 Send a channel message.
-
-#### `sendChannelPhoto(channelId: string, file: Buffer, caption?: string, options?: MessageOptions): Promise<void>`
-Send a photo to a channel.
-
-#### `reactToMessage(type: 'dm' | 'channel', messageId: string, emoji: string, add?: boolean): Promise<void>`
-React to a message.
-
-#### `getBotInfo(): Promise<ApiResponse<BotCredentials>>`
-Get bot information.
-
-#### `getWallet(): Promise<ApiResponse<WalletKeys>>`
-Get wallet information.
-
-### SuperDappClient Methods
-
-#### `getMe(): Promise<ApiResponse<BotCredentials>>`
-Get bot information.
-
-#### `getChannelMessages(channelId: string, nextToken?: string): Promise<ApiResponse<ChannelMessage>>`
-Retrieve channel messages.
-
-#### `getUpdates(limitChannels?: number, limitConnections?: number): Promise<ApiResponse<UpdatesResponse>>`
-Get recent updates.
-
-#### `request<T>(method: string, endpoint: string, data?: any): Promise<ApiResponse<T>>`
-Make custom API requests.
 
 ## 🛡 Error Handling
 
@@ -561,3 +825,25 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Built with ❤️ by the SuperDapp Team**
+
+### Sending Messages
+
+#### Send a message to a channel
+
+```typescript
+const client = new SuperDappClient({ apiToken: 'YOUR_TOKEN' });
+
+await client.sendChannelMessage('CHANNEL_ID', {
+  message: { body: 'Hello, channel!' },
+});
+```
+
+#### Send a message to a connection (DM)
+
+```typescript
+const client = new SuperDappClient({ apiToken: 'YOUR_TOKEN' });
+
+await client.sendConnectionMessage('ROOM_ID', {
+  message: { body: 'Hello, user!' },
+});
+```

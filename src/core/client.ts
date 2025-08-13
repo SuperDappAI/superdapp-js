@@ -1,21 +1,28 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import https from 'node:https';
 import FormData = require('form-data');
+import { fileTypeFromBuffer } from 'file-type';
 import {
   BotConfig,
   ApiResponse,
-  BotCredentials,
-  ChannelMessage,
   SendMessageOptions,
   PhotoMessageOptions,
-  ReactionData,
-  WalletKeys,
-  UpdatesResponse,
 } from '../types';
-import { DEFAULT_CONFIG, API_ENDPOINTS } from '../types/constants';
+import { DEFAULT_CONFIG } from '../types/constants';
+import { formatBody } from '../utils';
+import Thumbnail from '../utils/thumbnail';
+
+// Define constants for repeated endpoint resources
+const AGENT_BOTS_ENDPOINT = 'v1/agent-bots/';
+const AGENT_BOTS_CONNECTIONS_ENDPOINT = `${AGENT_BOTS_ENDPOINT}connections`;
+const AGENT_BOTS_CHANNELS_ENDPOINT = `${AGENT_BOTS_ENDPOINT}channels`;
+const SOCIAL_GROUPS_JOIN_ENDPOINT = `${AGENT_BOTS_ENDPOINT}social-groups/join`;
+const SOCIAL_GROUPS_LEAVE_ENDPOINT = `${AGENT_BOTS_ENDPOINT}social-groups/leave`;
 
 export class SuperDappClient {
   private axios: AxiosInstance;
   private config: BotConfig;
+  private thumbnail: ReturnType<typeof Thumbnail>;
 
   constructor(config: BotConfig) {
     this.config = {
@@ -24,12 +31,19 @@ export class SuperDappClient {
     };
 
     this.axios = axios.create({
-      baseURL: `${this.config.baseUrl}/bot-${this.config.apiToken}`,
+      baseURL: `${this.config.baseUrl}`,
       timeout: DEFAULT_CONFIG.REQUEST_TIMEOUT,
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.config.apiToken}`,
+        'User-Agent': 'SuperDapp-Agent/1.0',
       },
     });
+
+    // Initialize thumbnail utility
+    this.thumbnail = Thumbnail();
+    this.thumbnail.setDimensions(150, 150); // Default thumbnail size
+    this.thumbnail.setQuality(0.7); // Default quality
 
     this.setupInterceptors();
   }
@@ -41,6 +55,14 @@ export class SuperDappClient {
         console.log(
           `Making ${config.method?.toUpperCase()} request to: ${config.url}`
         );
+
+        // Configure SSL verification based on environment
+        if (!DEFAULT_CONFIG.SSL.REJECT_UNAUTHORIZED) {
+          config.httpsAgent = new https.Agent({
+            rejectUnauthorized: false,
+          });
+        }
+
         return config;
       },
       (error) => {
@@ -62,37 +84,6 @@ export class SuperDappClient {
   }
 
   /**
-   * Get bot information
-   */
-  async getMe(): Promise<ApiResponse<BotCredentials>> {
-    const response = await this.axios.get(API_ENDPOINTS.ME);
-    return response.data;
-  }
-
-  /**
-   * Get bot credentials for AppSync connection
-   */
-  async getCredentials(): Promise<ApiResponse<BotCredentials>> {
-    const response = await this.axios.get(API_ENDPOINTS.CREDENTIALS);
-    return response.data;
-  }
-
-  /**
-   * Get messages from a channel
-   */
-  async getChannelMessages(
-    channelId: string,
-    nextToken?: string
-  ): Promise<ApiResponse<ChannelMessage>> {
-    const params = nextToken ? { nextToken } : {};
-    const response = await this.axios.get(
-      `${API_ENDPOINTS.MESSAGES_CHANNEL}/${channelId}`,
-      { params }
-    );
-    return response.data;
-  }
-
-  /**
    * Send a message to a channel
    */
   async sendChannelMessage(
@@ -100,35 +91,8 @@ export class SuperDappClient {
     options: SendMessageOptions
   ): Promise<ApiResponse> {
     const response = await this.axios.post(
-      `${API_ENDPOINTS.MESSAGES_CHANNEL}/${channelId}`,
+      `${AGENT_BOTS_CHANNELS_ENDPOINT}/${encodeURIComponent(channelId)}/messages`,
       options
-    );
-    return response.data;
-  }
-
-  /**
-   * Send a photo message to a channel
-   */
-  async sendChannelPhoto(
-    channelId: string,
-    options: PhotoMessageOptions
-  ): Promise<ApiResponse> {
-    const formData = new FormData();
-    formData.append('file', options.file);
-    formData.append('message', JSON.stringify(options.message));
-
-    if (options.isSilent !== undefined) {
-      formData.append('isSilent', String(options.isSilent));
-    }
-
-    const response = await this.axios.post(
-      `${API_ENDPOINTS.MESSAGES_CHANNEL}/${channelId}/photo`,
-      formData,
-      {
-        headers: {
-          ...formData.getHeaders(),
-        },
-      }
     );
     return response.data;
   }
@@ -141,62 +105,76 @@ export class SuperDappClient {
     options: SendMessageOptions
   ): Promise<ApiResponse> {
     const response = await this.axios.post(
-      `${API_ENDPOINTS.MESSAGES_CONNECTION}/${roomId}`,
+      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${roomId}/messages`,
       options
     );
     return response.data;
   }
 
   /**
-   * Get message reactions
+   * Send a message with reply markup (buttons, multiselect, etc.)
    */
-  async getMessageReactions(
-    type: 'dm' | 'channel',
-    messageId: string
+  async sendMessageWithReplyMarkup(
+    roomId: string,
+    message: string,
+    replyMarkup: any,
+    options?: { isSilent?: boolean }
   ): Promise<ApiResponse> {
-    const response = await this.axios.get(
-      `${API_ENDPOINTS.MESSAGES_REACTION}/${type}/${messageId}`
-    );
-    return response.data;
-  }
+    const messageBody = {
+      body: message,
+      reply_markup: replyMarkup,
+    };
 
-  /**
-   * Add or remove a reaction to a message
-   */
-  async sendMessageReaction(
-    type: 'dm' | 'channel',
-    messageId: string,
-    reaction: ReactionData
-  ): Promise<ApiResponse> {
     const response = await this.axios.post(
-      `${API_ENDPOINTS.MESSAGES_REACTION}/${type}/${messageId}`,
-      reaction
+      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${roomId}/messages`,
+      {
+        message: messageBody,
+        isSilent: options?.isSilent || false,
+      }
     );
     return response.data;
   }
 
   /**
-   * Get recent updates
+   * Send a message with button actions
    */
-  async getUpdates(
-    limitChannelMessages = 10,
-    limitConnectionMessages = 10
-  ): Promise<ApiResponse<UpdatesResponse>> {
-    const response = await this.axios.get(API_ENDPOINTS.UPDATES, {
-      params: {
-        limit_channels_messages: limitChannelMessages,
-        limit_connections_messages: limitConnectionMessages,
-      },
-    });
-    return response.data;
+  async sendMessageWithButtons(
+    roomId: string,
+    message: string,
+    buttons: Array<{ text: string; callback_data: string }>,
+    options?: { isSilent?: boolean }
+  ): Promise<ApiResponse> {
+    const replyMarkup = {
+      type: 'buttons',
+      actions: buttons.map((button) => [button]),
+    };
+    return this.sendMessageWithReplyMarkup(
+      roomId,
+      message,
+      replyMarkup,
+      options
+    );
   }
 
   /**
-   * Get wallet keys
+   * Send a message with multiselect options
    */
-  async getWalletKeys(): Promise<ApiResponse<WalletKeys>> {
-    const response = await this.axios.get(API_ENDPOINTS.WALLET_KEYS);
-    return response.data;
+  async sendMessageWithMultiselect(
+    roomId: string,
+    message: string,
+    options: Array<{ text: string; callback_data: string }>,
+    config?: { isSilent?: boolean }
+  ): Promise<ApiResponse> {
+    const replyMarkup = {
+      type: 'multiselect',
+      actions: options.map((option) => [option]),
+    };
+    return this.sendMessageWithReplyMarkup(
+      roomId,
+      message,
+      replyMarkup,
+      config
+    );
   }
 
   /**
@@ -206,7 +184,7 @@ export class SuperDappClient {
     channelNameOrId: string,
     messageId?: string
   ): Promise<ApiResponse> {
-    const response = await this.axios.post(API_ENDPOINTS.SOCIAL_GROUPS_JOIN, {
+    const response = await this.axios.post(SOCIAL_GROUPS_JOIN_ENDPOINT, {
       channelNameOrId,
       messageId,
     });
@@ -220,140 +198,166 @@ export class SuperDappClient {
     channelNameOrId: string,
     messageId?: string
   ): Promise<ApiResponse> {
-    const response = await this.axios.post(API_ENDPOINTS.SOCIAL_GROUPS_LEAVE, {
+    const response = await this.axios.post(SOCIAL_GROUPS_LEAVE_ENDPOINT, {
       channelNameOrId,
       messageId,
     });
     return response.data;
   }
 
-  /**
-   * Get online presence for a user
-   */
-  async getOnlinePresence(userId: string): Promise<ApiResponse> {
-    const response = await this.axios.get(`/online/${userId}`);
-    return response.data;
-  }
-
-  /**
-   * Get direct messages for a dialog
-   */
-  async getDirectMessages(
-    dialogId: string,
-    nextToken?: string
-  ): Promise<ApiResponse> {
-    const params = nextToken ? { nextToken } : {};
-    const response = await this.axios.get(`/messages/dm/${dialogId}`, {
-      params,
-    });
-    return response.data;
-  }
-
-  /**
-   * Get all channels for a user
-   */
+  /** Get user channels list */
   async getChannels(userId: string): Promise<ApiResponse> {
-    const response = await this.axios.get(`/channels`, { params: { userId } });
-    return response.data;
-  }
-
-  /**
-   * Update a channel message
-   */
-  async updateChannelMessage(
-    channelId: string,
-    messageId: string,
-    data: any
-  ): Promise<ApiResponse> {
-    const response = await this.axios.put(
-      `/messages/channel/${channelId}/${messageId}`,
-      data
-    );
-    return response.data;
-  }
-
-  /**
-   * Get channel members
-   */
-  async getChannelMembers(
-    channelId: string,
-    nextToken?: string
-  ): Promise<ApiResponse> {
-    const params = nextToken ? { nextToken } : {};
-    const response = await this.axios.get(`/members/${channelId}`, { params });
-    return response.data;
-  }
-
-  /**
-   * Send typing status
-   */
-  async sendTypingStatus(
-    type: 'dm' | 'channel',
-    chatId: string,
-    data: any
-  ): Promise<ApiResponse> {
-    const response = await this.axios.post(`/typing/${type}/${chatId}`, data);
-    return response.data;
-  }
-
-  /**
-   * Social group APIs
-   */
-  async getPopularGroups(n?: number): Promise<ApiResponse> {
-    const response = await this.axios.get(`/social-groups/popular`, {
-      params: { n },
-    });
-    return response.data;
-  }
-
-  async searchGroups(q: string, n?: number): Promise<ApiResponse> {
-    const response = await this.axios.get(`/social-groups/search`, {
-      params: { q, n },
-    });
-    return response.data;
-  }
-
-  async getGroupsByTopic(topic: string, n?: number): Promise<ApiResponse> {
-    const response = await this.axios.get(`/social-groups/topic`, {
-      params: { topic, n },
-    });
-    return response.data;
-  }
-
-  async getUserGroups(userId: string): Promise<ApiResponse> {
     const response = await this.axios.get(
-      `/social-groups/user-groups/${userId}`
+      `${AGENT_BOTS_ENDPOINT}channels?userId=${userId}`
     );
     return response.data;
   }
 
-  async getPopularTopics(n?: number): Promise<ApiResponse> {
-    const response = await this.axios.get(`/social-groups/popular-topics`, {
-      params: { n },
-    });
-    return response.data;
-  }
-
-  async getGroup(groupId: string): Promise<ApiResponse> {
-    const response = await this.axios.get(`/social-groups/${groupId}`);
+  /**
+   * Get bot channels list
+   */
+  async getBotChannels(): Promise<ApiResponse> {
+    const response = await this.axios.get(`${AGENT_BOTS_ENDPOINT}channels/bot`);
     return response.data;
   }
 
   /**
-   * Make a custom API request
+   * Send an image to a channel
    */
-  async request<T = any>(
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
-    endpoint: string,
-    data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<ApiResponse<T>> {
-    const response = await this.axios.request({
-      method,
-      url: endpoint,
-      data,
-      ...config,
+  async sendChannelImage(
+    channelId: string,
+    options: PhotoMessageOptions
+  ): Promise<ApiResponse> {
+    // Step 1: Process file and validate
+    const file = options.file;
+    let fileToUpload: Buffer;
+
+    if (Buffer.isBuffer(file)) {
+      fileToUpload = file;
+    } else {
+      // Convert ReadableStream to buffer
+      const chunks: Buffer[] = [];
+      for await (const chunk of file) {
+        chunks.push(Buffer.from(chunk));
+      }
+      fileToUpload = Buffer.concat(chunks);
+    }
+
+    // Validate image file type
+    const fileType = await fileTypeFromBuffer(fileToUpload);
+    if (!fileType || !fileType.mime.startsWith('image/')) {
+      throw new Error(
+        'Invalid image file type. Only image files are supported.'
+      );
+    }
+
+    const fileSize = fileToUpload.length;
+    const fileMime = fileType.mime;
+
+    // Step 2: Request pre-signed URL from backend
+    const uploadRequest = {
+      message: {
+        body: formatBody(options.message?.body || ''),
+        fileSize,
+        fileMime,
+        type: encodeURIComponent(fileMime),
+      },
+    };
+
+    const uploadResponse = await this.axios.post(
+      `${AGENT_BOTS_CHANNELS_ENDPOINT}/${channelId}/messages`,
+      uploadRequest
+    );
+
+    const { message, fileUrl, fileKey } = uploadResponse.data;
+
+    // Step 3: Upload file to the pre-signed URL
+    const formData = new FormData();
+    Object.entries(fileUrl.fields).forEach(([key, value]) => {
+      formData.append(key, value as string);
     });
+    formData.append('file', fileToUpload);
+
+    await axios({
+      method: 'POST',
+      url: fileUrl.url,
+      data: formData,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+
+    // Step 4: Generate thumbnail
+    let thumbnailData = '';
+    try {
+      const thumbnailResult = await this.thumbnail.createFromFile(
+        fileToUpload,
+        fileMime,
+        true // Maintain aspect ratio
+      );
+
+      if (thumbnailResult.data && thumbnailResult.buffer) {
+        thumbnailData = thumbnailResult.data;
+      }
+    } catch (error) {
+      // Continue without thumbnail if generation fails
+    }
+
+    // Step 5: Update the message with attachment metadata
+    const fileExtension = fileType.ext || 'jpg';
+    const updateData = {
+      body: options.message?.body || '',
+      attachment: {
+        id: fileKey,
+        uuid: fileKey,
+        name: `image_${Date.now()}.${fileExtension}`,
+        size: fileSize,
+        type: encodeURIComponent(fileMime),
+        hmac: fileUrl.fields?.x_amz_meta_hmac || '',
+        key: null,
+        thumbnail: thumbnailData,
+      },
+    };
+
+    const updateDataString = JSON.stringify({
+      m: encodeURIComponent(JSON.stringify(updateData)),
+      t: 'chat',
+    });
+
+    const finalResponse = await this.axios.put(
+      `${AGENT_BOTS_CHANNELS_ENDPOINT}/${channelId}/messages/${message.id}`,
+      { body: updateDataString }
+    );
+
+    return finalResponse.data;
+  }
+
+  /**
+   * Get info about the authenticated bot
+   */
+  async getBotInfo(): Promise<ApiResponse> {
+    const response = await this.axios.get(`${AGENT_BOTS_ENDPOINT}bot-info`);
     return response.data;
+  }
+
+  /**
+   * Alias for getBotInfo (compatibilidade)
+   */
+  async getMe(): Promise<ApiResponse> {
+    return this.getBotInfo();
+  }
+
+  /**
+   * Configure thumbnail settings
+   */
+  setThumbnailDimensions(width: number, height: number): void {
+    this.thumbnail.setDimensions(height, width);
+  }
+
+  /**
+   * Configure thumbnail quality
+   */
+  setThumbnailQuality(quality: number): void {
+    this.thumbnail.setQuality(quality);
   }
 }

@@ -1,17 +1,22 @@
 import 'dotenv/config';
-import { SuperDappAgent, createBotConfig } from '../src';
-import { schedule } from 'node-schedule';
+import { SuperDappAgent, createBotConfig } from '../../src';
+import * as schedule from 'node-schedule';
 
 async function main() {
   try {
-    // Initialize the agent
-    const agent = new SuperDappAgent(createBotConfig());
+    // Initialize the agent with webhook configuration
+    const agent = new SuperDappAgent(createBotConfig(), {
+      port: 3001,
+      onReady: async () => {
+        console.log('Advanced agent webhook server is ready!');
+      },
+    });
 
     // Store user subscriptions (in a real app, use a database)
     const userSubscriptions = new Map<string, string[]>();
 
     // Add advanced commands
-    agent.addCommand('/start', async (message, replyMessage, roomId) => {
+    agent.addCommand('/start', async ({ roomId }) => {
       const welcomeText = `🚀 Welcome to the Advanced SuperDapp Agent!
 
 This agent demonstrates advanced features:
@@ -26,7 +31,7 @@ Type /help to see all available commands.`;
       await agent.sendConnectionMessage(roomId, welcomeText);
     });
 
-    agent.addCommand('/help', async (message, replyMessage, roomId) => {
+    agent.addCommand('/help', async ({ roomId }) => {
       const helpText = `🔧 Available commands:
 
 📱 Basic:
@@ -51,6 +56,10 @@ Type /help to see all available commands.`;
 /price <symbol> - Get current price
 /portfolio - Show portfolio summary
 
+🖼️ Images:
+/image <channel_id> - Send test image to channel
+/sendimage <channel_id> - Send test image to channel (alternative)
+
 ⚙️ Advanced:
 /debug - Debug information
 /logs - Show recent logs`;
@@ -58,8 +67,8 @@ Type /help to see all available commands.`;
       await agent.sendConnectionMessage(roomId, helpText);
     });
 
-    agent.addCommand('/subscribe', async (message, replyMessage, roomId) => {
-      const args = message.body.m?.body?.split(' ').slice(1) || [];
+    agent.addCommand('/subscribe', async ({ message, roomId }) => {
+      const args = message.data?.split(' ').slice(1) || [];
       const topic = args[0];
 
       if (!topic) {
@@ -83,7 +92,7 @@ Type /help to see all available commands.`;
       }
     });
 
-    agent.addCommand('/mysubs', async (message, replyMessage, roomId) => {
+    agent.addCommand('/mysubs', async ({ roomId }) => {
       const userSubs = userSubscriptions.get(roomId) || [];
       if (userSubs.length === 0) {
         await agent.sendConnectionMessage(
@@ -98,7 +107,7 @@ Type /help to see all available commands.`;
       }
     });
 
-    agent.addCommand('/menu', async (message, replyMessage, roomId) => {
+    agent.addCommand('/menu', async ({ roomId }) => {
       const menuText = `🎯 Interactive Menu:
 
 Choose an option:
@@ -113,8 +122,8 @@ Reply with the number of your choice.`;
       await agent.sendConnectionMessage(roomId, menuText);
     });
 
-    agent.addCommand('/price', async (message, replyMessage, roomId) => {
-      const args = message.body.m?.body?.split(' ').slice(1) || [];
+    agent.addCommand('/price', async ({ message, roomId }) => {
+      const args = message.data?.split(' ').slice(1) || [];
       const symbol = args[0] || 'BTC';
 
       // Mock price data (in a real app, integrate with an API)
@@ -146,7 +155,7 @@ Reply with the number of your choice.`;
       }
     });
 
-    agent.addCommand('/portfolio', async (message, replyMessage, roomId) => {
+    agent.addCommand('/portfolio', async ({ roomId }) => {
       const portfolioText = `📊 Portfolio Summary:
 
 💰 Total Value: $12,450.00
@@ -166,28 +175,17 @@ Holdings:
       await agent.sendConnectionMessage(roomId, portfolioText);
     });
 
-    agent.addCommand('/debug', async (message, replyMessage, roomId) => {
-      const botInfo = await agent.getBotInfo();
-      const debugText = `🔧 Debug Information:
-
-Bot ID: ${botInfo.data.bot_info?.id || 'N/A'}
-Bot Name: ${botInfo.data.bot_info?.name || 'N/A'}
-Status: ${botInfo.data.bot_info?.isActive ? '🟢 Active' : '🔴 Inactive'}
-User: ${botInfo.data.user?.email || 'N/A'}
-
-Room ID: ${roomId}
-Message ID: ${message.messageId}
-Sender: ${message.senderId}
-
-Uptime: ${process.uptime().toFixed(2)}s
-Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}MB`;
-
-      await agent.sendConnectionMessage(roomId, debugText);
+    agent.addCommand('/botinfo', async ({ roomId }) => {
+      const info = await agent.getClient().getBotInfo();
+      await agent.sendConnectionMessage(
+        roomId,
+        `Bot Info:\n${JSON.stringify(info.data, null, 2)}`
+      );
     });
 
     // Handle general messages with smart routing
-    agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
-      const text = message.body.m?.body?.toLowerCase() || '';
+    agent.addCommand('handleMessage', async ({ message, roomId }) => {
+      const text = message.data || '';
 
       // Handle menu selections
       if (/^[1-5]$/.test(text.trim())) {
@@ -226,9 +224,43 @@ Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}MB`;
       } else {
         await agent.sendConnectionMessage(
           roomId,
-          `🤖 I received: "${message.body.m?.body}"\n\nType /help for available commands.`
+          `🤖 I received: "${message.data}"\n\nType /help for available commands.`
         );
       }
+    });
+
+    // Send image with channel ID parameter
+    agent.addCommand('/image', async ({ message, roomId }) => {
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(__dirname, 'test-image.png');
+
+      const channelId = message.data?.replace('/image', '').trim();
+
+      if (!fs.existsSync(filePath)) {
+        await agent.sendConnectionMessage(
+          roomId,
+          'Image file not found. Please add a test-image.png file to the examples/advanced directory.'
+        );
+        return;
+      }
+
+      if (!channelId) {
+        await agent.sendConnectionMessage(
+          roomId,
+          'Please provide a channel ID: /image <channel_id>'
+        );
+        return;
+      }
+
+      const fileStream = fs.createReadStream(filePath);
+
+      await agent.sendChannelImage(
+        channelId,
+        fileStream,
+        'Here is a test image from the advanced example!'
+      );
+      await agent.sendConnectionMessage(roomId, 'Image sent to channel!');
     });
 
     // Schedule periodic notifications for subscribers
@@ -252,9 +284,11 @@ Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}MB`;
       }
     });
 
-    // Initialize and start
-    await agent.initialize();
-    console.log('🚀 Advanced agent is running with scheduled tasks...');
+    // Start the webhook server
+    await agent.start();
+    console.log(
+      '🚀 Advanced agent webhook server is running on port 3001 with scheduled tasks...'
+    );
   } catch (error) {
     console.error('❌ Error:', error);
   }

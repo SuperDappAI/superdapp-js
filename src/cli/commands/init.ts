@@ -115,7 +115,6 @@ export class InitCommand extends Command {
         message: 'Choose a template:',
         choices: [
           { name: 'Basic Agent - Simple command handling', value: 'basic' },
-          { name: 'Webhook Agent - Responds to webhooks', value: 'webhook' },
           { name: 'News Agent - AI-powered news generation', value: 'news' },
           {
             name: 'Trading Agent - Crypto trading assistant',

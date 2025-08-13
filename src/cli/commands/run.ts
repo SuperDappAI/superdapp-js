@@ -10,7 +10,7 @@ export class RunCommand extends Command {
     super('run');
     this.description('Run the agent locally for testing')
       .option('-w, --watch', 'Watch for file changes and restart')
-      .option('-p, --port <port>', 'Port for development server', '3000')
+      .option('-p, --port <port>', 'Port for development server', '8787')
       .option('--env <file>', 'Environment file to use', '.env')
       .action(this.execute.bind(this));
   }

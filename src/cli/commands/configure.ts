@@ -75,7 +75,7 @@ export class ConfigureCommand extends Command {
         type: 'input',
         name: 'apiUrl',
         message: 'SuperDapp API Base URL (optional):',
-        default: 'https://api.superdapp.com',
+        default: 'https://api.superdapp.ai',
       });
     }
 
@@ -94,7 +94,7 @@ export class ConfigureCommand extends Command {
 API_TOKEN=${config.apiToken}
 `;
 
-    if (config.apiUrl && config.apiUrl !== 'https://api.superdapp.com') {
+    if (config.apiUrl && config.apiUrl !== 'https://api.superdapp.ai') {
       envContent += `API_BASE_URL=${config.apiUrl}\n`;
     }
 
@@ -103,7 +103,7 @@ API_TOKEN=${config.apiToken}
     // Also create .env.example
     const exampleContent = `# SuperDapp Agent Configuration
 API_TOKEN=your_api_token_here
-# API_BASE_URL=https://api.superdapp.com
+# API_BASE_URL=https://api.superdapp.ai
 `;
 
     await fs.writeFile(
