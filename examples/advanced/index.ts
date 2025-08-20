@@ -1,16 +1,21 @@
 import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
 import { SuperDappAgent, createBotConfig } from '../../src';
 import * as schedule from 'node-schedule';
 
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.text({ type: 'application/json' }));
+
 async function main() {
   try {
-    // Initialize the agent with webhook configuration
-    const agent = new SuperDappAgent(createBotConfig(), {
-      port: 3001,
-      onReady: async () => {
-        console.log('Advanced agent webhook server is ready!');
-      },
-    });
+    // Initialize the agent
+    const agent = new SuperDappAgent(createBotConfig());
 
     // Store user subscriptions (in a real app, use a database)
     const userSubscriptions = new Map<string, string[]>();
@@ -56,9 +61,7 @@ Type /help to see all available commands.`;
 /price <symbol> - Get current price
 /portfolio - Show portfolio summary
 
-🖼️ Images:
-/image <channel_id> - Send test image to channel
-/sendimage <channel_id> - Send test image to channel (alternative)
+
 
 ⚙️ Advanced:
 /debug - Debug information
@@ -229,40 +232,6 @@ Holdings:
       }
     });
 
-    // Send image with channel ID parameter
-    agent.addCommand('/image', async ({ message, roomId }) => {
-      const fs = require('fs');
-      const path = require('path');
-      const filePath = path.join(__dirname, 'test-image.png');
-
-      const channelId = message.data?.replace('/image', '').trim();
-
-      if (!fs.existsSync(filePath)) {
-        await agent.sendConnectionMessage(
-          roomId,
-          'Image file not found. Please add a test-image.png file to the examples/advanced directory.'
-        );
-        return;
-      }
-
-      if (!channelId) {
-        await agent.sendConnectionMessage(
-          roomId,
-          'Please provide a channel ID: /image <channel_id>'
-        );
-        return;
-      }
-
-      const fileStream = fs.createReadStream(filePath);
-
-      await agent.sendChannelImage(
-        channelId,
-        fileStream,
-        'Here is a test image from the advanced example!'
-      );
-      await agent.sendConnectionMessage(roomId, 'Image sent to channel!');
-    });
-
     // Schedule periodic notifications for subscribers
     schedule.scheduleJob('0 */2 * * *', async () => {
       // Every 2 hours
@@ -284,13 +253,41 @@ Holdings:
       }
     });
 
-    // Start the webhook server
-    await agent.start();
-    console.log(
-      '🚀 Advanced agent webhook server is running on port 3001 with scheduled tasks...'
-    );
+    // Health check endpoint
+    app.get('/health', (req, res) => {
+      res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        service: 'advanced-agent',
+        runtime: 'node',
+      });
+    });
+
+    // Webhook endpoint
+    app.post('/webhook', async (req, res) => {
+      try {
+        const body =
+          typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        const response = await agent.processRequest(body);
+
+        res.status(200).json(response);
+      } catch (error) {
+        console.error('Error processing webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
+
+    // Start the server
+    app.listen(PORT, () => {
+      console.log(
+        `🚀 Advanced agent webhook server is running on port ${PORT}`
+      );
+      console.log(`📡 Webhook endpoint: http://localhost:${PORT}/webhook`);
+      console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+    });
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Fatal error:', error);
+    process.exit(1);
   }
 }
 

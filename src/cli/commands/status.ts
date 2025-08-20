@@ -7,7 +7,7 @@ import { BotConfig } from '../../types';
 export class StatusCommand extends Command {
   constructor() {
     super('status');
-    this.description('Check the status of the deployed agent')
+    this.description('Check the status of the agent')
       .option('--api-token <token>', 'SuperDapp API token (overrides .env)')
       .option('--api-url <url>', 'SuperDapp API base URL (overrides .env)')
       .action(this.execute.bind(this));

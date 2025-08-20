@@ -5,7 +5,7 @@ export interface PendingQuestion {
   groupNameOrId?: string;
   frequency?: string;
   topics?: string[];
-  availableChannels?: any[];
+  availableChannels?: unknown[];
   timestamp: number;
 }
 

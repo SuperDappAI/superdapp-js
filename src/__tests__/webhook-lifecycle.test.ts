@@ -1,41 +1,61 @@
 import { WebhookAgent } from '../webhook/agent';
-import http from 'http';
 
-describe('WebhookAgent lifecycle', () => {
+describe('WebhookAgent', () => {
   let agent: WebhookAgent;
-  let port = 5051;
 
-  afterAll(async () => {
-    if (agent) await agent.shutdown();
+  it('should process webhook requests', async () => {
+    let messageReceived = false;
+
+    agent = new WebhookAgent();
+
+    agent.onMessage(async (event) => {
+      messageReceived = true;
+      expect(event.body).toBeDefined();
+    });
+
+    const testBody = {
+      id: 'test-message-id',
+      senderId: 'test-sender-id',
+      body: {
+        t: 'chat' as const,
+        m: {
+          text: 'Hello bot',
+          body: 'Hello bot',
+        },
+      },
+      timestamp: new Date().toISOString(),
+      isBot: false,
+    };
+
+    await agent.processRequest(testBody);
+    expect(messageReceived).toBe(true);
   });
 
-  it('should call lifecycle hooks', async () => {
-    let inited = false,
-      ready = false,
-      shutdown = false;
-    let readyPromise: Promise<void>;
-    let readyResolve: () => void;
-    readyPromise = new Promise((resolve) => {
-      readyResolve = resolve;
+  it('should handle commands', async () => {
+    let commandHandled = false;
+
+    agent = new WebhookAgent();
+
+    agent.addCommand('test', async (event) => {
+      commandHandled = true;
+      expect(event.body).toBeDefined();
     });
-    agent = new WebhookAgent({
-      port,
-      onInit: async () => {
-        inited = true;
+
+    const testBody = {
+      id: 'test-message-id-2',
+      senderId: 'test-sender-id-2',
+      body: {
+        t: 'chat' as const,
+        m: {
+          text: 'test',
+          body: 'test',
+        },
       },
-      onReady: async () => {
-        ready = true;
-        readyResolve();
-      },
-      onShutdown: async () => {
-        shutdown = true;
-      },
-    });
-    await agent.start();
-    await readyPromise;
-    expect(inited).toBe(true);
-    expect(ready).toBe(true);
-    await agent.shutdown();
-    expect(shutdown).toBe(true);
+      timestamp: new Date().toISOString(),
+      isBot: false,
+    };
+
+    await agent.processRequest(testBody);
+    expect(commandHandled).toBe(true);
   });
 });

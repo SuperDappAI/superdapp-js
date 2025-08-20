@@ -8,20 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-06-07
 
 ### Added
+
 - Initial release of SuperDapp JS SDK
 - Complete Bot API integration with all endpoints
 - SuperDappAgent class with real-time message listening
-- CLI tool with 5 core commands (init, configure, run, deploy, status)
-- Project templates (basic, news, trading agents)
+- CLI tool with 4 core commands (init, configure, run, status)
+- Project scaffolding with runtime support
 - TypeScript support with strict typing
 - Comprehensive documentation and examples
 - Testing framework with Jest
-- Deployment configurations for Cloudflare Workers, AWS Lambda, and Vercel
+- Deployment configurations for Cloudflare Workers and AWS Lambda
 - CI/CD pipeline with GitHub Actions
 
 ### Features
 
 #### Core SDK
+
 - **SuperDappClient**: Full Bot API wrapper
   - Authentication and credentials management
   - Message sending and receiving
@@ -32,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Social group management
 
 #### Agent Framework
+
 - **SuperDappAgent**: Main agent class
   - GraphQL subscription for real-time messages
   - Command routing system
@@ -40,32 +43,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Extensible architecture
 
 #### CLI Tool
-- **superagent init**: Initialize new agent projects
+
+- **superagent create**: Create new agent projects
 - **superagent configure**: Environment setup
 - **superagent run**: Local development server
-- **superagent deploy**: Multi-platform deployment
+- **superagent status**: Check agent status
 - **superagent status**: Agent monitoring
 
-#### Templates
-- **Basic Agent**: Simple command handling
-- **News Agent**: RSS feed integration
-- **Trading Agent**: Cryptocurrency price alerts
+#### Runtime Support
+
+- **Node.js**: Traditional HTTP server
+- **Cloudflare Workers**: Edge computing platform
+- **AWS Lambda**: Serverless functions
 
 #### Development Tools
+
 - TypeScript with strict mode
 - ESLint and Prettier configuration
 - Jest testing framework
 - Environment validation
 - Utility functions and helpers
 
-#### Deployment Support
+#### Platform Support
+
 - Cloudflare Workers configuration
 - AWS Lambda with SAM template
-- Vercel serverless functions
 - Docker support
 - Environment variable management
 
 ### Technical Specifications
+
 - Node.js 18+ support
 - TypeScript 5.x compatibility
 - Modern ES modules
@@ -78,6 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GraphQL subscriptions via AWS AppSync
 
 ### Documentation
+
 - Complete API reference
 - Usage examples
 - Deployment guides
@@ -86,6 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI command documentation
 
 ### Testing
+
 - Unit tests for core functionality
 - Integration tests for API calls
 - Environment validation tests

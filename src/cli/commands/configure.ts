@@ -4,11 +4,18 @@ import chalk from 'chalk';
 import ora from 'ora';
 import fs from 'fs/promises';
 import path from 'path';
+import {
+  detectRuntime,
+  getEnvFileContent,
+  getEnvExampleContent,
+} from '../../utils/runtimeDetector';
 
 export class ConfigureCommand extends Command {
   constructor() {
     super('configure');
-    this.description('Configure API keys and environment variables')
+    this.description(
+      'Configure API keys and environment variables for the detected runtime'
+    )
       .option('--api-token <token>', 'SuperDapp API token')
       .option('--api-url <url>', 'SuperDapp API base URL')
       .option('--interactive', 'Interactive configuration mode', true)
@@ -20,23 +27,37 @@ export class ConfigureCommand extends Command {
     apiUrl?: string;
     interactive?: boolean;
   }) {
-    const spinner = ora('Configuring environment...').start();
+    const spinner = ora('Detecting runtime environment...').start();
 
     try {
+      // Detect runtime environment
+      const runtimeInfo = await detectRuntime();
+
+      spinner.text = `Detected ${runtimeInfo.description}`;
+      spinner.succeed(
+        chalk.green(`Runtime detected: ${runtimeInfo.description}`)
+      );
+
       const config = await this.getConfiguration(options);
 
-      spinner.text = 'Writing configuration...';
+      spinner.text = `Writing configuration for ${runtimeInfo.type}...`;
 
-      // Write .env file
-      await this.writeEnvFile(config);
+      // Write environment file based on detected runtime
+      await this.writeEnvFile(config, runtimeInfo);
 
       spinner.succeed(chalk.green('Configuration saved successfully!'));
 
-      console.log(`\n${chalk.blue('Configuration:')}`);
+      console.log(`\n${chalk.blue('Configuration Summary:')}`);
+      console.log(`  Runtime: ${runtimeInfo.description}`);
+      console.log(`  Environment File: ${runtimeInfo.envFile}`);
       console.log(
         `  API Token: ${config.apiToken ? '***' + config.apiToken.slice(-4) : 'Not set'}`
       );
       console.log(`  API URL: ${config.apiUrl || 'Default'}`);
+
+      // Show runtime-specific instructions
+      this.showRuntimeInstructions(runtimeInfo);
+
       console.log(
         `\n${chalk.yellow('Note:')} Keep your API token secure and never commit it to version control.`
       );
@@ -87,28 +108,52 @@ export class ConfigureCommand extends Command {
     };
   }
 
-  private async writeEnvFile(config: { apiToken: string; apiUrl?: string }) {
-    const envPath = path.join(process.cwd(), '.env');
-
-    let envContent = `# SuperDapp Agent Configuration
-API_TOKEN=${config.apiToken}
-`;
-
-    if (config.apiUrl && config.apiUrl !== 'https://api.superdapp.ai') {
-      envContent += `API_BASE_URL=${config.apiUrl}\n`;
-    }
+  private async writeEnvFile(
+    config: { apiToken: string; apiUrl?: string },
+    runtimeInfo: { envFile: string; envFormat: 'dotenv' | 'json' | 'devvars' }
+  ) {
+    const envPath = path.join(process.cwd(), runtimeInfo.envFile);
+    const envContent = getEnvFileContent(config, runtimeInfo.envFormat);
 
     await fs.writeFile(envPath, envContent);
 
-    // Also create .env.example
-    const exampleContent = `# SuperDapp Agent Configuration
-API_TOKEN=your_api_token_here
-# API_BASE_URL=https://api.superdapp.ai
-`;
-
-    await fs.writeFile(
-      path.join(process.cwd(), '.env.example'),
-      exampleContent
+    // Create example file
+    const examplePath = path.join(
+      process.cwd(),
+      `${runtimeInfo.envFile}.example`
     );
+    const exampleContent = getEnvExampleContent(runtimeInfo.envFormat);
+    await fs.writeFile(examplePath, exampleContent);
+  }
+
+  private showRuntimeInstructions(runtimeInfo: {
+    type: string;
+    envFile: string;
+  }) {
+    console.log(`\n${chalk.blue('Runtime-specific Instructions:')}`);
+
+    switch (runtimeInfo.type) {
+      case 'cloudflare':
+        console.log(`  📝 Environment file created: ${runtimeInfo.envFile}`);
+        console.log(`  🔧 Next steps:`);
+        console.log(`    1. Set secrets: wrangler secret put API_TOKEN`);
+        console.log(`    2. Deploy: wrangler deploy`);
+        break;
+
+      case 'aws':
+        console.log(`  📝 Environment file created: ${runtimeInfo.envFile}`);
+        console.log(`  🔧 Next steps:`);
+        console.log(`    1. Update env.json with your API token`);
+        console.log(`    2. Deploy: npm run deploy:dev`);
+        break;
+
+      case 'node':
+      default:
+        console.log(`  📝 Environment file created: ${runtimeInfo.envFile}`);
+        console.log(`  🔧 Next steps:`);
+        console.log(`    1. Start development: npm run dev`);
+        console.log(`    2. Build for production: npm run build && npm start`);
+        break;
+    }
   }
 }

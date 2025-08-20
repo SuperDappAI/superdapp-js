@@ -6,18 +6,17 @@ This directory contains example implementations of SuperDapp agents with differe
 
 ### Basic Example (`basic/`)
 
-A simple agent with basic commands and image sending functionality.
+A simple agent with basic commands.
 
 **Features:**
 
 - Basic commands (`/start`, `/ping`, `/help`)
 - Interactive menu with buttons
-- Image sending to channels
 - Message handling
 
 ### Advanced Example (`advanced/`)
 
-A comprehensive agent with advanced features including scheduled tasks and image sending.
+A comprehensive agent with advanced features including scheduled tasks.
 
 **Features:**
 
@@ -27,75 +26,59 @@ A comprehensive agent with advanced features including scheduled tasks and image
 - Crypto price simulation
 - Portfolio management
 
-## Image Functionality
-
-Both examples include image sending functionality that allows you to send images to SuperDapp channels programmatically.
-
-### How It Works
-
-The image sending functionality:
-
-1. Reads a local image file from the provided path
-2. Creates a file stream from the image
-3. Sends the image to the specified channel using `agent.sendChannelImage()`
-4. Provides feedback to the user
-
-### Programmatic Usage
-
-Images are sent programmatically using the agent's `sendChannelImage` method:
-
-```typescript
-// Example: Send an image to a channel
-const imagePath = './path/to/your/image.png'; // Provide a valid image path
-const channelId = 'your_channel_id_here';
-await agent.sendChannelImage(channelId, imagePath, 'Optional caption');
-```
-
-### Error Handling
-
-The examples include proper error handling for:
-
-- Missing image files
-- File system errors
-
-### Customization
-
-You can easily customize the image functionality by:
-
-- Changing the image file path
-- Modifying the caption text
-- Adding different image formats support
-- Implementing dynamic image generation
-
 ## Running the Examples
 
-1. **Basic Example:**
+Each example directory is now self-contained with its own `package.json` and dependencies.
 
-   ```bash
-   cd examples/basic
-   npm install
-   npm start
-   ```
+### Basic Example:
 
-2. **Advanced Example:**
-   ```bash
-   cd examples/advanced
-   npm install
-   npm start
-   ```
+```bash
+cd examples/basic
+npm install
+npm run build  # Build the project first
+npm start      # Run the built version
+```
+
+### Advanced Example:
+
+```bash
+cd examples/advanced
+npm install
+npm run build  # Build the project first
+npm start      # Run the built version
+```
+
+### Development Mode:
+
+For development with auto-reload:
+
+```bash
+# Basic example
+cd examples/basic
+npm run dev
+
+# Advanced example
+cd examples/advanced
+npm run dev
+```
 
 ## Environment Variables
 
 Make sure to set up your environment variables in a `.env` file:
 
 ```
-WEBHOOK_SECRET=your_webhook_secret_here
-PORT=3000  # or 3001 for advanced example
+PORT=8787
+API_TOKEN=your_superdapp_api_token_here
+API_BASE_URL=https://api.superdapp.ai
 ```
+
+## Server Endpoints
+
+Both examples now run as Express servers with the following endpoints:
+
+- **Webhook**: `POST /webhook` - Receives SuperDapp webhook requests
+- **Health Check**: `GET /health` - Server health status
 
 ## Notes
 
-- Provide a valid path to an image file when using the image sending functionality.
 - Channel IDs should be valid SuperDapp channel identifiers.
-- The image sending functionality requires proper file system permissions.
-- Image sending is done programmatically using the agent's `sendChannelImage` method, not through commands.

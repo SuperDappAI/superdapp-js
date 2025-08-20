@@ -17,12 +17,6 @@ export interface BotInfo {
   isActive: boolean;
 }
 
-export interface BotCredentials {
-  user: UserInfo;
-  bot_info: BotInfo;
-  appsync_connection?: any;
-}
-
 export interface MessageBody {
   body: string;
   reply?: MessageReply;
@@ -39,10 +33,10 @@ export interface SendMessageOptions {
   isSilent?: boolean;
 }
 
-export interface PhotoMessageOptions {
-  file: Buffer | NodeJS.ReadableStream;
-  message?: MessageBody;
-  isSilent?: boolean;
+export interface MessageContent {
+  text?: string;
+  body?: string | { callback_query: string };
+  message?: string;
 }
 
 export interface Message {
@@ -50,7 +44,10 @@ export interface Message {
   senderId: string;
   memberId?: string;
   owner?: string;
-  body: any;
+  body: {
+    t: 'channel' | 'chat';
+    m: string | MessageContent;
+  };
   timestamp: string;
   isBot: boolean;
   channelId?: string;
@@ -59,7 +56,7 @@ export interface Message {
 export interface MessageData {
   body: {
     t: 'channel' | 'chat';
-    m: any;
+    m: string | MessageContent;
   };
   command?: string;
   rawMessage: Message;
@@ -88,7 +85,7 @@ export interface UpdatesResponse {
   connections_messages: Message[];
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T;
   message?: string;
   success?: boolean;
@@ -106,7 +103,7 @@ export type MessageType = 'channel' | 'chat';
 export interface CommandHandler {
   (params: {
     message: MessageData;
-    replyMessage: any;
+    replyMessage: unknown;
     roomId: string;
   }): Promise<void>;
 }
@@ -116,7 +113,7 @@ export interface AgentCommands {
 }
 
 export interface AgentMessages {
-  [command: string]: any;
+  [command: string]: unknown;
 }
 
 export interface MessageReaction {
@@ -138,7 +135,7 @@ export interface ChatMessageEvent {
   roomParticipantId?: string | null;
   memberId?: string | null;
   senderId?: string | null;
-  body: any;
+  body: MessageContent;
   type?: string | null;
   fileKey?: string | null;
   fileSize?: number | null;
@@ -189,4 +186,27 @@ export interface User {
   cognito_id: string | null;
   type: string | null;
   bot: UserBot | null;
+}
+
+// Environment-specific types
+export type Environment = 'nodejs' | 'cloudflare-workers' | 'unknown';
+
+export interface HttpsAgent {
+  rejectUnauthorized: boolean;
+}
+
+// Reply markup types
+export interface ReplyMarkupAction {
+  text: string;
+  callback_data: string;
+}
+
+export interface ReplyMarkup {
+  type?: 'buttons' | 'multiselect';
+  actions: ReplyMarkupAction[][];
+}
+
+export interface BotInfoResponse {
+  bot_info: BotInfo;
+  user: User;
 }

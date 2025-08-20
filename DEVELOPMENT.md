@@ -20,7 +20,7 @@ When you create a new project with the CLI and want to use the local version:
 
 ```bash
 # Create a new project
-superagent init my-test-project --yes
+superagent create my-test-project --yes
 
 # Navigate to the project
 cd my-test-project

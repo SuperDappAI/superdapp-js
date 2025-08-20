@@ -103,7 +103,7 @@ export function isValidUrl(str: string): boolean {
 /**
  * Deep merge two objects
  */
-export function deepMerge<T extends Record<string, any>>(
+export function deepMerge<T extends Record<string, unknown>>(
   target: T,
   source: Partial<T>
 ): T {
@@ -116,11 +116,12 @@ export function deepMerge<T extends Record<string, any>>(
       !Array.isArray(source[key])
     ) {
       result[key] = deepMerge(
-        result[key] || ({} as T[Extract<keyof T, string>]),
-        source[key] as any
-      );
+        (result[key] as Record<string, unknown>) ||
+          ({} as T[Extract<keyof T, string>]),
+        source[key] as Record<string, unknown>
+      ) as T[Extract<keyof T, string>];
     } else {
-      result[key] = source[key] as any;
+      result[key] = source[key] as T[Extract<keyof T, string>];
     }
   }
 

@@ -27,7 +27,7 @@ export class HistoryManager {
 
   cleanup(): void {
     const now = Date.now();
-    for (const [groupId, groupHistory] of this.history.entries()) {
+    for (const [, groupHistory] of this.history.entries()) {
       Object.entries(groupHistory).forEach(([itemId, ts]) => {
         if (new Date(ts).getTime() < now - this.TIMEOUT_MS) {
           delete groupHistory[itemId];

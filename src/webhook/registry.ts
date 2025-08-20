@@ -1,22 +1,22 @@
-import { WebhookHandler } from './server';
+import { RequestHandler } from './agent';
 
 export class CommandRegistry {
-  private commandHandlers: Record<string, WebhookHandler> = {};
-  private messageHandler?: WebhookHandler;
+  private commandHandlers: Record<string, RequestHandler> = {};
+  private messageHandler?: RequestHandler;
 
-  registerCommand(command: string, handler: WebhookHandler) {
+  registerCommand(command: string, handler: RequestHandler) {
     this.commandHandlers[command] = handler;
   }
 
-  registerMessageHandler(handler: WebhookHandler) {
+  registerMessageHandler(handler: RequestHandler) {
     this.messageHandler = handler;
   }
 
-  getHandler(command: string): WebhookHandler | undefined {
+  getHandler(command: string): RequestHandler | undefined {
     return this.commandHandlers[command];
   }
 
-  getMessageHandler(): WebhookHandler | undefined {
+  getMessageHandler(): RequestHandler | undefined {
     return this.messageHandler;
   }
 

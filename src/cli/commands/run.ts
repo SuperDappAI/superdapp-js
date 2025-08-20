@@ -4,22 +4,22 @@ import ora from 'ora';
 import { spawn } from 'child_process';
 import fs from 'fs/promises';
 import path from 'path';
+import { detectRuntime } from '../../utils/runtimeDetector';
+import { loadEnvConfigFromFile } from '../../utils/env';
 
 export class RunCommand extends Command {
   constructor() {
     super('run');
     this.description('Run the agent locally for testing')
-      .option('-w, --watch', 'Watch for file changes and restart')
       .option('-p, --port <port>', 'Port for development server', '8787')
-      .option('--env <file>', 'Environment file to use', '.env')
+      .option(
+        '--env <file>',
+        'Environment file to use (auto-detected by default)'
+      )
       .action(this.execute.bind(this));
   }
 
-  private async execute(options: {
-    watch?: boolean;
-    port?: string;
-    env?: string;
-  }) {
+  private async execute(options: { port?: string; env?: string }) {
     const spinner = ora('Starting agent...').start();
 
     try {
@@ -28,16 +28,49 @@ export class RunCommand extends Command {
       try {
         await fs.access(packagePath);
       } catch {
-        spinner.fail('No package.json found. Run "superagent init" first.');
+        spinner.fail('No package.json found. Run "superagent create" first.');
         return;
       }
 
-      // Check if .env file exists
-      const envPath = path.join(process.cwd(), options.env || '.env');
+      // Detect runtime and environment file
+      let runtimeInfo;
+      try {
+        runtimeInfo = await detectRuntime(process.cwd());
+      } catch (error) {
+        spinner.fail(
+          'Failed to detect runtime. Run "superagent create" first.'
+        );
+        return;
+      }
+
+      // Use custom env file if specified, otherwise use detected one
+      const envFileName = options.env || runtimeInfo.envFile;
+      const envPath = path.join(process.cwd(), envFileName);
+
+      // Check if environment file exists
       try {
         await fs.access(envPath);
       } catch {
-        spinner.fail('No .env file found. Run "superagent configure" first.');
+        spinner.fail(
+          `No ${envFileName} file found. Run "superagent configure" first.`
+        );
+        console.log(
+          chalk.gray(
+            `Expected environment file: ${envFileName} (${runtimeInfo.description})`
+          )
+        );
+        return;
+      }
+
+      // Validate environment configuration
+      try {
+        await loadEnvConfigFromFile(envPath, runtimeInfo.envFormat);
+      } catch (error) {
+        spinner.fail('Invalid environment configuration');
+        console.error(
+          chalk.red('Error:'),
+          error instanceof Error ? error.message : error
+        );
         return;
       }
 
@@ -61,10 +94,13 @@ export class RunCommand extends Command {
         // fallback: unknown
       }
 
-      spinner.text = `Starting ${agentType === 'webhook' ? 'Webhook' : agentType === 'appsync' ? 'AppSync' : 'Unknown'} agent...`;
+      spinner.text = `Starting ${agentType === 'webhook' ? 'Webhook' : agentType === 'appsync' ? 'AppSync' : 'Unknown'} agent (${runtimeInfo.type})...`;
       spinner.succeed(chalk.green('Agent started successfully!'));
 
       console.log(`\n${chalk.blue('Agent is running...')}`);
+      console.log(chalk.gray(`Runtime: ${runtimeInfo.description}`));
+      console.log(chalk.gray(`Environment file: ${envFileName}`));
+
       if (agentType === 'webhook') {
         console.log(
           chalk.gray(
@@ -78,8 +114,9 @@ export class RunCommand extends Command {
       }
       console.log(`${chalk.gray('Press Ctrl+C to stop')}\n`);
 
-      // Run the command
-      const child = spawn('npm', options.watch ? ['run', 'dev'] : ['start'], {
+      // Run the command based on runtime
+      const command = this.getRunCommand(runtimeInfo.type);
+      const child = spawn(command.cmd, command.args, {
         stdio: 'inherit',
         shell: true,
         env: {
@@ -108,6 +145,28 @@ export class RunCommand extends Command {
         error instanceof Error ? error.message : error
       );
       process.exit(1);
+    }
+  }
+
+  private getRunCommand(runtimeType: string): { cmd: string; args: string[] } {
+    switch (runtimeType) {
+      case 'cloudflare':
+        return {
+          cmd: 'npx',
+          args: ['wrangler', 'dev'],
+        };
+
+      case 'aws':
+        return {
+          cmd: 'npm',
+          args: ['run', 'dev'],
+        };
+
+      default: // node
+        return {
+          cmd: 'npm',
+          args: ['run', 'dev'],
+        };
     }
   }
 

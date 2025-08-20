@@ -2,10 +2,9 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { InitCommand } from './commands/init';
+import { CreateCommand } from './commands/create';
 import { ConfigureCommand } from './commands/configure';
 import { RunCommand } from './commands/run';
-import { DeployCommand } from './commands/deploy';
 import { StatusCommand } from './commands/status';
 
 const program = new Command();
@@ -16,10 +15,9 @@ program
   .version('1.0.0');
 
 // Add commands
-program.addCommand(new InitCommand());
+program.addCommand(new CreateCommand());
 program.addCommand(new ConfigureCommand());
 program.addCommand(new RunCommand());
-program.addCommand(new DeployCommand());
 program.addCommand(new StatusCommand());
 
 // Global error handler

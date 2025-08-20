@@ -1,31 +1,60 @@
 import { WebhookAgent } from '../webhook/agent';
-// @ts-ignore
-if (!globalThis.fetch) globalThis.fetch = require('node-fetch');
 
 describe('WebhookAgent command dispatch', () => {
   let agent: WebhookAgent;
-  const port = 5052;
-
-  afterAll(async () => {
-    if (agent) await agent.shutdown();
-  });
 
   it('should dispatch registered command', async () => {
-    agent = new WebhookAgent({ port });
+    agent = new WebhookAgent();
     let called = false;
-    agent.addCommand('/test', async (event, req, res) => {
+
+    agent.addCommand('/test', async (event) => {
       called = true;
-      res.writeHead(200);
-      res.end('ok');
+      expect(event.body).toBeDefined();
     });
-    await agent.start();
-    const res = await fetch(`http://localhost:${port}/webhook`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'chat', body: { m: { body: '/test' } } }),
-    });
-    const text = await res.text();
-    expect(text).toBe('ok');
+
+    const testBody = {
+      id: 'test-message-id',
+      senderId: 'test-sender-id',
+      body: {
+        t: 'chat' as const,
+        m: {
+          text: '/test',
+          body: '/test',
+        },
+      },
+      timestamp: new Date().toISOString(),
+      isBot: false,
+    };
+
+    await agent.processRequest(testBody);
     expect(called).toBe(true);
+  });
+
+  it('should handle callback queries', async () => {
+    agent = new WebhookAgent();
+    let callbackHandled = false;
+
+    agent.addCommand('callback_query', async (event) => {
+      callbackHandled = true;
+      expect(event.body).toBeDefined();
+    });
+
+    const testBody = {
+      id: 'test-message-id-2',
+      senderId: 'test-sender-id-2',
+      body: {
+        t: 'chat' as const,
+        m: {
+          body: {
+            callback_query: 'test:data',
+          },
+        },
+      },
+      timestamp: new Date().toISOString(),
+      isBot: false,
+    };
+
+    await agent.processRequest(testBody);
+    expect(callbackHandled).toBe(true);
   });
 });

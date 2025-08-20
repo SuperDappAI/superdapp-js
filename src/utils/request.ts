@@ -1,14 +1,21 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { BotConfig } from '../types';
 
 export default async function request(
   config: BotConfig,
   method: string,
   path: string,
-  body?: any
+  body?: Record<string, unknown>
 ) {
   const baseUrl = config.baseUrl;
   const apiToken = config.apiToken;
+
+  // Validate required config
+  if (!baseUrl || !apiToken) {
+    throw new Error(
+      'Missing required configuration: baseUrl and apiToken are required'
+    );
+  }
 
   const url = `${baseUrl}/${path}`;
   const headers = {
@@ -49,16 +56,19 @@ export default async function request(
     }
 
     return response.data;
-  } catch (error: any) {
-    console.error(`[REQUEST] Error making request: ${error.message}`);
-    if (error.response) {
-      console.error(`[REQUEST] Response status: ${error.response.status}`);
-      console.error(`[REQUEST] Response data:`, error.response.data);
-    } else if (error.request) {
-      console.error('[REQUEST] No response received:', error.request);
-    } else {
-      console.error('[REQUEST] Error setting up request:', error.message);
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      console.error(`[REQUEST] Error making request: ${error.message}`);
+      if (error.response) {
+        console.error(`[REQUEST] Response status: ${error.response.status}`);
+        console.error(`[REQUEST] Response data:`, error.response.data);
+      } else if (error.request) {
+        console.error('[REQUEST] No response received:', error.request);
+      } else {
+        console.error('[REQUEST] Error setting up request:', error);
+      }
     }
-    throw error;
+    console.error('[REQUEST] Error:', error);
+    throw error; // Re-throw the error
   }
 }

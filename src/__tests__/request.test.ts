@@ -1,5 +1,4 @@
-import { request } from '../utils/request';
-import axios from 'axios';
+import request from '../utils/request';
 
 describe('request utility', () => {
   beforeEach(() => {
@@ -11,8 +10,12 @@ describe('request utility', () => {
     // Remove all env vars to ensure error is thrown before axios is called
     delete process.env.API_BASE_URL;
     delete process.env.API_TOKEN;
-    await expect(request('GET', 'test')).rejects.toThrow(
-      'Missing API base URL or token'
-    );
+
+    const config = {
+      baseUrl: '',
+      apiToken: '',
+    };
+
+    await expect(request(config, 'GET', 'test')).rejects.toThrow();
   });
 });

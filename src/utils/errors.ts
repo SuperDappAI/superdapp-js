@@ -3,7 +3,7 @@ export class SuperDappError extends Error {
     message: string,
     public code: string,
     public statusCode: number = 500,
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = 'SuperDappError';
@@ -11,7 +11,7 @@ export class SuperDappError extends Error {
 }
 
 export class ValidationError extends SuperDappError {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message, 'VALIDATION_ERROR', 400, details);
     this.name = 'ValidationError';
   }
@@ -25,14 +25,14 @@ export class AuthenticationError extends SuperDappError {
 }
 
 export class APIError extends SuperDappError {
-  constructor(message: string, statusCode: number = 500, details?: any) {
+  constructor(message: string, statusCode: number = 500, details?: unknown) {
     super(message, 'API_ERROR', statusCode, details);
     this.name = 'APIError';
   }
 }
 
 export class FileProcessingError extends SuperDappError {
-  constructor(message: string, details?: any) {
+  constructor(message: string, details?: unknown) {
     super(message, 'FILE_PROCESSING_ERROR', 400, details);
     this.name = 'FileProcessingError';
   }

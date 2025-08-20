@@ -5,14 +5,11 @@ import {
 
 describe('PendingQuestionsManager', () => {
   it('should add, get, and remove pending questions', () => {
-    const mgr = new PendingQuestionsManager<{ foo: string }>();
-    const q: PendingQuestion<{ foo: string }> = {
+    const mgr = new PendingQuestionsManager();
+    const q: PendingQuestion = {
       userId: 'u1',
-      groupId: 'g1',
-      chatId: 'c1',
-      messageId: 'm1',
-      type: 'ANY_TYPE',
-      data: { foo: 'bar' },
+      questionType: 'ANY_TYPE',
+      groupNameOrId: 'g1',
       timestamp: Date.now(),
     };
     mgr.addPendingQuestion(q);
@@ -26,10 +23,8 @@ describe('PendingQuestionsManager', () => {
     const now = Date.now();
     const q: PendingQuestion = {
       userId: 'u2',
-      groupId: 'g2',
-      chatId: 'c2',
-      messageId: 'm2',
-      type: 'EXPIRE',
+      questionType: 'EXPIRE',
+      groupNameOrId: 'g2',
       timestamp: now - 10 * 60 * 1000, // 10 min ago
     };
     mgr.addPendingQuestion(q);
