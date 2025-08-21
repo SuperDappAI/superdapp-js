@@ -19,7 +19,7 @@ export class StatusCommand extends Command {
     try {
       // Create client configuration
       let config: BotConfig;
-      
+
       if (options.apiToken) {
         config = {
           apiToken: options.apiToken,

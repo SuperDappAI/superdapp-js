@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ValidationError } from './errors';
 import { SUPPORTED_IMAGE_TYPES, DEFAULT_CONFIG } from '../types/constants';
+import { Readable } from 'stream';
 
 // Bot configuration validation
 export const botConfigSchema = z.object({
@@ -25,7 +26,7 @@ export const messageOptionsSchema = z.object({
 
 // File upload validation
 export const fileUploadSchema = z.object({
-  file: z.instanceof(Buffer).or(z.any()), // Allow both Buffer and ReadableStream
+  file: z.instanceof(Buffer).or(z.instanceof(Readable)), // Allow both Buffer and ReadableStream
   message: z
     .object({
       body: z.string(),

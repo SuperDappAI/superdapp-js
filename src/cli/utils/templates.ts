@@ -505,8 +505,8 @@ Description: ${config.description}
 Parameters:
   Environment:
     Type: String
-    Default: staging
-    AllowedValues: [staging, production]
+    Default: production
+    AllowedValues: [development, production]
     Description: Deployment environment
 
   ApiToken:
@@ -523,7 +523,7 @@ Resources:
   myBotFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Sub "\${config.name}-\${Environment}"
+      FunctionName: !Sub "${config.name}-\${Environment}"
       CodeUri: ./dist/
       Handler: index.handler
       Runtime: nodejs18.x
@@ -630,6 +630,32 @@ You'll need to provide:
 - \`npm run dev\` - Start local API Gateway for testing
 - \`npm run deploy:dev\` - Deploy to development environment
 - \`npm run deploy:prod\` - Deploy to production environment
+
+### ⚠️ Important: Configure samconfig.toml Before Deployment
+
+**Before deploying your application, you MUST update the \`samconfig.toml\` file with your specific configuration:**
+
+1. **Update API Token**: Replace \`your_api_token\` with your actual SuperDapp API token
+2. **Update Stack Names**: Modify \`stack_name\` values to match your project naming convention
+3. **Update Region**: Change the \`region\` if you want to deploy to a different AWS region
+4. **Update Environment URLs**: Verify the \`ApiBaseUrl\` values are correct for your environment
+
+**Example configuration:**
+\`\`\`toml
+[development.deploy.parameters]
+stack_name = "my-awesome-bot-development"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=development ApiToken=sk_1234567890abcdef ApiBaseUrl=https://api.superdapp.dev"
+
+[production.deploy.parameters]
+stack_name = "my-awesome-bot-production"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=production ApiToken=sk_1234567890abcdef ApiBaseUrl=https://api.superdapp.ai"
+\`\`\`
+
+**Failure to update these values will result in deployment errors or the application using placeholder values.**
 
 `
       : '';

@@ -188,13 +188,11 @@ export class SuperDappAgent {
     // Parse the message body if it's a string
     let body = rawMessage.body;
 
-    console.log('body', body);
-
     if (typeof body === 'string') {
       try {
         body = JSON.parse(body);
       } catch (error) {
-        console.log('Error parsing message body:', error);
+        console.error('Error parsing message body as JSON:', { body, error });
       }
     }
 
@@ -204,7 +202,7 @@ export class SuperDappAgent {
         body.m = JSON.parse(decoded);
       } catch (error) {
         // If parsing fails, keep as string
-        console.log('Error parsing message body:', error);
+        console.error('Error parsing message body:', error);
       }
     }
 

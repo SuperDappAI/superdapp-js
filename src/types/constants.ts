@@ -1,5 +1,3 @@
-import { shouldDisableSSLVerification } from '../utils/env';
-
 export const MESSAGE_TYPE = {
   CHANNEL: 'channel' as const,
   CHAT: 'chat' as const,
@@ -12,13 +10,6 @@ export const DEFAULT_CONFIG = {
   MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
-  SSL: {
-    // SSL verification is disabled only in development environment
-    // Made lazy to avoid environment validation during module load
-    get REJECT_UNAUTHORIZED() {
-      return !shouldDisableSSLVerification();
-    },
-  },
 } as const;
 
 export const SUPPORTED_IMAGE_TYPES = [

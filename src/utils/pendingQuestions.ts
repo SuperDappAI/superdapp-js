@@ -7,6 +7,7 @@ export interface PendingQuestion {
   topics?: string[];
   availableChannels?: unknown[];
   timestamp: number;
+  [key: string]: unknown;
 }
 
 export class PendingQuestionsManager {
