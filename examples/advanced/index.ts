@@ -1,6 +1,16 @@
 import 'dotenv/config';
-import { SuperDappAgent, createBotConfig } from '../src';
-import { schedule } from 'node-schedule';
+import express from 'express';
+import cors from 'cors';
+import { SuperDappAgent, createBotConfig } from '../../src';
+import * as schedule from 'node-schedule';
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.text({ type: 'application/json' }));
 
 async function main() {
   try {
@@ -11,7 +21,7 @@ async function main() {
     const userSubscriptions = new Map<string, string[]>();
 
     // Add advanced commands
-    agent.addCommand('/start', async (message, replyMessage, roomId) => {
+    agent.addCommand('/start', async ({ roomId }) => {
       const welcomeText = `🚀 Welcome to the Advanced SuperDapp Agent!
 
 This agent demonstrates advanced features:
@@ -26,7 +36,7 @@ Type /help to see all available commands.`;
       await agent.sendConnectionMessage(roomId, welcomeText);
     });
 
-    agent.addCommand('/help', async (message, replyMessage, roomId) => {
+    agent.addCommand('/help', async ({ roomId }) => {
       const helpText = `🔧 Available commands:
 
 📱 Basic:
@@ -51,6 +61,8 @@ Type /help to see all available commands.`;
 /price <symbol> - Get current price
 /portfolio - Show portfolio summary
 
+
+
 ⚙️ Advanced:
 /debug - Debug information
 /logs - Show recent logs`;
@@ -58,8 +70,8 @@ Type /help to see all available commands.`;
       await agent.sendConnectionMessage(roomId, helpText);
     });
 
-    agent.addCommand('/subscribe', async (message, replyMessage, roomId) => {
-      const args = message.body.m?.body?.split(' ').slice(1) || [];
+    agent.addCommand('/subscribe', async ({ message, roomId }) => {
+      const args = message.data?.split(' ').slice(1) || [];
       const topic = args[0];
 
       if (!topic) {
@@ -83,7 +95,7 @@ Type /help to see all available commands.`;
       }
     });
 
-    agent.addCommand('/mysubs', async (message, replyMessage, roomId) => {
+    agent.addCommand('/mysubs', async ({ roomId }) => {
       const userSubs = userSubscriptions.get(roomId) || [];
       if (userSubs.length === 0) {
         await agent.sendConnectionMessage(
@@ -98,7 +110,7 @@ Type /help to see all available commands.`;
       }
     });
 
-    agent.addCommand('/menu', async (message, replyMessage, roomId) => {
+    agent.addCommand('/menu', async ({ roomId }) => {
       const menuText = `🎯 Interactive Menu:
 
 Choose an option:
@@ -113,8 +125,8 @@ Reply with the number of your choice.`;
       await agent.sendConnectionMessage(roomId, menuText);
     });
 
-    agent.addCommand('/price', async (message, replyMessage, roomId) => {
-      const args = message.body.m?.body?.split(' ').slice(1) || [];
+    agent.addCommand('/price', async ({ message, roomId }) => {
+      const args = message.data?.split(' ').slice(1) || [];
       const symbol = args[0] || 'BTC';
 
       // Mock price data (in a real app, integrate with an API)
@@ -146,7 +158,7 @@ Reply with the number of your choice.`;
       }
     });
 
-    agent.addCommand('/portfolio', async (message, replyMessage, roomId) => {
+    agent.addCommand('/portfolio', async ({ roomId }) => {
       const portfolioText = `📊 Portfolio Summary:
 
 💰 Total Value: $12,450.00
@@ -166,28 +178,17 @@ Holdings:
       await agent.sendConnectionMessage(roomId, portfolioText);
     });
 
-    agent.addCommand('/debug', async (message, replyMessage, roomId) => {
-      const botInfo = await agent.getBotInfo();
-      const debugText = `🔧 Debug Information:
-
-Bot ID: ${botInfo.data.bot_info?.id || 'N/A'}
-Bot Name: ${botInfo.data.bot_info?.name || 'N/A'}
-Status: ${botInfo.data.bot_info?.isActive ? '🟢 Active' : '🔴 Inactive'}
-User: ${botInfo.data.user?.email || 'N/A'}
-
-Room ID: ${roomId}
-Message ID: ${message.messageId}
-Sender: ${message.senderId}
-
-Uptime: ${process.uptime().toFixed(2)}s
-Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}MB`;
-
-      await agent.sendConnectionMessage(roomId, debugText);
+    agent.addCommand('/botinfo', async ({ roomId }) => {
+      const info = await agent.getClient().getBotInfo();
+      await agent.sendConnectionMessage(
+        roomId,
+        `Bot Info:\n${JSON.stringify(info.data, null, 2)}`
+      );
     });
 
     // Handle general messages with smart routing
-    agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
-      const text = message.body.m?.body?.toLowerCase() || '';
+    agent.addCommand('handleMessage', async ({ message, roomId }) => {
+      const text = message.data || '';
 
       // Handle menu selections
       if (/^[1-5]$/.test(text.trim())) {
@@ -226,7 +227,7 @@ Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}MB`;
       } else {
         await agent.sendConnectionMessage(
           roomId,
-          `🤖 I received: "${message.body.m?.body}"\n\nType /help for available commands.`
+          `🤖 I received: "${message.data}"\n\nType /help for available commands.`
         );
       }
     });
@@ -252,11 +253,41 @@ Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}MB`;
       }
     });
 
-    // Initialize and start
-    await agent.initialize();
-    console.log('🚀 Advanced agent is running with scheduled tasks...');
+    // Health check endpoint
+    app.get('/health', (req, res) => {
+      res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        service: 'advanced-agent',
+        runtime: 'node',
+      });
+    });
+
+    // Webhook endpoint
+    app.post('/webhook', async (req, res) => {
+      try {
+        const body =
+          typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        const response = await agent.processRequest(body);
+
+        res.status(200).json(response);
+      } catch (error) {
+        console.error('Error processing webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
+
+    // Start the server
+    app.listen(PORT, () => {
+      console.log(
+        `🚀 Advanced agent webhook server is running on port ${PORT}`
+      );
+      console.log(`📡 Webhook endpoint: http://localhost:${PORT}/webhook`);
+      console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+    });
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Fatal error:', error);
+    process.exit(1);
   }
 }
 

@@ -3,7 +3,8 @@ import path from 'path';
 
 interface ProjectConfig {
   name: string;
-  template: string;
+  template?: string;
+  runtime: string;
   description: string;
 }
 
@@ -35,83 +36,156 @@ export async function createProjectStructure(
   }
 }
 
-export function getTemplateFiles(config: ProjectConfig): TemplateFile[] {
-  const baseFiles = getBaseFiles(config);
+function getPackageJsonForRuntime(config: ProjectConfig): any {
+  const basePackage = {
+    name: config.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+    version: '1.0.0',
+    description: config.description,
+    main: 'dist/index.js',
+    dependencies: {
+      '@superdapp/agents': '^1.0.0',
+    },
+    devDependencies: {
+      '@types/node': '^20.12.12',
+      typescript: '^5.4.5',
+    },
+  };
 
-  switch (config.template) {
-    case 'news':
-      return [...baseFiles, ...getNewsAgentFiles(config)];
-    case 'trading':
-      return [...baseFiles, ...getTradingAgentFiles(config)];
-    case 'basic':
+  switch (config.runtime) {
+    case 'node':
+      return {
+        ...basePackage,
+        scripts: {
+          build: 'tsc',
+          start: 'node dist/index.js',
+          dev: 'tsx watch src/index.ts',
+          clean: 'rm -rf dist',
+        },
+        dependencies: {
+          ...basePackage.dependencies,
+          dotenv: '^16.4.5',
+          express: '^4.18.2',
+          cors: '^2.8.5',
+        },
+        devDependencies: {
+          ...basePackage.devDependencies,
+          tsx: '^4.10.5',
+          '@types/express': '^4.17.21',
+          '@types/cors': '^2.8.17',
+        },
+        engines: {
+          node: '>=18.0.0',
+        },
+      };
+
+    case 'cloudflare':
+      return {
+        ...basePackage,
+        scripts: {
+          build: 'tsc',
+          dev: 'wrangler dev',
+          deploy: 'wrangler deploy',
+          'deploy:staging': 'wrangler deploy --env staging',
+          'deploy:production': 'wrangler deploy --env production',
+          'cf-typegen': 'wrangler types',
+        },
+        devDependencies: {
+          ...basePackage.devDependencies,
+          wrangler: '^4.19.2',
+          '@cloudflare/workers-types': '^4.20240208.0',
+        },
+      };
+
+    case 'aws':
+      return {
+        ...basePackage,
+        scripts: {
+          bundle:
+            'esbuild src/index.ts --bundle --platform=node --target=node18 --outfile=dist/index.js',
+          build: 'npm run bundle && sam build',
+          dev: 'sam local start-api --docker-network host --env-vars env.json --port 8787',
+          'deploy:dev':
+            'npm run build && sam deploy --config-env development --resolve-s3',
+          'deploy:prod':
+            'npm run build && sam deploy --config-env production --resolve-s3',
+          'undeploy:dev':
+            'sam delete --stack-name my-bot-development --region us-east-2',
+          'undeploy:prod':
+            'sam delete --stack-name my-bot-production --region us-east-2',
+        },
+        devDependencies: {
+          ...basePackage.devDependencies,
+          esbuild: '^0.25.9',
+        },
+      };
+
     default:
-      return [...baseFiles, ...getBasicAgentFiles(config)];
+      return basePackage;
   }
 }
 
 function getBaseFiles(config: ProjectConfig): TemplateFile[] {
-  return [
+  // Generate package.json based on runtime
+  const packageJson = getPackageJsonForRuntime(config);
+
+  const baseFiles: TemplateFile[] = [
     {
       path: 'package.json',
-      content: JSON.stringify(
-        {
-          name: config.name,
-          version: '1.0.0',
-          description: config.description,
-          main: 'dist/index.js',
-          scripts: {
-            start: 'node dist/index.js',
-            dev: 'tsx watch src/index.ts',
-            build: 'npm run clean && tsc',
-            clean: 'rm -rf dist',
-          },
-          dependencies: {
-            '@superdapp/agents': '^1.0.0',
-            dotenv: '^16.4.5',
-          },
-          devDependencies: {
-            '@types/node': '^20.12.12',
-            tsx: '^4.10.5',
-            typescript: '^5.4.5',
-          },
-          engines: {
-            node: '>=18.0.0',
-          },
-        },
-        null,
-        2
-      ),
+      content: JSON.stringify(packageJson, null, 2),
     },
-    {
-      path: 'tsconfig.json',
-      content: JSON.stringify(
-        {
-          compilerOptions: {
-            target: 'ES2022',
-            module: 'CommonJS',
-            lib: ['ES2022'],
-            outDir: './dist',
-            rootDir: './src',
-            strict: true,
-            esModuleInterop: true,
-            skipLibCheck: true,
-            forceConsistentCasingInFileNames: true,
-            declaration: true,
-            sourceMap: true,
-            moduleResolution: 'node',
-          },
-          include: ['src/**/*'],
-          exclude: ['node_modules', 'dist'],
+  ];
+
+  // Include tsconfig.json for all runtimes
+  baseFiles.push({
+    path: 'tsconfig.json',
+    content: JSON.stringify(
+      {
+        compilerOptions: {
+          target: 'es2021',
+          lib: ['es2021'],
+          module: 'commonjs',
+          moduleResolution: 'node',
+          outDir: './dist',
+          rootDir: './src',
+          resolveJsonModule: true,
+          allowJs: true,
+          checkJs: false,
+          isolatedModules: true,
+          allowSyntheticDefaultImports: true,
+          forceConsistentCasingInFileNames: true,
+          strict: true,
+          skipLibCheck: true,
+          esModuleInterop: true,
         },
-        null,
-        2
-      ),
-    },
+        include: ['src/**/*'],
+        exclude: ['node_modules', 'dist'],
+      },
+      null,
+      2
+    ),
+  });
+
+  baseFiles.push(
     {
-      path: '.env.example',
-      content: `# SuperDapp Agent Configuration
+      path: {
+        aws: 'env.json',
+        node: '.env.example',
+        cloudflare: '.dev.vars',
+      }[config.runtime || 'node'] as string,
+      content:
+        config.runtime === 'aws'
+          ? `{
+  "myBotFunction": {
+    "API_TOKEN": "your_api_token_here",
+    "API_BASE_URL": "https://api.superdapp.ai",
+    "NODE_ENV": "production"
+  }
+}`
+          : `# SuperDapp Agent Configuration
 API_TOKEN=your_api_token_here
-# API_BASE_URL=https://api.superdapp.com
+API_BASE_URL=https://api.superdapp.ai
+NODE_ENV=development # or production
+PORT=8787
 `,
     },
     {
@@ -128,16 +202,48 @@ Thumbs.db
     {
       path: 'README.md',
       content: getReadmeContent(config),
-    },
-  ];
+    }
+  );
+
+  return baseFiles;
 }
 
-function getBasicAgentFiles(config: ProjectConfig): TemplateFile[] {
+export function getTemplateFiles(config: ProjectConfig): TemplateFile[] {
+  const baseFiles = getBaseFiles(config);
+  const runtimeFiles = getRuntimeFiles(config);
+
+  return [...baseFiles, ...runtimeFiles];
+}
+
+function getRuntimeFiles(config: ProjectConfig): TemplateFile[] {
+  switch (config.runtime) {
+    case 'cloudflare':
+      return getCloudflareFiles(config);
+    case 'aws':
+      return getAWSFiles(config);
+    case 'node':
+    default:
+      return getNodeFiles(config);
+  }
+}
+
+function getNodeFiles(config: ProjectConfig): TemplateFile[] {
   return [
     {
       path: 'src/index.ts',
-      content: `import 'dotenv/config';
+      content: `
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
 import { SuperDappAgent, createBotConfig } from '@superdapp/agents';
+
+const app = express();
+const PORT = process.env.PORT || 8787;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.text({ type: 'application/json' }));
 
 async function main() {
   try {
@@ -145,44 +251,43 @@ async function main() {
     const agent = new SuperDappAgent(createBotConfig());
 
     // Add basic commands
-    agent.addCommand('/start', async (message, replyMessage, roomId) => {
-      await agent.sendConnectionMessage(roomId, 'Hello! I\\'m your SuperDapp agent. Type /help to see available commands.');
+    agent.addCommand('/start', async ({ roomId }) => {
+      await agent.sendConnectionMessage(
+        roomId,
+        "👋 **Hello!** I'm your agent. Type \`/help\` to see available commands."
+      );
     });
 
-    agent.addCommand('/help', async (message, replyMessage, roomId) => {
-      const helpText = \`Available commands:
-/start - Start the bot
-/help - Show this help message
-/status - Show bot status
-/ping - Check if bot is responsive\`;
-      
-      await agent.sendConnectionMessage(roomId, helpText);
+    // Health check endpoint
+    app.get('/health', (req, res) => {
+      res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        service: '${config.name.toLowerCase()}-agent',
+        runtime: 'node'
+      });
     });
 
-    agent.addCommand('/status', async (message, replyMessage, roomId) => {
-      const botInfo = await agent.getBotInfo();
-      const statusText = \`Bot Status:
-Name: \${botInfo.data.bot_info?.name || 'Unknown'}
-Status: \${botInfo.data.bot_info?.isActive ? 'Active' : 'Inactive'}
-User: \${botInfo.data.user?.email || 'Unknown'}\`;
-      
-      await agent.sendConnectionMessage(roomId, statusText);
+    // Webhook endpoint
+    app.post('/webhook', async (req, res) => {
+      try {
+        const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        const response = await agent.processRequest(body);
+        
+        res.status(200).json(response);
+      } catch (error) {
+        console.error('Error processing webhook:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
     });
 
-    agent.addCommand('/ping', async (message, replyMessage, roomId) => {
-      await agent.sendConnectionMessage(roomId, 'Pong! 🏓');
+    // Start the server
+    app.listen(PORT, () => {
+      console.log(\`🚀 ${config.name} webhook server is running on port \${PORT}\`);
+      console.log(\`📡 Webhook endpoint: http://localhost:\${PORT}/webhook\`);
+      console.log(\`🏥 Health check: http://localhost:\${PORT}/health\`);
     });
 
-    // Handle general messages
-    agent.addCommand('handleMessage', async (message, replyMessage, roomId) => {
-      console.log('Received message:', message.body.m?.body);
-      // Add your custom message handling logic here
-    });
-
-    // Initialize and start listening
-    await agent.initialize();
-    console.log('${config.name} is running...');
-    
   } catch (error) {
     console.error('Fatal error:', error);
     process.exit(1);
@@ -195,204 +300,436 @@ main();
   ];
 }
 
-function getNewsAgentFiles(config: ProjectConfig): TemplateFile[] {
+function getCloudflareFiles(config: ProjectConfig): TemplateFile[] {
   return [
     {
+      path: 'tsconfig.json',
+      content: JSON.stringify(
+        {
+          compilerOptions: {
+            target: 'es2021',
+            lib: ['es2021'],
+            module: 'es2022',
+            moduleResolution: 'node',
+            resolveJsonModule: true,
+            allowJs: true,
+            checkJs: false,
+            noEmit: true,
+            isolatedModules: true,
+            allowSyntheticDefaultImports: true,
+            forceConsistentCasingInFileNames: true,
+            strict: true,
+            skipLibCheck: true,
+            types: ['./worker-configuration.d.ts'],
+          },
+          include: ['src/**/*'],
+          exclude: ['node_modules', 'dist'],
+        },
+        null,
+        2
+      ),
+    },
+    {
       path: 'src/index.ts',
-      content: `import 'dotenv/config';
-import { SuperDappAgent, createBotConfig } from '@superdapp/agents';
-import { NewsGenerator } from './newsGenerator';
+      content: `import { SuperDappAgent, createBotConfig } from '@superdapp/agents';
+import { DurableObject } from 'cloudflare:workers';
 
-async function main() {
-  try {
-    // Initialize the agent
-    const agent = new SuperDappAgent(createBotConfig());
-    const newsGenerator = new NewsGenerator();
+interface Env {
+  API_TOKEN: string;
+  API_BASE_URL: string;
+  AGENT: DurableObjectNamespace;
+}
 
-    // Add news-specific commands
-    agent.addCommand('/start', async (message, replyMessage, roomId) => {
-      await agent.sendConnectionMessage(roomId, 'Hello! I\\'m your AI News agent. Type /help to see available commands.');
+export class Agent extends DurableObject<Env> {
+  private agent: SuperDappAgent;
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+
+    // Initialize the agent for Cloudflare Workers
+    this.agent = new SuperDappAgent(createBotConfig());
+
+    this.setupCommands();
+  }
+
+  private setupCommands() {
+    // Add basic commands
+    this.agent.addCommand('/start', async ({ roomId }) => {
+      await this.agent.sendConnectionMessage(
+        roomId,
+        "👋 **Hello!** I'm your SuperDapp agent running on Cloudflare Workers. Type \`/help\` to see available commands."
+      );
     });
+  }
 
-    agent.addCommand('/help', async (message, replyMessage, roomId) => {
-      const helpText = \`Available commands:
-/start - Start the bot
-/help - Show this help message
-/news - Get latest news
-/topics - List available news topics
-/subscribe <topic> - Subscribe to news updates\`;
-      
-      await agent.sendConnectionMessage(roomId, helpText);
-    });
+  async fetch(request: Request): Promise<Response> {
+    try {
+      const url = new URL(request.url);
+      const path = url.pathname;
 
-    agent.addCommand('/news', async (message, replyMessage, roomId) => {
-      const news = await newsGenerator.getLatestNews();
-      await agent.sendConnectionMessage(roomId, news);
-    });
+      if (request.method === "POST" && path === "/webhook") {
+        const body = await request.text();
+        
+        // Handle the request through our agent
+        const response = await this.agent.processRequest(body);
 
-    agent.addCommand('/topics', async (message, replyMessage, roomId) => {
-      const topics = newsGenerator.getAvailableTopics();
-      await agent.sendConnectionMessage(roomId, \`Available topics: \${topics.join(', ')}\`);
-    });
+        return new Response(JSON.stringify(response), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
 
-    // Initialize and start listening
-    await agent.initialize();
-    console.log('${config.name} is running...');
-    
-  } catch (error) {
-    console.error('Fatal error:', error);
-    process.exit(1);
+      if (request.method === "GET" && path === "/health") {
+        return new Response(
+          JSON.stringify({
+            status: "healthy",
+            timestamp: new Date().toISOString(),
+            service: "${config.name.toLowerCase()}-agent",
+            runtime: "cloudflare-workers"
+          }),
+          {
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      return new Response("Not found", {
+        status: 404,
+      });
+    } catch (error) {
+      console.error("Error handling request:", error);
+      return new Response("Internal Server Error", {
+        status: 500,
+      });
+    }
   }
 }
 
-main();
+export default {
+  async fetch(request: Request, env: Env, ctx: any): Promise<Response> {
+    const id = env.AGENT.idFromName("${config.name.toLowerCase()}-agent");
+    const stub = env.AGENT.get(id);
+    return await stub.fetch(request);
+  },
+
+  async scheduled(event: any, env: Env) {
+    console.log('[SCHEDULER] Triggered at ' + new Date().toISOString());
+    console.log('[SCHEDULER] Cron expression: ' + event.cron);
+    
+    // Add your scheduled tasks here
+    console.log('[SCHEDULER] Job completed at ' + new Date().toISOString());
+  },
+} satisfies ExportedHandler<Env>;
 `,
     },
     {
-      path: 'src/newsGenerator.ts',
-      content: `export class NewsGenerator {
-  private topics = ['crypto', 'blockchain', 'defi', 'nft', 'tech'];
+      path: 'wrangler.toml',
+      content: `name = "${config.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}"
+main = "src/index.ts"
+compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2025-08-18"
 
-  async getLatestNews(): Promise<string> {
-    // Implement your news generation logic here
-    return 'Latest crypto news: Bitcoin reaches new highs as institutional adoption increases.';
-  }
+[env.production]
+name = "${config.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-production"
 
-  getAvailableTopics(): string[] {
-    return this.topics;
-  }
+[env.development]
+name = "${config.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}-development"
 
-  async generateNewsForTopic(topic: string): Promise<string> {
-    // Implement topic-specific news generation
-    return \`Latest news for \${topic}: [Generated content would go here]\`;
-  }
-}
+# Environment variables
+[vars]
+API_TOKEN = ""
+API_BASE_URL = ""
+
+# Durable Objects
+[[durable_objects.bindings]]
+name = "AGENT"
+class_name = "Agent"
+
+[[migrations]]
+new_sqlite_classes = ["Agent"]
+tag = "v1"
+
+# Triggers (optional - uncomment to enable scheduled tasks)
+# [triggers]
+# crons = ["0 */6 * * *"]  # Every 6 hours
 `,
     },
   ];
 }
 
-function getTradingAgentFiles(config: ProjectConfig): TemplateFile[] {
+function getAWSFiles(config: ProjectConfig): TemplateFile[] {
   return [
     {
       path: 'src/index.ts',
-      content: `import 'dotenv/config';
-import { SuperDappAgent, createBotConfig } from '@superdapp/agents';
-import { TradingAssistant } from './tradingAssistant';
+      content: `import { SuperDappAgent, createBotConfig } from '@superdapp/agents';
 
-async function main() {
+// Initialize the agent for AWS Lambda
+const agent = new SuperDappAgent(createBotConfig());
+
+// Add basic commands
+agent.addCommand('/start', async ({ roomId }) => {
+  await agent.sendConnectionMessage(
+    roomId,
+    "👋 **Hello!** I'm your SuperDapp agent running on AWS Lambda. Type \`/help\` to see available commands."
+  );
+});
+
+// Export the handler for AWS Lambda
+export const handler = async (event: any, context: any) => {
   try {
-    // Initialize the agent
-    const agent = new SuperDappAgent(createBotConfig());
-    const tradingAssistant = new TradingAssistant();
+    // Handle the request through our agent
+    const body = event.body || '';
+    const response = await agent.processRequest(body);
 
-    // Add trading-specific commands
-    agent.addCommand('/start', async (message, replyMessage, roomId) => {
-      await agent.sendConnectionMessage(roomId, 'Hello! I\\'m your AI Trading assistant. Type /help to see available commands.');
-    });
-
-    agent.addCommand('/help', async (message, replyMessage, roomId) => {
-      const helpText = \`Available commands:
-/start - Start the bot
-/help - Show this help message
-/price <symbol> - Get current price
-/portfolio - View portfolio summary
-/alerts - Manage price alerts\`;
-      
-      await agent.sendConnectionMessage(roomId, helpText);
-    });
-
-    agent.addCommand('/price', async (message, replyMessage, roomId) => {
-      const symbol = message.body.m?.body?.split(' ')[1] || 'BTC';
-      const price = await tradingAssistant.getPrice(symbol);
-      await agent.sendConnectionMessage(roomId, \`\${symbol.toUpperCase()}: $\${price}\`);
-    });
-
-    agent.addCommand('/portfolio', async (message, replyMessage, roomId) => {
-      const portfolio = await tradingAssistant.getPortfolioSummary();
-      await agent.sendConnectionMessage(roomId, portfolio);
-    });
-
-    // Initialize and start listening
-    await agent.initialize();
-    console.log('${config.name} is running...');
-    
-  } catch (error) {
-    console.error('Fatal error:', error);
-    process.exit(1);
-  }
-}
-
-main();
-`,
-    },
-    {
-      path: 'src/tradingAssistant.ts',
-      content: `export class TradingAssistant {
-  async getPrice(symbol: string): Promise<string> {
-    // Implement price fetching logic here
-    // This is a mock implementation
-    const mockPrices: { [key: string]: number } = {
-      BTC: 65000,
-      ETH: 3200,
-      ADA: 0.45,
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(response),
     };
-    
-    return (mockPrices[symbol.toUpperCase()] || 0).toLocaleString();
+  } catch (error) {
+    console.error('Lambda error:', error);
+    return {
+      statusCode: 500,
+      body: 'Internal Server Error',
+    };
   }
-
-  async getPortfolioSummary(): Promise<string> {
-    // Implement portfolio summary logic
-    return 'Portfolio Summary:\\nTotal Value: $10,000\\nBTC: 0.1 ($6,500)\\nETH: 1.0 ($3,200)\\nCash: $300';
-  }
-
-  async setPriceAlert(symbol: string, price: number): Promise<void> {
-    // Implement price alert logic
-    console.log(\`Price alert set for \${symbol} at $\${price}\`);
-  }
-}
+};
 `,
+    },
+    {
+      path: 'template.yaml',
+      content: `AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: ${config.description}
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [development, production]
+    Description: Deployment environment
+
+  ApiToken:
+    Type: String
+    NoEcho: true
+    Description: SuperDapp API Token
+
+  ApiBaseUrl:
+    Type: String
+    Default: https://api.superdapp.ai
+    Description: SuperDapp API Base URL
+
+Resources:
+  myBotFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${config.name}-\${Environment}"
+      CodeUri: ./dist/
+      Handler: index.handler
+      Runtime: nodejs18.x
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          NODE_ENV: !Ref Environment
+          API_TOKEN: !Ref ApiToken
+          API_BASE_URL: !Ref ApiBaseUrl
+      Events:
+        HttpApi:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://\${ServerlessHttpApi}.execute-api.\${AWS::Region}.amazonaws.com/"
+        `,
+    },
+    {
+      path: 'samconfig.toml',
+      content: `
+version = 0.1
+
+[development]
+[development.deploy]
+[development.deploy.parameters]
+stack_name = "my-bot-development"
+region = "us-east-2"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=development ApiToken=your_api_token ApiBaseUrl=https://api.superdapp.dev"
+
+[production]
+[production.deploy]
+[production.deploy.parameters]
+stack_name = "my-bot-production"
+region = "us-east-2"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=production ApiToken=your_api_token ApiBaseUrl=https://api.superdapp.ai"
+      `,
     },
   ];
 }
 
 function getReadmeContent(config: ProjectConfig): string {
+  const awsSection =
+    config.runtime === 'aws'
+      ? `
+
+## AWS SAM CLI Setup
+
+This project uses AWS SAM (Serverless Application Model) for deployment. Choose your platform and follow the instructions to install the AWS SAM CLI orcheck the [AWS SAM CLI documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) for more information.
+
+1. **macOS:**
+   \`\`\`bash
+   # Download the latest version for your architecture
+   curl -L https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-macos-x86_64.pkg -o sam-cli.pkg
+   sudo installer -pkg sam-cli.pkg -target /
+   
+   # For Apple Silicon Macs
+   curl -L https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-macos-arm64.pkg -o sam-cli.pkg
+   sudo installer -pkg sam-cli.pkg -target /
+   \`\`\`
+
+2. **Linux:**
+   \`\`\`bash
+   # Download and extract the latest version
+   curl -L https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip -o sam-cli.zip
+   unzip sam-cli.zip -d sam-installation
+   sudo ./sam-installation/install
+   \`\`\`
+
+3. **Windows:**
+   \`\`\`cmd
+   # Download the MSI installer
+   curl -L https://github.com/aws/aws-sam-cli/releases/latest/download/AWS_SAM_CLI_64_PY3.msi -o aws-sam-cli-windows-x86_64.msi
+   
+   # Install silently
+   msiexec /i aws-sam-cli-windows-x86_64.msi /quiet
+   \`\`\`
+   
+   Or download the MSI installer from the [AWS SAM CLI documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
+
+### AWS Configuration
+
+After installing SAM CLI, configure your AWS credentials:
+
+\`\`\`bash
+aws configure
+\`\`\`
+
+You'll need to provide:
+- AWS Access Key ID
+- AWS Secret Access Key
+- Default region (e.g., us-east-1)
+- Default output format (json)
+
+### AWS Commands
+
+- \`npm run dev\` - Start local API Gateway for testing
+- \`npm run deploy:dev\` - Deploy to development environment
+- \`npm run deploy:prod\` - Deploy to production environment
+
+### ⚠️ Important: Configure samconfig.toml Before Deployment
+
+**Before deploying your application, you MUST update the \`samconfig.toml\` file with your specific configuration:**
+
+1. **Update API Token**: Replace \`your_api_token\` with your actual SuperDapp API token
+2. **Update Stack Names**: Modify \`stack_name\` values to match your project naming convention
+3. **Update Region**: Change the \`region\` if you want to deploy to a different AWS region
+4. **Update Environment URLs**: Verify the \`ApiBaseUrl\` values are correct for your environment
+
+**Example configuration:**
+\`\`\`toml
+[development.deploy.parameters]
+stack_name = "my-awesome-bot-development"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=development ApiToken=sk_1234567890abcdef ApiBaseUrl=https://api.superdapp.dev"
+
+[production.deploy.parameters]
+stack_name = "my-awesome-bot-production"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=production ApiToken=sk_1234567890abcdef ApiBaseUrl=https://api.superdapp.ai"
+\`\`\`
+
+**Failure to update these values will result in deployment errors or the application using placeholder values.**
+
+`
+      : '';
+
   return `# ${config.name}
 
 ${config.description}
 
 ## Getting Started
 
+${awsSection}
+
 1. Install dependencies:
-   \`\`\`bash
-   npm install
-   \`\`\`
+  \`\`\`
+  npm install
+  \`\`\`
 
 2. Configure your environment:
-   \`\`\`bash
-   superagent configure
-   \`\`\`
+  \`\`\`
+  superagent configure
+  \`\`\`
+
+${
+  config.runtime === 'cloudflare'
+    ? `
+  npm run cf-typegen
+  `
+    : ''
+}
 
 3. Run the agent:
+${
+  config.runtime === 'aws'
+    ? `
+  npm run build
+  `
+    : `
    \`\`\`bash
    npm run dev
    \`\`\`
+  `
+}
 
 ## Configuration
 
+${
+  config.runtime === 'node'
+    ? `
 Copy \`.env.example\` to \`.env\` and fill in your configuration:
-
 \`\`\`
 API_TOKEN=your_superdapp_api_token
-API_BASE_URL=https://api.superdapp.com
-\`\`\`
+API_BASE_URL=https://api.superdapp.ai
+NODE_ENV=development # use development for local development, production for production
+\`\`\``
+    : ''
+}
 
 ## Commands
 
-- \`npm start\` - Run the compiled agent
+${config.runtime === 'node' ? '- \`npm start\` - Run the compiled agent' : ''}
 - \`npm run dev\` - Run the agent in development mode with hot reload
-- \`npm run build\` - Build the TypeScript code
-- \`npm run clean\` - Clean the build directory
+- \`npm run build\` - Build the TypeScript code${
+    config.runtime === 'cloudflare'
+      ? `
+- \`npm run cf-typegen\` - Generate Cloudflare Workers types`
+      : ''
+  }
+${
+  config.runtime === 'aws'
+    ? `
+- \`npm run deploy:dev\` - Deploy to development environment
+- \`npm run deploy:prod\` - Deploy to production environment`
+    : ''
+}
 
 ## Development
 
@@ -403,16 +740,27 @@ This agent is built using the SuperDapp Agents SDK. You can extend its functiona
 3. Implementing custom business logic
 4. Adding scheduled tasks
 
+
 ## Deployment
 
-Deploy your agent using the SuperDapp CLI:
+Deploy your agent using the platform-specific commands:
 
-\`\`\`bash
-superagent deploy
-\`\`\`
+${
+  config.runtime === 'aws'
+    ? `
+- \`npm run deploy:dev\` - Deploy to development environment
+- \`npm run deploy:prod\` - Deploy to production environment`
+    : ''
+}
 
-## Support
+${
+  config.runtime === 'cloudflare'
+    ? `
+- \`npm run deploy:cloudflare\` - Deploy to development environment
+- \`npm run deploy:cloudflare:prod\` - Deploy to production environment`
+    : ''
+}
 
-For more information, visit the [SuperDapp documentation](https://docs.superdapp.com).
+
 `;
 }

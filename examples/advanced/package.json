@@ -1,0 +1,40 @@
+{
+    "name": "superdapp-advanced-example",
+    "version": "1.0.0",
+    "description": "Advanced SuperDapp agent example with scheduled tasks",
+    "main": "index.ts",
+    "scripts": {
+        "start": "node dist/index.js",
+        "dev": "tsx watch index.ts",
+        "build": "tsc",
+        "test": "echo \"No tests specified\" && exit 0"
+    },
+    "keywords": [
+        "superdapp",
+        "ai",
+        "agents",
+        "example",
+        "advanced",
+        "scheduled"
+    ],
+    "author": "SuperDapp Team",
+    "license": "MIT",
+    "dependencies": {
+        "axios": "^1.7.0",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.5",
+        "express": "^4.21.2",
+        "node-schedule": "^2.1.1"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.8.17",
+        "@types/express": "^4.17.21",
+        "@types/node": "^20.12.12",
+        "@types/node-schedule": "^2.1.7",
+        "tsx": "^4.10.5",
+        "typescript": "^5.4.5"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

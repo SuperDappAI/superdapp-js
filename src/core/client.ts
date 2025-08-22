@@ -1,17 +1,23 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import FormData = require('form-data');
+import axios, { AxiosInstance } from 'axios';
 import {
-  BotConfig,
   ApiResponse,
-  BotCredentials,
-  ChannelMessage,
+  BotConfig,
+  ReplyMarkup,
   SendMessageOptions,
-  PhotoMessageOptions,
-  ReactionData,
-  WalletKeys,
-  UpdatesResponse,
+  BotInfoResponse,
 } from '../types';
-import { DEFAULT_CONFIG, API_ENDPOINTS } from '../types/constants';
+import { DEFAULT_CONFIG } from '../types/constants';
+import { createHttpsAgent, log } from '../utils/adapters';
+
+// Define constants for repeated endpoint resources
+const AGENT_BOTS_ENDPOINT = 'v1/agent-bots/';
+const AGENT_BOTS_CONNECTIONS_ENDPOINT = `${AGENT_BOTS_ENDPOINT}connections`;
+const AGENT_BOTS_CHANNELS_ENDPOINT = `${AGENT_BOTS_ENDPOINT}channels`;
+const SOCIAL_GROUPS_JOIN_ENDPOINT = `${AGENT_BOTS_ENDPOINT}social-groups/join`;
+const SOCIAL_GROUPS_LEAVE_ENDPOINT = `${AGENT_BOTS_ENDPOINT}social-groups/leave`;
+
+// SSL Agent for Node.js only
+const httpsAgent = createHttpsAgent();
 
 export class SuperDappClient {
   private axios: AxiosInstance;
@@ -24,11 +30,15 @@ export class SuperDappClient {
     };
 
     this.axios = axios.create({
-      baseURL: `${this.config.baseUrl}/bot-${this.config.apiToken}`,
+      baseURL: `${this.config.baseUrl}`,
       timeout: DEFAULT_CONFIG.REQUEST_TIMEOUT,
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.config.apiToken}`,
+        'User-Agent': 'SuperDapp-Agent/1.0',
       },
+      // Only set httpsAgent in Node.js environment
+      ...(httpsAgent && { httpsAgent }),
     });
 
     this.setupInterceptors();
@@ -38,13 +48,11 @@ export class SuperDappClient {
     // Request interceptor
     this.axios.interceptors.request.use(
       (config) => {
-        console.log(
-          `Making ${config.method?.toUpperCase()} request to: ${config.url}`
-        );
+        log(`Making ${config.method?.toUpperCase()} request to: ${config.url}`);
         return config;
       },
       (error) => {
-        console.error('Request error:', error);
+        log('Request error: ' + error, 'error');
         return Promise.reject(error);
       }
     );
@@ -55,41 +63,14 @@ export class SuperDappClient {
         return response;
       },
       (error) => {
-        console.error('Response error:', error.response?.data || error.message);
+        log(
+          'Response error: ' +
+            JSON.stringify(error.response?.data || error.message, null, 2),
+          'error'
+        );
         return Promise.reject(error);
       }
     );
-  }
-
-  /**
-   * Get bot information
-   */
-  async getMe(): Promise<ApiResponse<BotCredentials>> {
-    const response = await this.axios.get(API_ENDPOINTS.ME);
-    return response.data;
-  }
-
-  /**
-   * Get bot credentials for AppSync connection
-   */
-  async getCredentials(): Promise<ApiResponse<BotCredentials>> {
-    const response = await this.axios.get(API_ENDPOINTS.CREDENTIALS);
-    return response.data;
-  }
-
-  /**
-   * Get messages from a channel
-   */
-  async getChannelMessages(
-    channelId: string,
-    nextToken?: string
-  ): Promise<ApiResponse<ChannelMessage>> {
-    const params = nextToken ? { nextToken } : {};
-    const response = await this.axios.get(
-      `${API_ENDPOINTS.MESSAGES_CHANNEL}/${channelId}`,
-      { params }
-    );
-    return response.data;
   }
 
   /**
@@ -100,35 +81,8 @@ export class SuperDappClient {
     options: SendMessageOptions
   ): Promise<ApiResponse> {
     const response = await this.axios.post(
-      `${API_ENDPOINTS.MESSAGES_CHANNEL}/${channelId}`,
+      `${AGENT_BOTS_CHANNELS_ENDPOINT}/${encodeURIComponent(channelId)}/messages`,
       options
-    );
-    return response.data;
-  }
-
-  /**
-   * Send a photo message to a channel
-   */
-  async sendChannelPhoto(
-    channelId: string,
-    options: PhotoMessageOptions
-  ): Promise<ApiResponse> {
-    const formData = new FormData();
-    formData.append('file', options.file);
-    formData.append('message', JSON.stringify(options.message));
-
-    if (options.isSilent !== undefined) {
-      formData.append('isSilent', String(options.isSilent));
-    }
-
-    const response = await this.axios.post(
-      `${API_ENDPOINTS.MESSAGES_CHANNEL}/${channelId}/photo`,
-      formData,
-      {
-        headers: {
-          ...formData.getHeaders(),
-        },
-      }
     );
     return response.data;
   }
@@ -141,62 +95,55 @@ export class SuperDappClient {
     options: SendMessageOptions
   ): Promise<ApiResponse> {
     const response = await this.axios.post(
-      `${API_ENDPOINTS.MESSAGES_CONNECTION}/${roomId}`,
+      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${roomId}/messages`,
       options
     );
     return response.data;
   }
 
   /**
-   * Get message reactions
+   * Send a message with reply markup (buttons, multiselect, etc.)
    */
-  async getMessageReactions(
-    type: 'dm' | 'channel',
-    messageId: string
+  async sendMessageWithReplyMarkup(
+    roomId: string,
+    message: string,
+    replyMarkup: ReplyMarkup,
+    options?: { isSilent?: boolean }
   ): Promise<ApiResponse> {
-    const response = await this.axios.get(
-      `${API_ENDPOINTS.MESSAGES_REACTION}/${type}/${messageId}`
-    );
-    return response.data;
-  }
+    const messageBody = {
+      body: message,
+      reply_markup: replyMarkup,
+    };
 
-  /**
-   * Add or remove a reaction to a message
-   */
-  async sendMessageReaction(
-    type: 'dm' | 'channel',
-    messageId: string,
-    reaction: ReactionData
-  ): Promise<ApiResponse> {
     const response = await this.axios.post(
-      `${API_ENDPOINTS.MESSAGES_REACTION}/${type}/${messageId}`,
-      reaction
+      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${roomId}/messages`,
+      {
+        message: messageBody,
+        isSilent: options?.isSilent || false,
+      }
     );
     return response.data;
   }
 
   /**
-   * Get recent updates
+   * Send a message with button actions
    */
-  async getUpdates(
-    limitChannelMessages = 10,
-    limitConnectionMessages = 10
-  ): Promise<ApiResponse<UpdatesResponse>> {
-    const response = await this.axios.get(API_ENDPOINTS.UPDATES, {
-      params: {
-        limit_channels_messages: limitChannelMessages,
-        limit_connections_messages: limitConnectionMessages,
-      },
-    });
-    return response.data;
-  }
-
-  /**
-   * Get wallet keys
-   */
-  async getWalletKeys(): Promise<ApiResponse<WalletKeys>> {
-    const response = await this.axios.get(API_ENDPOINTS.WALLET_KEYS);
-    return response.data;
+  async sendMessageWithButtons(
+    roomId: string,
+    message: string,
+    buttons: Array<{ text: string; callback_data: string }>,
+    options?: { isSilent?: boolean }
+  ): Promise<ApiResponse> {
+    const replyMarkup: ReplyMarkup = {
+      type: 'buttons',
+      actions: buttons.map((button) => [button]),
+    };
+    return this.sendMessageWithReplyMarkup(
+      roomId,
+      message,
+      replyMarkup,
+      options
+    );
   }
 
   /**
@@ -206,7 +153,7 @@ export class SuperDappClient {
     channelNameOrId: string,
     messageId?: string
   ): Promise<ApiResponse> {
-    const response = await this.axios.post(API_ENDPOINTS.SOCIAL_GROUPS_JOIN, {
+    const response = await this.axios.post(SOCIAL_GROUPS_JOIN_ENDPOINT, {
       channelNameOrId,
       messageId,
     });
@@ -220,28 +167,41 @@ export class SuperDappClient {
     channelNameOrId: string,
     messageId?: string
   ): Promise<ApiResponse> {
-    const response = await this.axios.post(API_ENDPOINTS.SOCIAL_GROUPS_LEAVE, {
+    const response = await this.axios.post(SOCIAL_GROUPS_LEAVE_ENDPOINT, {
       channelNameOrId,
       messageId,
     });
     return response.data;
   }
 
-  /**
-   * Make a custom API request
-   */
-  async request<T = any>(
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
-    endpoint: string,
-    data?: any,
-    config?: AxiosRequestConfig
-  ): Promise<ApiResponse<T>> {
-    const response = await this.axios.request({
-      method,
-      url: endpoint,
-      data,
-      ...config,
-    });
+  /** Get user channels list */
+  async getChannels(userId: string): Promise<ApiResponse> {
+    const response = await this.axios.get(
+      `${AGENT_BOTS_ENDPOINT}channels?userId=${userId}`
+    );
     return response.data;
+  }
+
+  /**
+   * Get bot channels list
+   */
+  async getBotChannels(): Promise<ApiResponse> {
+    const response = await this.axios.get(`${AGENT_BOTS_ENDPOINT}my-channels`);
+    return response.data;
+  }
+
+  /**
+   * Get info about the authenticated bot
+   */
+  async getBotInfo(): Promise<ApiResponse<BotInfoResponse>> {
+    const response = await this.axios.get(`${AGENT_BOTS_ENDPOINT}bot-info`);
+    return response.data;
+  }
+
+  /**
+   * Alias for getBotInfo (compatibilidade)
+   */
+  async getMe(): Promise<ApiResponse<BotInfoResponse>> {
+    return this.getBotInfo();
   }
 }

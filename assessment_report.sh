@@ -43,7 +43,7 @@ echo "🔧 CLI Functionality:"
 if node dist/cli/index.js --help > /tmp/cli_help.log 2>&1; then
     echo "✅ CLI working"
     echo "   Available commands:"
-    grep -E "^\s+(init|configure|run|deploy|status)" /tmp/cli_help.log | sed 's/^/   - /'
+    grep -E "^\s+(init|configure|run|status)" /tmp/cli_help.log | sed 's/^/   - /'
 else
     echo "❌ CLI not working"
 fi
@@ -68,11 +68,11 @@ echo "   - CONTRIBUTING.md: $([ -f CONTRIBUTING.md ] && echo "EXISTS" || echo "M
 echo "   - CHANGELOG.md: $([ -f CHANGELOG.md ] && echo "EXISTS" || echo "MISSING")"
 echo ""
 
-echo "🏭 Deployment Configuration:"
+echo "🏭 Platform Configuration:"
 echo "   - GitHub Actions: $([ -d .github/workflows ] && echo "EXISTS" || echo "MISSING")"
 if [ -d deploy ]; then
-    echo "   - Deployment configs:"
-    find deploy -name "*.toml" -o -name "*.yaml" -o -name "*.json" | sed 's/^/     - /'
+echo "   - Platform configs:"
+find deploy -name "*.toml" -o -name "*.yaml" -o -name "*.json" | sed 's/^/     - /'
 fi
 echo ""
 

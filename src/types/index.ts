@@ -17,12 +17,6 @@ export interface BotInfo {
   isActive: boolean;
 }
 
-export interface BotCredentials {
-  user: UserInfo;
-  bot_info: BotInfo;
-  appsync_connection?: any;
-}
-
 export interface MessageBody {
   body: string;
   reply?: MessageReply;
@@ -39,28 +33,35 @@ export interface SendMessageOptions {
   isSilent?: boolean;
 }
 
-export interface PhotoMessageOptions {
-  file: Buffer | NodeJS.ReadableStream;
-  message: MessageBody;
-  isSilent?: boolean;
+export interface MessageContent {
+  text?: string;
+  body?: string | { callback_query: string };
+  message?: string;
 }
 
 export interface Message {
-  messageId: string;
+  id: string;
   senderId: string;
   memberId?: string;
   owner?: string;
-  body: any;
+  body: {
+    t: 'channel' | 'chat';
+    m: string | MessageContent;
+  };
   timestamp: string;
   isBot: boolean;
   channelId?: string;
 }
 
-export interface MessageData extends Message {
+export interface MessageData {
   body: {
     t: 'channel' | 'chat';
-    m: any;
+    m: string | MessageContent;
   };
+  command?: string;
+  rawMessage: Message;
+  callback_command?: string;
+  data?: string;
 }
 
 export interface ChannelMessage {
@@ -84,7 +85,7 @@ export interface UpdatesResponse {
   connections_messages: Message[];
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T;
   message?: string;
   success?: boolean;
@@ -100,7 +101,11 @@ export interface GraphQLResponse {
 export type MessageType = 'channel' | 'chat';
 
 export interface CommandHandler {
-  (message: MessageData, replyMessage: any, roomId: string): Promise<void>;
+  (params: {
+    message: MessageData;
+    replyMessage: unknown;
+    roomId: string;
+  }): Promise<void>;
 }
 
 export interface AgentCommands {
@@ -108,5 +113,100 @@ export interface AgentCommands {
 }
 
 export interface AgentMessages {
-  [command: string]: any;
+  [command: string]: unknown;
+}
+
+export interface MessageReaction {
+  id: string;
+  reactions?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface ChatMessageEvent {
+  id: string;
+  owner?: string | null;
+  isDeleted?: boolean | null;
+  messageReaction?: MessageReaction | null;
+  messageId?: string | null;
+  userId?: string | null;
+  roomId?: string | null;
+  chatId?: string | null;
+  roomParticipantId?: string | null;
+  memberId?: string | null;
+  senderId?: string | null;
+  body: MessageContent;
+  type?: string | null;
+  fileKey?: string | null;
+  fileSize?: number | null;
+  fileMime?: string | null;
+  reactions?: string | null;
+  deliveredAt?: string | null;
+  readAt?: string | null;
+  isUploaded?: number | null;
+  isSilent?: boolean | null;
+  isSender?: boolean | null;
+  isReceiver?: boolean | null;
+  isChannel?: boolean | null;
+  isBot?: boolean | null;
+  deletedAt?: string | null;
+  expiresAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export enum FileType {
+  IMAGE = 'image',
+  VIDEO = 'video',
+  AUDIO = 'audio',
+  DOCUMENT = 'document',
+  LINK = 'link',
+  FILE = 'file',
+  OTHER = 'other',
+}
+
+export interface UserBot {
+  id: string;
+  user_id: string;
+  owner_id: string;
+  username: string;
+  profile_picture: string | null;
+  enabled: number;
+  is_private: number;
+  api_token: string;
+  webhook_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface User {
+  id: string | null;
+  username: string | null;
+  email: string | null;
+  cognito_id: string | null;
+  type: string | null;
+  bot: UserBot | null;
+}
+
+// Environment-specific types
+export type Environment = 'nodejs' | 'cloudflare-workers' | 'unknown';
+
+export interface HttpsAgent {
+  rejectUnauthorized: boolean;
+}
+
+// Reply markup types
+export interface ReplyMarkupAction {
+  text: string;
+  callback_data: string;
+}
+
+export interface ReplyMarkup {
+  type?: 'buttons' | 'multiselect';
+  actions: ReplyMarkupAction[][];
+}
+
+export interface BotInfoResponse {
+  bot_info: BotInfo;
+  user: User;
 }

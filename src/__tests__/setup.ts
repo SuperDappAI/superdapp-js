@@ -1,20 +1,20 @@
-import 'dotenv/config';
-
-// Mock console.log to reduce noise in tests
-global.console = {
-  ...console,
-  log: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: console.error, // Keep error for debugging
-};
-
-// Mock environment variables for tests
+// Setup test environment
 process.env.API_TOKEN = 'test-token';
 process.env.API_BASE_URL = 'https://api.test.com';
 
 // Setup global test timeout
 jest.setTimeout(10000);
+
+// Global test utilities
+global.console = {
+  ...console,
+  // Suppress console.log during tests unless explicitly needed
+  log: jest.fn(),
+  debug: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+};
 
 // Basic setup test
 describe('Test Setup', () => {
