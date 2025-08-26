@@ -166,6 +166,19 @@ export class SuperDappAgent {
             replyMessage: null,
             roomId,
           });
+        } else {
+          // Fallback: if no specific command matched, call a generic handler when provided
+          const genericHandler =
+            this.commands['/message'] ||
+            this.commands['message'] ||
+            this.commands['handleMessage'];
+          if (genericHandler) {
+            await genericHandler({
+              message,
+              replyMessage: null,
+              roomId,
+            });
+          }
         }
       }
     } catch (error) {

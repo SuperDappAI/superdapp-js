@@ -28,7 +28,7 @@ A comprehensive agent with advanced features including scheduled tasks.
 
 ## Running the Examples
 
-Each example directory is now self-contained with its own `package.json` and dependencies.
+Each example directory is self-contained with its own `package.json` and dependencies.
 
 ### Basic Example:
 

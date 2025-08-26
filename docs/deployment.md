@@ -27,5 +27,4 @@ Each generated project includes:
 
 - [Quick Start Guide](./quick-start.md) - Basic setup and usage
 - [CLI Guide](./cli-guide.md) - Command-line interface documentation
-- [API Reference](./api-reference.md) - Complete SDK documentation and advanced patterns
 - [API Reference](./api-reference.md) - Complete SDK documentation
