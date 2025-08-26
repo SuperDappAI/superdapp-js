@@ -64,8 +64,8 @@ async function main() {
     // containing the button's callback_data. This handler processes those clicks
     // and responds accordingly (e.g., "YES" or "NO" from the feedback buttons)
     agent.addCommand('callback_query', async ({ message, roomId }) => {
-      const action = message.callback_command || '';
-      const actionValue = message.data || '';
+      const action = message?.callback_command || '';
+      const actionValue = message?.data || '';
       console.log('Callback query received:', { action, actionValue });
 
       switch (action) {
