@@ -7,24 +7,13 @@ Complete reference documentation for the SuperDapp Agents SDK.
 ### Main Classes
 
 ```typescript
-import {
-  SuperDappAgent,
-  SuperDappClient,
-  createBotConfig,
-  WebhookAgent,
-} from '@superdapp/agents';
+import { SuperDappAgent, SuperDappClient, WebhookAgent } from '@superdapp/agents';
 ```
 
 ### Type Exports
 
 ```typescript
-import type {
-  BotConfig,
-  MessageData,
-  CommandHandler,
-  ApiResponse,
-  WebhookOptions,
-} from '@superdapp/agents';
+import type { BotConfig, MessageData, CommandHandler, ApiResponse } from '@superdapp/agents';
 ```
 
 ### Utility Exports
@@ -40,7 +29,7 @@ The main class for creating and managing AI agents.
 ### Constructor
 
 ```typescript
-new SuperDappAgent(config: BotConfig, options?: WebhookOptions)
+new SuperDappAgent(config: BotConfig)
 ```
 
 #### Parameters
@@ -54,8 +43,6 @@ new SuperDappAgent(config: BotConfig, options?: WebhookOptions)
 interface BotConfig {
   apiToken: string;
   baseUrl?: string;
-  timeout?: number;
-  retries?: number;
 }
 ```
 
@@ -98,7 +85,7 @@ Send a message to a channel.
 await agent.sendChannelMessage('channel123', 'Channel announcement!');
 ```
 
-#### `sendReplyMarkupMessage(type: string, roomId: string, text: string, actions: any[]): Promise<void>`
+#### `sendReplyMarkupMessage(type: 'buttons' | 'multiselect', roomId: string, text: string, actions: ReplyMarkupAction[][]): Promise<void>`
 
 Send a message with interactive markup.
 
@@ -119,7 +106,7 @@ Get the underlying API client.
 
 ```typescript
 const client = agent.getClient();
-const wallet = await client.getWalletKeys();
+const info = await client.getBotInfo();
 ```
 
 #### `getCommands(): string[]`
@@ -164,12 +151,7 @@ await client.joinChannel(channelId: string): Promise<ApiResponse>
 await client.leaveChannel(channelId: string): Promise<ApiResponse>
 ```
 
-#### Custom Requests
-
-```typescript
-// Make custom API request
-await client.request(method: string, endpoint: string, data?: any): Promise<any>
-```
+<!-- Custom request helper is not exposed in the current SDK surface. Use the typed client methods above. -->
 
 ## 🕸️ WebhookAgent
 

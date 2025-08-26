@@ -10,7 +10,6 @@ The SuperDapp Agents SDK includes a powerful command-line interface (CLI) tool c
 | `configure` | Configure API keys and environment | `superagent configure`          |
 | `run`       | Run the agent locally for testing  | `superagent run [options]`      |
 | `status`    | Check agent status and health      | `superagent status`             |
-| `create`    | Create new agent instances         | `superagent create [options]`   |
 
 ## 📁 Project Initialization
 

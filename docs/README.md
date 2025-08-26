@@ -11,8 +11,7 @@ Welcome to the comprehensive documentation for the SuperDapp Agents SDK. This do
 
 ### 🛠️ Development
 
-- **[API Reference](./api-reference.md)** - Complete SDK documentation and advanced patterns
-- **[API Reference](./api-reference.md)** - Complete SDK reference with all classes, methods, and types
+- **[API Reference](./api-reference.md)** - Complete SDK reference with classes, methods, and types
 
 ### 🚀 Deployment
 
@@ -25,7 +24,6 @@ Welcome to the comprehensive documentation for the SuperDapp Agents SDK. This do
 | **First Steps**       | Create your first agent         | [Quick Start](./quick-start.md)     |
 | **CLI Commands**      | Manage agents from command line | [CLI Guide](./cli-guide.md)         |
 | **Advanced Features** | Complex patterns and scenarios  | [API Reference](./api-reference.md) |
-| **API Reference**     | Complete SDK documentation      | [API Reference](./api-reference.md) |
 | **Deployment**        | Production deployment options   | [Deployment Guide](./deployment.md) |
 
 ## 🏗️ Architecture Overview
@@ -79,9 +77,9 @@ npm install @superdapp/agents
 ### Basic Agent
 
 ```typescript
-import { SuperDappAgent, createBotConfig } from '@superdapp/agents';
+import { SuperDappAgent } from '@superdapp/agents';
 
-const agent = new SuperDappAgent(createBotConfig());
+const agent = new SuperDappAgent({ apiToken: process.env.API_TOKEN!, baseUrl: process.env.API_BASE_URL });
 
 agent.addCommand('/start', async ({ roomId }) => {
   await agent.sendConnectionMessage(roomId, 'Hello!');

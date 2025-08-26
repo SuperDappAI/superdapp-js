@@ -21,6 +21,8 @@ A simple SuperDapp agent with basic commands and interactive features.
 
    ```env
    PORT=3000
+   API_TOKEN=your_superdapp_api_token_here
+   API_BASE_URL=https://api.superdapp.ai
    ```
 
 3. Run the example:

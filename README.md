@@ -71,7 +71,7 @@ The `superagent run` command automatically detects your runtime and supports mul
 - **AWS Lambda**: `env.json` files
 - **Cloudflare Workers**: `.dev.vars` files
 
-See [Environment Formats Guide](./examples/environment-formats.md) for detailed examples.
+The CLI auto-detects formats; see docs/CLI Guide for details.
 
 ---
 
@@ -112,7 +112,6 @@ pnpm add @superdapp/agents
 For local development and testing, see [DEVELOPMENT.md](./DEVELOPMENT.md) for instructions on setting up the development environment using `npm link`.
 
 For advanced development patterns and best practices, see our **[API Reference](./docs/api-reference.md)**.
-pnpm add @superdapp/agents
 
 ### Global CLI Installation
 
@@ -126,7 +125,6 @@ For comprehensive documentation, visit our **[Documentation Hub](./docs/README.m
 
 - **[Quick Start Guide](./docs/quick-start.md)** - Get up and running in minutes
 - **[CLI Guide](./docs/cli-guide.md)** - Complete command-line interface documentation
-- **[API Reference](./docs/api-reference.md)** - Complete SDK documentation and advanced patterns
 - **[API Reference](./docs/api-reference.md)** - Complete SDK reference
 - **[Deployment Guide](./docs/deployment.md)** - Deploy to production
 

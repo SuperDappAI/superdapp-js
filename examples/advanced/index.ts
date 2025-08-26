@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { SuperDappAgent, createBotConfig } from '../../src';
+import { SuperDappAgent } from '../../src';
 import * as schedule from 'node-schedule';
 
 const app = express();
@@ -15,7 +15,11 @@ app.use(express.text({ type: 'application/json' }));
 async function main() {
   try {
     // Initialize the agent
-    const agent = new SuperDappAgent(createBotConfig());
+    const agent = new SuperDappAgent({
+      apiToken: process.env.API_TOKEN as string,
+      baseUrl:
+        (process.env.API_BASE_URL as string) || 'https://api.superdapp.ai',
+    });
 
     // Store user subscriptions (in a real app, use a database)
     const userSubscriptions = new Map<string, string[]>();

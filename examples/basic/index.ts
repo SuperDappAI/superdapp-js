@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { SuperDappAgent, createBotConfig } from '../../src';
+import { SuperDappAgent } from '../../src';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,7 +14,11 @@ app.use(express.text({ type: 'application/json' }));
 async function main() {
   try {
     // Initialize the agent
-    const agent = new SuperDappAgent(createBotConfig());
+    const agent = new SuperDappAgent({
+      apiToken: process.env.API_TOKEN as string,
+      baseUrl:
+        (process.env.API_BASE_URL as string) || 'https://api.superdapp.ai',
+    });
 
     // Add basic commands
     agent.addCommand('/start', async ({ roomId }) => {
@@ -60,20 +64,9 @@ async function main() {
     // containing the button's callback_data. This handler processes those clicks
     // and responds accordingly (e.g., "YES" or "NO" from the feedback buttons)
     agent.addCommand('callback_query', async ({ message, roomId }) => {
-      const callbackData = message.data;
-      console.log('Callback query received:', callbackData);
-
-      // Check if callback data exists
-      if (!callbackData) {
-        await agent.sendConnectionMessage(
-          roomId,
-          '❌ **Error:** No callback data received.'
-        );
-        return;
-      }
-
-      // Parse callback data to determine action type
-      const [action, actionValue] = callbackData.split(':');
+      const action = message?.callback_command || '';
+      const actionValue = message?.data || '';
+      console.log('Callback query received:', { action, actionValue });
 
       switch (action) {
         case 'YES':
@@ -93,7 +86,7 @@ async function main() {
         default:
           await agent.sendConnectionMessage(
             roomId,
-            `❓ **Unknown option:** ${callbackData}`
+            `❓ **Unknown option:** ${action}${actionValue ? ':' + actionValue : ''}`
           );
       }
     });
