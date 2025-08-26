@@ -9,6 +9,9 @@ When developing the SuperDapp Agents SDK locally, you need to link the package s
 From the root of the superdapp-js project:
 
 ```bash
+# Build the project
+npm run build
+
 npm link
 ```
 
@@ -30,9 +33,6 @@ npm link @superdapp/agents
 
 # Install other dependencies
 npm install
-
-# Build the project
-npm run build
 ```
 
 ### Step 3: Verify the link
