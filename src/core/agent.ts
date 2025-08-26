@@ -168,12 +168,12 @@ export class SuperDappAgent {
           });
         } else {
           // Fallback: if no specific command matched, call a generic handler when provided
-          const genericHandler =
+          const fallbackMessageHandler =
             this.commands['/message'] ||
             this.commands['message'] ||
             this.commands['handleMessage'];
-          if (genericHandler) {
-            await genericHandler({
+          if (fallbackMessageHandler) {
+            await fallbackMessageHandler({
               message,
               replyMessage: null,
               roomId,
