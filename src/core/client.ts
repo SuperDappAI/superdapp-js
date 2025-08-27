@@ -5,8 +5,6 @@ import {
   ReplyMarkup,
   SendMessageOptions,
   BotInfoResponse,
-  // For update message payloads (string or { body })
-  // eslint-disable-next-line @typescript-eslint/ban-types
 } from '../types';
 import { DEFAULT_CONFIG } from '../types/constants';
 import { createHttpsAgent, log } from '../utils/adapters';
