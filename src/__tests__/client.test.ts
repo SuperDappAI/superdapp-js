@@ -67,5 +67,12 @@ describe('SuperDappClient', () => {
     it('should have sendChannelMessage method', () => {
       expect(typeof client.sendChannelMessage).toBe('function');
     });
+
+    it('should have update/delete message methods', () => {
+      expect(typeof client.updateConnectionMessage).toBe('function');
+      expect(typeof client.deleteConnectionMessage).toBe('function');
+      expect(typeof client.updateChannelMessage).toBe('function');
+      expect(typeof client.deleteChannelMessage).toBe('function');
+    });
   });
 });
