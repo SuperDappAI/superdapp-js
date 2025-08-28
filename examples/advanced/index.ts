@@ -2,10 +2,31 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { SuperDappAgent } from '../../src';
+import net from 'net';
 import * as schedule from 'node-schedule';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const DEFAULT_PORT = Number(process.env.PORT) || 3001;
+
+async function findAvailablePort(
+  startPort: number,
+  maxAttempts = 10
+): Promise<number> {
+  let port = startPort;
+  for (let i = 0; i < maxAttempts; i++) {
+    const isFree = await new Promise<boolean>((resolve) => {
+      const srv = net.createServer();
+      srv.once('error', () => resolve(false));
+      srv.once('listening', () => {
+        srv.close(() => resolve(true));
+      });
+      srv.listen(port, '0.0.0.0');
+    });
+    if (isFree) return port;
+    port += 1;
+  }
+  throw new Error(`No available port found after ${maxAttempts} attempts starting from port ${startPort}`);
+}
 
 // Middleware
 app.use(cors());
@@ -281,7 +302,8 @@ Holdings:
       }
     });
 
-    // Start the server
+    // Start the server (select a free port if needed)
+    const PORT = await findAvailablePort(DEFAULT_PORT);
     app.listen(PORT, () => {
       console.log(
         `🚀 Advanced agent webhook server is running on port ${PORT}`

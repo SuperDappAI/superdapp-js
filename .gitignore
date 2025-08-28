@@ -8,3 +8,5 @@ coverage/
 .DS_Store
 Thumbs.db
 tmp
+my-test-project
+/examples/*/package-lock.json

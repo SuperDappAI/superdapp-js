@@ -1,4 +1,4 @@
-import { Message } from '@/types';
+import { Message } from '../types';
 import { IncomingMessage, ServerResponse } from 'http';
 
 export type WebhookHandler = (
