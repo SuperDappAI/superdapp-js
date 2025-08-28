@@ -25,7 +25,7 @@ async function findAvailablePort(
     if (isFree) return port;
     port += 1;
   }
-  return startPort; // fallback
+  throw new Error(`No available port found after ${maxAttempts} attempts starting from port ${startPort}`);
 }
 
 // Middleware
