@@ -204,4 +204,70 @@ export class SuperDappClient {
   async getMe(): Promise<ApiResponse<BotInfoResponse>> {
     return this.getBotInfo();
   }
+
+  // ===== Message update/delete APIs =====
+
+  /**
+   * Update a direct message in a connection (DM)
+   * Accepts a string or an object with { body }
+   */
+  async updateConnectionMessage(
+    connectionId: string,
+    messageId: string,
+    message: string | { body: string }
+  ): Promise<ApiResponse> {
+    const payload = { message };
+    const response = await this.axios.put(
+      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(
+        connectionId
+      )}/messages/${encodeURIComponent(messageId)}`,
+      payload
+    );
+    return response.data;
+  }
+
+  /** Delete a direct message in a connection (DM) */
+  async deleteConnectionMessage(
+    connectionId: string,
+    messageId: string
+  ): Promise<ApiResponse> {
+    const response = await this.axios.delete(
+      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(
+        connectionId
+      )}/messages/${encodeURIComponent(messageId)}`
+    );
+    return response.data;
+  }
+
+  /**
+   * Update a message in a channel
+   * Accepts a string or an object with { body }
+   */
+  async updateChannelMessage(
+    channelId: string,
+    messageId: string,
+    message: string | { body: string }
+  ): Promise<ApiResponse> {
+    const payload = { message };
+    const response = await this.axios.put(
+      `${AGENT_BOTS_CHANNELS_ENDPOINT}/${encodeURIComponent(
+        channelId
+      )}/messages/${encodeURIComponent(messageId)}`,
+      payload
+    );
+    return response.data;
+  }
+
+  /** Delete a message in a channel */
+  async deleteChannelMessage(
+    channelId: string,
+    messageId: string
+  ): Promise<ApiResponse> {
+    const response = await this.axios.delete(
+      `${AGENT_BOTS_CHANNELS_ENDPOINT}/${encodeURIComponent(
+        channelId
+      )}/messages/${encodeURIComponent(messageId)}`
+    );
+    return response.data;
+  }
 }
