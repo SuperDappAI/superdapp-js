@@ -47,7 +47,7 @@ Set this Webhook URL in your SuperDapp dev/test admin where you configure your a
 ## Scripts (optional)
 Both examples include convenience scripts:
 - `npm run tunnel` – starts ngrok on PORT
-- `npm run dev:tunnel` – starts the local server and ngrok, and waits for health before starting the tunnel
+- `npm run dev:tunnel` – starts the local server and ngrok concurrently (does not wait for health before starting the tunnel)
 
 Note: If your server auto-selects another free port, make sure PORT in your `.env` matches the ngrok port, or stop the other process to keep your preferred port free.
 
