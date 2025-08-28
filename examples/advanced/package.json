@@ -4,7 +4,7 @@
     "description": "Advanced SuperDapp agent example with scheduled tasks",
     "main": "index.ts",
     "scripts": {
-        "start": "node dist/index.js",
+        "start": "node dist/examples/advanced/index.js",
         "dev": "tsx watch index.ts",
         "build": "tsc",
         "test": "echo \"No tests specified\" && exit 0"
