@@ -7,8 +7,8 @@
         "start": "node dist/index.js",
         "dev": "tsx watch index.ts",
         "build": "tsc",
-        "tunnel": "node -e \"process.exit(require('child_process').spawnSync('ngrok', ['http', process.env.PORT || '3000'], {stdio: 'inherit'}).status)\"",
-        "dev:tunnel": "concurrently -k -n server,tunnel -c blue,magenta \"npm:dev\" \"npm:tunnel\"",
+    "tunnel": "npx -y ngrok http ${PORT:-3000}",
+    "dev:tunnel": "PORT=${PORT:-3000} npx -y concurrently -k -n server,tunnel -c blue,magenta \"npm:dev\" \"npm:tunnel\"",
         "test": "echo \"No tests specified\" && exit 0"
     },
     "keywords": [
