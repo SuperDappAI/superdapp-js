@@ -1,4 +1,4 @@
-import { Message } from '@/types';
+import { Message } from '../types';
 import { CommandRegistry } from './registry';
 
 export type RequestHandler = (event: Message) => Promise<void>;
