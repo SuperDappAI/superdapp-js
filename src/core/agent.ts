@@ -10,7 +10,7 @@ import {
   Message,
   MessageContent,
 } from '../types';
-import { formatBody } from '../utils';
+import { formatBody } from '../utils/messageFormatter';
 
 export interface SuperDappAgentOptions {
   secret?: string | undefined;

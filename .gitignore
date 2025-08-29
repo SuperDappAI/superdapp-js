@@ -10,3 +10,4 @@ Thumbs.db
 tmp
 my-test-project
 /examples/*/package-lock.json
+projects/
