@@ -8,18 +8,19 @@ A professional-grade Node.js/TypeScript SDK and CLI for building AI agents on th
 
 ---
 
-## 🚀 Webhook-Based Agent Architecture (v2)
+## 🚀 Webhook-Based Agent Architecture
 
-**SuperDapp agents now use a webhook-based architecture for maximum portability and simplicity.**
+**SuperDapp agents use a webhook-based architecture for maximum portability and simplicity.**
 
-- Centralized webhook server and command/message routing in the SDK
-- Agent lifecycle (init, ready, shutdown) managed by the SDK
+- Centralized command/message routing in the SDK runtime
+- Lightweight lifecycle: you instantiate an agent, register handlers, and pass incoming webhook bodies to it
 - Pluggable command and message handlers
 - Interactive UI support (buttons, multiselect, reply markup)
-- Signature validation and event dispatch built-in
+- Event dispatch built-in (CommandRegistry + WebhookAgent handle command routing and generic messages)
+- Signature validation is application-level: validate incoming requests (e.g., in your Express/Worker handler) before calling `agent.processRequest`
 - Works with any HTTP hosting (Node.js, serverless, etc.)
 
-**This is the new default architecture for all SuperDapp agents.**
+**This is the default architecture for all SuperDapp agents.**
 
 ## 🆕 Latest Updates
 
@@ -133,15 +134,13 @@ For comprehensive documentation, visit our **[Documentation Hub](./docs/README.m
 
 ### API Client Coverage
 
-The SDK client covers all backend API endpoints, including:
+The SDK client currently covers the core messaging flows:
 
-- Channel and connection messages (send, update, fetch)
-- Media uploads
-- Message reactions
-- Group join/leave/search
-- Typing status
-- Channel/member info
-- Wallet and bot info
+- Channel and connection messages (send, update, delete)
+- Join/leave social groups
+- Fetch bot info and user channels
+
+Additional endpoints (media uploads, reactions, typing status, etc.) can be added incrementally; open an issue if you need one prioritized.
 
 See the API reference and `/examples` for details.
 
@@ -159,25 +158,9 @@ schedule.scheduleJob('0 9 * * *', async () => {
 });
 ```
 
-### Error Handling and Retry Logic
+### Error Handling
 
-Built-in utilities for robust error handling:
-
-```typescript
-import { retry, sleep } from '@superdapp/agents';
-
-// Retry API calls with exponential backoff
-const data = await retry(
-  async () => {
-    return await fetchExternalAPI();
-  },
-  3,
-  1000
-);
-
-// Add delays
-await sleep(2000); // 2 seconds
-```
+The client includes Axios interceptors for basic request/response logging and error propagation. Wrap your command handlers in try/catch and surface actionable messages to users as needed.
 
 ### Type Safety
 
@@ -191,9 +174,9 @@ import type {
   ApiResponse,
 } from '@superdapp/agents';
 
-const handleCommand: CommandHandler = async (message, replyMessage, roomId) => {
+const handleCommand: CommandHandler = async ({ message, replyMessage, roomId }) => {
   // Fully typed message object
-  const messageText = message.body.m?.body;
+  const messageText = (message.body as any)?.m?.body;
   // ... handler logic
 };
 ```
@@ -240,9 +223,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 - 📖 [Documentation Hub](./docs/README.md) - Complete SDK documentation
-- 💬 [Discord Community](https://discord.gg/superdapp)
+- 💬 [Discord Community](https://discord.gg/superdappai)
 - 🐛 [Issue Tracker](https://github.com/SuperDapp/superdapp-js/issues)
-- 📧 [Email Support](mailto:support@superdapp.com)
+- 📧 [Email Support](mailto:support@superdapp.ai)
 
 ---
 
