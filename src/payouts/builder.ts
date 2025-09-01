@@ -170,12 +170,12 @@ export function buildManifest(
     if (addressMap.has(checksumAddress)) {
       const existing = addressMap.get(checksumAddress)!;
       existing.totalAmount += clampedAmount;
-      // Keep the first winner data, but update the amount
-      existing.winner.amount = existing.totalAmount.toString();
+      // Keep the first winner data, but do not overwrite the original decimal amount
+      // existing.winner.amount = existing.totalAmount.toString();
     } else {
       addressMap.set(checksumAddress, {
         totalAmount: clampedAmount,
-        winner: { ...row, address: checksumAddress, amount: clampedAmount.toString() }
+        winner: { ...row, address: checksumAddress }
       });
     }
   }
