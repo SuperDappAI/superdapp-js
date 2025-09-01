@@ -44,22 +44,19 @@ describe('Payouts Exporters', () => {
       groupId: 'group-456',
     };
 
-    // Mock randomUUID and Date for deterministic results
-    const originalRandomUUID = require('crypto').randomUUID;
-    const originalToISOString = Date.prototype.toISOString;
-    
-    require('crypto').randomUUID = jest.fn()
-      .mockReturnValueOnce('test-manifest-id')
-      .mockReturnValueOnce('test-winner-1')
-      .mockReturnValueOnce('test-winner-2');
-    Date.prototype.toISOString = jest.fn(() => '2024-01-01T00:00:00.000Z');
+    // Mock randomUUID and Date for deterministic results using jest.spyOn
+    const randomUUIDSpy = jest.spyOn(require('crypto'), 'randomUUID')
+      .mockImplementationOnce(() => 'test-manifest-id')
+      .mockImplementationOnce(() => 'test-winner-1')
+      .mockImplementationOnce(() => 'test-winner-2');
+    const toISOStringSpy = jest.spyOn(Date.prototype, 'toISOString')
+      .mockImplementation(() => '2024-01-01T00:00:00.000Z');
 
     const result = buildManifest(rows, options);
-    
-    // Restore original functions
-    require('crypto').randomUUID = originalRandomUUID;
-    Date.prototype.toISOString = originalToISOString;
 
+    // Restore original functions
+    randomUUIDSpy.mockRestore();
+    toISOStringSpy.mockRestore();
     return result.manifest;
   };
 
