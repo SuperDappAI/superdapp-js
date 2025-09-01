@@ -152,6 +152,8 @@ export function buildManifest(
   for (const row of rows) {
     const checksumAddress = validateAndChecksumAddress(row.address);
     
+    if (!checksumAddress) {
+      rejectedAddresses.push(row.address);
       continue;
     }
     
