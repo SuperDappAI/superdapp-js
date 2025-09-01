@@ -4,9 +4,11 @@
     "description": "Basic SuperDapp agent example",
     "main": "index.ts",
     "scripts": {
-        "start": "node dist/examples/basic/index.js",
+        "start": "node dist/index.js",
         "dev": "tsx watch index.ts",
         "build": "tsc",
+    "tunnel": "npx -y ngrok http ${PORT:-3000}",
+    "dev:tunnel": "PORT=${PORT:-3000} npx -y concurrently -k -n server,tunnel -c blue,magenta \"npm:dev\" \"npm:tunnel\"",
         "test": "echo \"No tests specified\" && exit 0"
     },
     "keywords": [
@@ -28,7 +30,8 @@
         "@types/cors": "^2.8.17",
         "@types/express": "^4.17.21",
         "@types/node": "^20.12.12",
-        "tsx": "^4.10.5",
+    "tsx": "^4.10.5",
+    "concurrently": "^9.0.1",
         "typescript": "^5.4.5"
     },
     "engines": {

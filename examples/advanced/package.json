@@ -4,9 +4,11 @@
     "description": "Advanced SuperDapp agent example with scheduled tasks",
     "main": "index.ts",
     "scripts": {
-        "start": "node dist/examples/advanced/index.js",
+        "start": "node dist/index.js",
         "dev": "tsx watch index.ts",
         "build": "tsc",
+    "tunnel": "npx -y ngrok http ${PORT:-3001}",
+    "dev:tunnel": "PORT=${PORT:-3001} npx -y concurrently -k -n server,tunnel -c blue,magenta \"npm:dev\" \"npm:tunnel\"",
         "test": "echo \"No tests specified\" && exit 0"
     },
     "keywords": [
@@ -31,7 +33,8 @@
         "@types/express": "^4.17.21",
         "@types/node": "^20.12.12",
         "@types/node-schedule": "^2.1.7",
-        "tsx": "^4.10.5",
+    "tsx": "^4.10.5",
+    "concurrently": "^9.0.1",
         "typescript": "^5.4.5"
     },
     "engines": {

@@ -127,6 +127,7 @@ For comprehensive documentation, visit our **[Documentation Hub](./docs/README.m
 - **[CLI Guide](./docs/cli-guide.md)** - Complete command-line interface documentation
 - **[API Reference](./docs/api-reference.md)** - Complete SDK reference
 - **[Deployment Guide](./docs/deployment.md)** - Deploy to production
+ - **[Tunneling (ngrok)](./docs/tunneling.md)** - Expose your local webhook
 
 ## 🔧 Advanced Usage
 

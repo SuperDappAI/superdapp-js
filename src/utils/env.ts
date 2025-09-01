@@ -127,7 +127,10 @@ export async function loadEnvConfigFromFile(
   format: 'dotenv' | 'json' | 'devvars'
 ): Promise<EnvConfig> {
   const fileEnv = await loadEnvFromFile(filePath, format);
-  const mergedEnv = { ...process.env, ...fileEnv };
+  const mergedEnv = {
+    ...process.env,
+    ...fileEnv,
+  } as Record<string, string | undefined>;
   return validateEnv(mergedEnv);
 }
 

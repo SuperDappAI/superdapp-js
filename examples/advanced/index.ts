@@ -4,9 +4,10 @@ import cors from 'cors';
 import { SuperDappAgent } from '../../src';
 import net from 'net';
 import * as schedule from 'node-schedule';
+import axios from 'axios';
 
 const app = express();
-const DEFAULT_PORT = Number(process.env.PORT) || 3001;
+const DEFAULT_PORT = 3001;
 
 async function findAvailablePort(
   startPort: number,
@@ -25,7 +26,9 @@ async function findAvailablePort(
     if (isFree) return port;
     port += 1;
   }
-  throw new Error(`No available port found after ${maxAttempts} attempts starting from port ${startPort}`);
+  throw new Error(
+    `No available port found after ${maxAttempts} attempts starting from port ${startPort}`
+  );
 }
 
 // Middleware
@@ -302,14 +305,38 @@ Holdings:
       }
     });
 
-    // Start the server (select a free port if needed)
-    const PORT = await findAvailablePort(DEFAULT_PORT);
+    // Helper: try to discover ngrok public URL and print webhook
+    async function printNgrokWebhook(port: number) {
+      const apiUrl = 'http://127.0.0.1:4040/api/tunnels';
+      for (let attempt = 0; attempt < 12; attempt++) {
+        try {
+          const resp = await axios.get(apiUrl, { timeout: 1000 });
+          const tunnels = resp.data?.tunnels || [];
+          const selected =
+            tunnels.find((t: any) => t.proto === 'https') || tunnels[0];
+          const publicUrl = selected?.public_url;
+          if (publicUrl) {
+            console.log(`🌐 Public webhook: ${publicUrl}/webhook`);
+            return;
+          }
+        } catch (_) {
+          // ignore and retry shortly
+        }
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+    }
+
+    // Start the server (use PORT if explicitly set, otherwise find a free one)
+    const envPort = process.env.PORT ? Number(process.env.PORT) : undefined;
+    const PORT = envPort ?? (await findAvailablePort(DEFAULT_PORT));
     app.listen(PORT, () => {
       console.log(
         `🚀 Advanced agent webhook server is running on port ${PORT}`
       );
       console.log(`📡 Webhook endpoint: http://localhost:${PORT}/webhook`);
       console.log(`🏥 Health check: http://localhost:${PORT}/health`);
+      // Print ngrok URL if a tunnel is active (dev:tunnel)
+      void printNgrokWebhook(PORT);
     });
   } catch (error) {
     console.error('❌ Fatal error:', error);

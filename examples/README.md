@@ -82,3 +82,19 @@ Both examples now run as Express servers with the following endpoints:
 ## Notes
 
 - Channel IDs should be valid SuperDapp channel identifiers.
+
+## Public URL via ngrok
+
+For quick remote testing, you can tunnel your local server:
+
+```bash
+# Basic example
+cd examples/basic
+npm run dev:tunnel
+
+# Advanced example
+cd examples/advanced
+npm run dev:tunnel
+```
+
+This starts the dev server and an ngrok tunnel on your PORT. See the full guide in `../docs/tunneling.md`.
