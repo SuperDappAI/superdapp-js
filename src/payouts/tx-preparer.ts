@@ -6,13 +6,14 @@
 
 import { encodeFunctionData } from 'viem';
 import { PayoutManifest, PreparedPayout, PreparedTx, TokenInfo } from './types';
+import { getAirdropAddress, isSupportedChain, getChainMetadata } from './chain-config';
 
 /**
  * Options for preparing push transactions
  */
 export interface PushPrepareOptions {
-  /** SuperDappAirdrop contract address */
-  airdrop: `0x${string}`;
+  /** SuperDappAirdrop contract address (optional - will auto-resolve from token.chainId if not provided) */
+  airdrop?: `0x${string}`;
   /** Token information */
   token: TokenInfo;
   /** Maximum recipients per batch (default: 50) */
@@ -82,13 +83,36 @@ export function preparePushTxs(
   manifest: PayoutManifest,
   opts: PushPrepareOptions
 ): PreparedPayout {
-  const { airdrop, token, maxPerBatch = 50, singleApproval = true } = opts;
+  const { airdrop: providedAirdrop, token, maxPerBatch = 50, singleApproval = true } = opts;
   const totalWei = manifest.totals.amountWei;
   const transactions: PreparedTx[] = [];
   const errors: string[] = [];
   const warnings: string[] = [];
 
   try {
+    // Resolve airdrop contract address
+    let airdrop: `0x${string}`;
+    
+    if (providedAirdrop) {
+      airdrop = providedAirdrop;
+    } else {
+      // Auto-resolve from chain configuration
+      const resolvedAddress = getAirdropAddress(token.chainId);
+      if (!resolvedAddress) {
+        const chainMetadata = getChainMetadata(token.chainId);
+        const chainName = chainMetadata?.name || `Chain ID ${token.chainId}`;
+        errors.push(`SuperDappAirdrop contract not configured for ${chainName}. Please provide the airdrop contract address manually.`);
+        throw new Error(`Unsupported chain: ${token.chainId}`);
+      }
+      airdrop = resolvedAddress;
+      
+      // Warn if chain is configured but not fully supported
+      if (!isSupportedChain(token.chainId)) {
+        const chainMetadata = getChainMetadata(token.chainId);
+        const chainName = chainMetadata?.name || `Chain ID ${token.chainId}`;
+        warnings.push(`Using placeholder address for ${chainName}. Please verify the SuperDappAirdrop contract address.`);
+      }
+    }
     // Prepare recipients and amounts from winners
     const recipients = manifest.winners.map(winner => winner.address as `0x${string}`);
     const amounts = manifest.winners.map(winner => BigInt(winner.amount));

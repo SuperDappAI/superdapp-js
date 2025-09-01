@@ -14,6 +14,9 @@ export * from './builder';
 // Export transaction preparer utilities
 export * from './tx-preparer';
 
+// Export chain configuration utilities
+export * from './chain-config';
+
 // Re-export specific types for convenience
 export type {
   ChainId,
@@ -39,3 +42,14 @@ export type {
 } from './tx-preparer';
 
 export { preparePushTxs } from './tx-preparer';
+
+// Re-export chain configuration functions for convenience
+export {
+  getAirdropAddress,
+  getChainMetadata,
+  isSupportedChain,
+  getSupportedChainIds,
+  getAllConfiguredChainIds,
+  SUPERDAPP_AIRDROP_ADDRESSES,
+  CHAIN_METADATA,
+} from './chain-config';

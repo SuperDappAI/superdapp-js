@@ -4,6 +4,7 @@
 
 import { preparePushTxs, type PushPrepareOptions } from '../../payouts/tx-preparer';
 import { type PayoutManifest, type TokenInfo, type NormalizedWinner, type PreparedTx } from '../../payouts/types';
+import { getAirdropAddress, isSupportedChain, SUPERDAPP_AIRDROP_ADDRESSES } from '../../payouts/chain-config';
 import { decodeFunctionData, checksumAddress } from 'viem';
 
 // Mock ABI for validation
@@ -534,6 +535,148 @@ describe('Transaction Preparer', () => {
       // Should estimate ~15s per transaction
       const expectedDuration = Math.ceil(result.transactions.length * 15);
       expect(result.summary.estimatedDuration).toBe(`${expectedDuration}s`);
+    });
+  });
+
+  describe('Multi-Chain Configuration', () => {
+    const rolluxToken: TokenInfo = {
+      address: '0xA0b86a33E6441E7344c2c3dd84A1ba8F3894E5D8',
+      symbol: 'USDC',
+      name: 'USD Coin',
+      decimals: 6,
+      chainId: 570, // Rollux Mainnet
+      isNative: false
+    };
+
+    test('should auto-resolve airdrop contract for supported chains', () => {
+      const winners = createWinners(1);
+      const manifest = createManifest(winners, rolluxToken);
+      
+      const options: PushPrepareOptions = {
+        // Omit airdrop address to test auto-resolution
+        token: rolluxToken,
+        maxPerBatch: 50
+      };
+
+      const result = preparePushTxs(manifest, options);
+
+      expect(result.validation.isValid).toBe(true);
+      expect(result.transactions.length).toBeGreaterThan(0);
+      
+      // Verify it uses the correct Rollux airdrop address
+      const expectedAddress = getAirdropAddress(570);
+      expect(expectedAddress).toBe('0x2aACce8B9522F81F14834883198645BB6894Bfc0');
+      
+      // Check that transactions use the resolved address
+      result.transactions.forEach(tx => {
+        if (tx.to === expectedAddress) {
+          expect(tx.to).toBe(expectedAddress);
+        }
+      });
+    });
+
+    test('should fail gracefully for unsupported chains', () => {
+      const unsupportedToken: TokenInfo = {
+        address: '0xA0b86a33E6441E7344c2c3dd84A1ba8F3894E5D8',
+        symbol: 'TEST',
+        name: 'Test Token',
+        decimals: 18,
+        chainId: 999999, // Unsupported chain
+        isNative: false
+      };
+      
+      const winners = createWinners(1);
+      const manifest = createManifest(winners, unsupportedToken);
+      
+      const options: PushPrepareOptions = {
+        // Omit airdrop address to test auto-resolution failure
+        token: unsupportedToken
+      };
+
+      const result = preparePushTxs(manifest, options);
+
+      expect(result.validation.isValid).toBe(false);
+      expect(result.validation.errors.length).toBeGreaterThan(0);
+      expect(result.validation.errors[0]).toContain('SuperDappAirdrop contract not configured');
+      expect(result.transactions).toHaveLength(0);
+    });
+
+    test('should prefer provided airdrop address over auto-resolution', () => {
+      const winners = createWinners(1);
+      const manifest = createManifest(winners, rolluxToken);
+      
+      const customAirdropAddress = checksumAddress('0x1234567890123456789012345678901234567890');
+      
+      const options: PushPrepareOptions = {
+        airdrop: customAirdropAddress, // Explicitly provide address
+        token: rolluxToken,
+        maxPerBatch: 50
+      };
+
+      const result = preparePushTxs(manifest, options);
+
+      expect(result.validation.isValid).toBe(true);
+      
+      // Verify it uses the custom address, not the auto-resolved one
+      result.transactions.forEach(tx => {
+        if (tx.data !== '0x') { // Skip funding transactions
+          expect(tx.to).toBe(customAirdropAddress);
+        }
+      });
+    });
+
+    test('should warn about placeholder addresses in unsupported chains', () => {
+      // Test with Ethereum which has a placeholder address
+      const ethToken: TokenInfo = {
+        address: '0xA0b86a33E6441E7344c2c3dd84A1ba8F3894E5D8',
+        symbol: 'USDC',
+        name: 'USD Coin',
+        decimals: 6,
+        chainId: 1, // Ethereum Mainnet (has placeholder)
+        isNative: false
+      };
+      
+      const winners = createWinners(1);
+      const manifest = createManifest(winners, ethToken);
+      
+      const options: PushPrepareOptions = {
+        token: ethToken,
+        maxPerBatch: 50
+      };
+
+      const result = preparePushTxs(manifest, options);
+
+      // Should still fail because Ethereum has placeholder address
+      expect(result.validation.isValid).toBe(false);
+      expect(result.validation.errors[0]).toContain('SuperDappAirdrop contract not configured');
+    });
+
+    test('should correctly identify supported chains', () => {
+      // Rollux should be supported
+      expect(isSupportedChain(570)).toBe(true);
+      
+      // Ethereum should not be supported (placeholder address)
+      expect(isSupportedChain(1)).toBe(false);
+      
+      // Random chain should not be supported
+      expect(isSupportedChain(999999)).toBe(false);
+    });
+
+    test('should correctly resolve addresses for configured chains', () => {
+      // Rollux should resolve to the correct address
+      expect(getAirdropAddress(570)).toBe('0x2aACce8B9522F81F14834883198645BB6894Bfc0');
+      
+      // Ethereum should resolve to placeholder
+      expect(getAirdropAddress(1)).toBe('0x0000000000000000000000000000000000000000');
+      
+      // Unsupported chain should return undefined
+      expect(getAirdropAddress(999999)).toBeUndefined();
+    });
+
+    test('should handle string chain IDs correctly', () => {
+      // String chain ID should work
+      expect(getAirdropAddress('570')).toBe('0x2aACce8B9522F81F14834883198645BB6894Bfc0');
+      expect(isSupportedChain('570')).toBe(true);
     });
   });
 });
