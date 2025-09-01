@@ -21,6 +21,8 @@ export interface TokenInfo {
   decimals: number;
   /** Chain ID where token exists */
   chainId: ChainId;
+  /** Whether this is a native token (ETH, MATIC, etc.) */
+  isNative?: boolean;
 }
 
 /**
@@ -83,6 +85,11 @@ export interface PayoutManifest {
   hash: string;
   /** Optional payout description */
   description?: string;
+  /** Payout totals breakdown */
+  totals: {
+    /** Total amount in wei */
+    amountWei: string;
+  };
   /** Additional configuration options */
   options?: {
     /** Whether to batch transactions */

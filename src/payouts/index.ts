@@ -11,6 +11,9 @@ export * from './types';
 // Export builder utilities
 export * from './builder';
 
+// Export transaction preparer utilities
+export * from './tx-preparer';
+
 // Re-export specific types for convenience
 export type {
   ChainId,
@@ -29,3 +32,10 @@ export type {
 } from './builder';
 
 export { buildManifest } from './builder';
+
+// Re-export tx-preparer functions for convenience
+export type {
+  PushPrepareOptions,
+} from './tx-preparer';
+
+export { preparePushTxs } from './tx-preparer';
