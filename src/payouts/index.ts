@@ -8,6 +8,9 @@
 // Export all types
 export * from './types';
 
+// Export builder utilities
+export * from './builder';
+
 // Re-export specific types for convenience
 export type {
   ChainId,
@@ -18,3 +21,11 @@ export type {
   PreparedTx,
   PreparedPayout,
 } from './types';
+
+// Re-export builder functions for convenience
+export type {
+  BuildManifestOptions,
+  BuildManifestResult,
+} from './builder';
+
+export { buildManifest } from './builder';

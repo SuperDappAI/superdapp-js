@@ -107,6 +107,10 @@ describe('Payouts Module Types', () => {
       totalAmount: '1000000000',
       createdBy: '0x0000000000000000000000000000000000000000',
       createdAt: '2024-01-01T00:00:00Z',
+      roundId: 'round-123',
+      groupId: 'group-456',
+      version: '1.0',
+      hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
       description: 'Test payout',
       options: {
         batchTransactions: true,
@@ -197,6 +201,10 @@ describe('Payouts Module Types', () => {
       totalAmount: '0',
       createdBy: '0x0000000000000000000000000000000000000000',
       createdAt: '2024-01-01T00:00:00Z',
+      roundId: 'round-123',
+      groupId: 'group-456',
+      version: '1.0',
+      hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
     };
 
     expect(manifest).toBeDefined();

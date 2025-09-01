@@ -73,6 +73,14 @@ export interface PayoutManifest {
   createdBy: string;
   /** Creation timestamp */
   createdAt: string;
+  /** Round identifier */
+  roundId: string;
+  /** Group identifier */
+  groupId: string;
+  /** Manifest version */
+  version: string;
+  /** Deterministic hash of the manifest */
+  hash: string;
   /** Optional payout description */
   description?: string;
   /** Additional configuration options */
