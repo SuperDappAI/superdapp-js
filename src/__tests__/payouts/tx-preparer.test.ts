@@ -540,7 +540,7 @@ describe('Transaction Preparer', () => {
 
   describe('Multi-Chain Configuration', () => {
     const rolluxToken: TokenInfo = {
-      address: '0xA0b86a33E6441E7344c2c3dd84A1ba8F3894E5D8',
+      address: checksumAddress('0xA0b86a33E6441E7344c2c3dd84A1ba8F3894E5D8'),
       symbol: 'USDC',
       name: 'USD Coin',
       decimals: 6,
@@ -577,7 +577,7 @@ describe('Transaction Preparer', () => {
 
     test('should fail gracefully for unsupported chains', () => {
       const unsupportedToken: TokenInfo = {
-        address: '0xA0b86a33E6441E7344c2c3dd84A1ba8F3894E5D8',
+        address: checksumAddress('0xA0b86a33E6441E7344c2c3dd84A1ba8F3894E5D8'),
         symbol: 'TEST',
         name: 'Test Token',
         decimals: 18,
@@ -619,7 +619,9 @@ describe('Transaction Preparer', () => {
       
       // Verify it uses the custom address, not the auto-resolved one
       result.transactions.forEach(tx => {
-        if (tx.data !== '0x') { // Skip funding transactions
+        // Only check airdrop contract transactions (batchTokenTransfer calls)
+        // Approval transactions go to the token address, not airdrop address
+        if (tx.data !== '0x' && tx.to !== rolluxToken.address) {
           expect(tx.to).toBe(customAirdropAddress);
         }
       });
@@ -628,7 +630,7 @@ describe('Transaction Preparer', () => {
     test('should warn about placeholder addresses in unsupported chains', () => {
       // Test with Ethereum which has a placeholder address
       const ethToken: TokenInfo = {
-        address: '0xA0b86a33E6441E7344c2c3dd84A1ba8F3894E5D8',
+        address: checksumAddress('0xA0b86a33E6441E7344c2c3dd84A1ba8F3894E5D8'),
         symbol: 'USDC',
         name: 'USD Coin',
         decimals: 6,

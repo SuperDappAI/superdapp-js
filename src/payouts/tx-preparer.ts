@@ -98,20 +98,13 @@ export function preparePushTxs(
     } else {
       // Auto-resolve from chain configuration
       const resolvedAddress = getAirdropAddress(token.chainId);
-      if (!resolvedAddress) {
+      if (!resolvedAddress || !isSupportedChain(token.chainId)) {
         const chainMetadata = getChainMetadata(token.chainId);
         const chainName = chainMetadata?.name || `Chain ID ${token.chainId}`;
         errors.push(`SuperDappAirdrop contract not configured for ${chainName}. Please provide the airdrop contract address manually.`);
         throw new Error(`Unsupported chain: ${token.chainId}`);
       }
       airdrop = resolvedAddress;
-      
-      // Warn if chain is configured but not fully supported
-      if (!isSupportedChain(token.chainId)) {
-        const chainMetadata = getChainMetadata(token.chainId);
-        const chainName = chainMetadata?.name || `Chain ID ${token.chainId}`;
-        warnings.push(`Using placeholder address for ${chainName}. Please verify the SuperDappAirdrop contract address.`);
-      }
     }
     // Prepare recipients and amounts from winners
     const recipients = manifest.winners.map(winner => winner.address as `0x${string}`);
