@@ -154,24 +154,7 @@ describe('Payouts Exporters', () => {
       const json = toJSON(manifest);
       
       // Check that keys appear in alphabetical order
-      const keyPattern = /"([^"]+)":/g;
-      const keys: string[] = [];
-      let match;
-      
-      while ((match = keyPattern.exec(json)) !== null) {
-        if (match[1]) {
-          keys.push(match[1]);
-        }
-      }
-      
-      // Filter out duplicate keys (from nested objects)
-      const topLevelKeys = keys.filter((key, index) => {
-        const beforeKey = json.substring(0, json.indexOf(`"${key}":`));
-        const openBraces = (beforeKey.match(/{/g) || []).length;
-        const closeBraces = (beforeKey.match(/}/g) || []).length;
-        return openBraces === closeBraces; // Top level if braces are balanced
-      });
-      
+      const topLevelKeys = Object.keys(JSON.parse(json));
       const sortedKeys = [...topLevelKeys].sort();
       expect(topLevelKeys).toEqual(sortedKeys);
     });
