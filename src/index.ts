@@ -23,3 +23,6 @@ export * as schedule from 'node-schedule';
 export * from './webhook/agent';
 export * from './webhook/server';
 export * from './webhook/registry';
+
+// Payouts exports
+export * from './payouts';
