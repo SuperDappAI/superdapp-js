@@ -11,6 +11,12 @@ export * from './types';
 // Export builder utilities
 export * from './builder';
 
+// Export transaction preparer utilities
+export * from './tx-preparer';
+
+// Export chain configuration utilities
+export * from './chain-config';
+
 // Export exporters utilities
 export * from './exporters';
 
@@ -32,4 +38,23 @@ export type {
 } from './builder';
 
 export { buildManifest } from './builder';
+
+// Re-export tx-preparer functions for convenience
+export type {
+  PushPrepareOptions,
+  preparePushTxs
+} from './tx-preparer';
+
+// Re-export chain configuration functions for convenience
+export {
+  getAirdropAddress,
+  getChainMetadata,
+  isSupportedChain,
+  getSupportedChainIds,
+  getAllConfiguredChainIds,
+  SUPERDAPP_AIRDROP_ADDRESSES,
+  CHAIN_METADATA,
+} from './chain-config';
+
 export { toCSV, toJSON } from './exporters';
+
