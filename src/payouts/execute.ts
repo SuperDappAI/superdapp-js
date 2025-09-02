@@ -1,101 +1,122 @@
 /**
- * Payouts Execute Module
+ * Payouts Execution Module
  * 
- * Provides utilities for executing prepared payout transactions
+ * Provides utilities for executing prepared payout transactions using viem
  */
 
+import type { WalletClient, PublicClient } from 'viem';
 import { PreparedPayout, PreparedTx } from './types';
+import { handleError, logError } from '../utils/errors';
 
 /**
- * Transaction execution result
+ * Options for executing a payout plan
  */
-export interface TxExecutionResult {
-  /** Transaction hash */
-  hash: string;
-  /** Whether transaction was successful */
-  success: boolean;
-  /** Gas used */
-  gasUsed?: string;
-  /** Block number where transaction was mined */
-  blockNumber?: number;
-  /** Error message if transaction failed */
-  error?: string;
+export interface ExecuteOptions {
+  /** Viem wallet client for signing and sending transactions */
+  wallet: WalletClient;
+  /** Viem public client for reading blockchain state and receipts */
+  publicClient: PublicClient;
+  /** Optional callback fired before each transaction is sent */
+  onProgress?: (i: number, tx: PreparedTx, hash?: `0x${string}`) => void;
+  /** Optional callback fired after each transaction receipt is received */
+  onReceipt?: (i: number, hash: `0x${string}`) => void;
+  /** Whether to stop execution on first failure (default: false) */
+  stopOnFail?: boolean;
 }
 
 /**
- * Execution plan with transaction results
- */
-export interface TxExecutionPlan {
-  /** Reference to the prepared payout */
-  payoutId: string;
-  /** Execution results for each transaction */
-  results: TxExecutionResult[];
-  /** Total execution time */
-  executionTime: string;
-  /** Whether all transactions succeeded */
-  success: boolean;
-  /** Summary of failed transactions */
-  failedCount: number;
-  /** Summary of successful transactions */
-  successCount: number;
-}
-
-/**
- * Mock signer interface for testing
- */
-export interface MockSigner {
-  /** Sign and send a transaction */
-  sendTransaction(tx: PreparedTx): Promise<TxExecutionResult>;
-}
-
-/**
- * Execute a prepared payout transaction plan
+ * Execute a prepared payout plan by sending all transactions
  * 
- * @param preparedPayout - The prepared payout to execute
- * @param signer - Signer interface for transaction execution
- * @returns Execution plan with results
+ * @param plan - The prepared payout containing transactions to execute
+ * @param opts - Execution options including wallet and callbacks
+ * @returns Array of transaction hashes for successful transactions
  */
 export async function executeTxPlan(
-  preparedPayout: PreparedPayout,
-  signer: MockSigner
-): Promise<TxExecutionPlan> {
-  const startTime = Date.now();
-  const results: TxExecutionResult[] = [];
+  plan: PreparedPayout,
+  opts: ExecuteOptions
+): Promise<`0x${string}`[]> {
+  const { wallet, publicClient, onProgress, onReceipt, stopOnFail = false } = opts;
+  const successfulHashes: `0x${string}`[] = [];
+  const errors: Error[] = [];
 
-  let successCount = 0;
-  let failedCount = 0;
+  // Use the transactions field from PreparedPayout
+  const transactions = plan.transactions;
 
-  // Execute each transaction
-  for (const tx of preparedPayout.transactions) {
+  if (!transactions || transactions.length === 0) {
+    throw new Error('No transactions to execute in the payout plan');
+  }
+
+  for (let i = 0; i < transactions.length; i++) {
+    const tx = transactions[i];
+    if (!tx) continue;
+
     try {
-      const result = await signer.sendTransaction(tx);
-      results.push(result);
-      
-      if (result.success) {
-        successCount++;
-      } else {
-        failedCount++;
-      }
-    } catch (error) {
-      const errorResult: TxExecutionResult = {
-        hash: '',
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+      // Fire progress callback before sending transaction
+      onProgress?.(i, tx);
+
+      // Prepare transaction for viem
+      const viemTx: Record<string, unknown> = {
+        to: tx.to as `0x${string}`,
+        value: BigInt(tx.value),
+        data: tx.data as `0x${string}`,
+        gas: BigInt(tx.gasLimit),
+        nonce: tx.nonce,
       };
-      results.push(errorResult);
-      failedCount++;
+
+      // Add gas pricing based on transaction type
+      if (tx.type === 2 || tx.maxFeePerGas) {
+        // EIP-1559 transaction
+        if (tx.maxFeePerGas) viemTx.maxFeePerGas = BigInt(tx.maxFeePerGas);
+        if (tx.maxPriorityFeePerGas) viemTx.maxPriorityFeePerGas = BigInt(tx.maxPriorityFeePerGas);
+        viemTx.type = 'eip1559';
+      } else if (tx.gasPrice) {
+        // Legacy transaction
+        viemTx.gasPrice = BigInt(tx.gasPrice);
+        viemTx.type = 'legacy';
+      }
+
+      // Send transaction
+      const hash = await wallet.sendTransaction(viemTx as any);
+      successfulHashes.push(hash);
+
+      // Fire progress callback with hash
+      onProgress?.(i, tx, hash);
+
+      // Wait for transaction receipt
+      const receipt = await publicClient.waitForTransactionReceipt({ 
+        hash,
+        confirmations: 1
+      });
+
+      // Fire receipt callback
+      onReceipt?.(i, hash);
+
+      // Check if transaction was successful
+      if (receipt.status === 'reverted') {
+        const error = new Error(`Transaction ${hash} was reverted`);
+        errors.push(error);
+        
+        if (stopOnFail) {
+          logError(handleError(error), `Transaction ${i} execution`);
+          throw error;
+        }
+      }
+
+    } catch (error) {
+      const handledError = handleError(error);
+      errors.push(handledError);
+      logError(handledError, `Transaction ${i} execution`);
+
+      if (stopOnFail) {
+        throw handledError;
+      }
     }
   }
 
-  const endTime = Date.now();
-  const executionTime = `${endTime - startTime}ms`;
+  // If we have errors but didn't stop on fail, log them
+  if (errors.length > 0 && !stopOnFail) {
+    console.warn(`Execution completed with ${errors.length} failed transactions out of ${transactions.length} total`);
+  }
 
-  return {
-    payoutId: preparedPayout.manifestId,
-    results,
-    executionTime,
-    success: failedCount === 0,
-    failedCount,
-    successCount,
-  };
+  return successfulHashes;
 }

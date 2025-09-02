@@ -1,87 +1,44 @@
 /**
  * Payouts Exporters Module
  * 
- * Provides utilities for exporting payout data to various formats
+ * Provides utilities for exporting PayoutManifest data as CSV and canonical JSON
  */
 
-import { PayoutManifest, NormalizedWinner } from './types';
+import { PayoutManifest } from './types';
+import { canonicalJson } from './builder';
 
 /**
- * Export options for CSV format
- */
-export interface CSVExportOptions {
-  /** Include header row */
-  includeHeader?: boolean;
-  /** Custom delimiter (default: comma) */
-  delimiter?: string;
-  /** Include metadata columns */
-  includeMetadata?: boolean;
-}
-
-/**
- * Convert a PayoutManifest to CSV format
+ * Export a PayoutManifest as CSV format
  * 
  * @param manifest - The payout manifest to export
- * @param options - Export formatting options
- * @returns CSV string representation
+ * @returns CSV string with header: address,amountWei,symbol,roundId,groupId
  */
-export function toCSV(manifest: PayoutManifest, options: CSVExportOptions = {}): string {
-  const {
-    includeHeader = true,
-    delimiter = ',',
-    includeMetadata = false
-  } = options;
-
-  const lines: string[] = [];
-
-  // Add header if requested
-  if (includeHeader) {
-    const headers = [
-      'address',
-      'amount',
-      'rank',
-      'id',
-      'token_symbol',
-      'token_address'
-    ];
-    
-    if (includeMetadata) {
-      headers.push('metadata');
-    }
-    
-    lines.push(headers.join(delimiter));
+export function toCSV(manifest: PayoutManifest): string {
+  const header = 'address,amountWei,symbol,roundId,groupId';
+  
+  if (manifest.winners.length === 0) {
+    return header;
   }
-
-  // Add winner data
-  for (const winner of manifest.winners) {
-    const row = [
+  
+  const rows = manifest.winners.map(winner => {
+    return [
       winner.address,
       winner.amount,
-      winner.rank.toString(),
-      winner.id,
-      winner.token.symbol,
-      winner.token.address
-    ];
-
-    if (includeMetadata) {
-      row.push(JSON.stringify(winner.metadata));
-    }
-
-    lines.push(row.join(delimiter));
-  }
-
-  return lines.join('\n');
+      manifest.token.symbol,
+      manifest.roundId,
+      manifest.groupId
+    ].join(',');
+  });
+  
+  return [header, ...rows].join('\n');
 }
 
 /**
- * Export manifest to JSON format
+ * Export a PayoutManifest as canonical JSON format
  * 
  * @param manifest - The payout manifest to export
- * @param pretty - Whether to pretty-print the JSON
- * @returns JSON string representation
+ * @returns Canonical JSON string with deterministic key order
  */
-export function toJSON(manifest: PayoutManifest, pretty: boolean = false): string {
-  return pretty 
-    ? JSON.stringify(manifest, null, 2)
-    : JSON.stringify(manifest);
+export function toJSON(manifest: PayoutManifest): string {
+  return canonicalJson(manifest);
 }

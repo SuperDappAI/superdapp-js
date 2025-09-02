@@ -13,76 +13,83 @@ import {
   reconcilePush,
   TokenInfo,
   WinnerRow,
-  MockSigner,
-  MockProvider,
-  TxExecutionResult,
+  ExecuteOptions,
+  ReconcileResult,
 } from '../index';
+
+// Mock viem types for testing
+interface MockWalletClient {
+  sendTransaction: (tx: any) => Promise<`0x${string}`>;
+}
+
+interface MockPublicClient {
+  waitForTransactionReceipt: (options: { hash: `0x${string}`; confirmations: number }) => Promise<{ status: 'success' | 'reverted' }>;
+  getTransactionReceipt: (options: { hash: `0x${string}` }) => Promise<{
+    status: 'success' | 'reverted';
+    logs: Array<{
+      topics: string[];
+      data: string;
+    }>;
+  }>;
+}
 
 describe('Payouts Integration', () => {
   const mockToken: TokenInfo = {
-    address: '0xA0b86a33E6441E7344c2c3dd84A1ba8F3894E5D8',
+    address: '0xa0b86A33e6441e7344C2C3Dd84A1ba8F3894e5D8', // USDC on Ethereum (properly checksummed)
     symbol: 'USDC',
     name: 'USD Coin',
     decimals: 6,
     chainId: 1,
+    isNative: false,
   };
 
   const mockWinners: WinnerRow[] = [
     {
-      address: '0x742d35Cc6584C0532E47A89C9FDD3d3F8c6c1b66',
+      address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045', // vitalik.eth (properly checksummed)
       amount: '100',
       rank: 1,
       id: 'winner-1',
     },
     {
-      address: '0x8ba1f109551bD432803012645Hac136c9.PJM',
+      address: 'invalid-address', // Invalid address for testing
       amount: '50', 
       rank: 2,
       id: 'winner-2',
     },
     {
-      address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
+      address: '0x742D35Cc6584c0532e47a89c9Fdd3d3F8c6c1B66', // Another valid address (properly checksummed)
       amount: '25',
       rank: 3,
       id: 'winner-3',
     },
   ];
 
-  const createMockSigner = (): MockSigner => ({
-    async sendTransaction(tx) {
-      // Simulate successful transaction for valid addresses
-      const isValidAddress = tx.to.match(/^0x[a-fA-F0-9]{40}$/);
-      
-      if (isValidAddress) {
-        return {
-          hash: `0x${Math.random().toString(16).substr(2, 64)}`,
-          success: true,
-          gasUsed: '21000',
-          blockNumber: Math.floor(Math.random() * 1000000) + 18000000,
-        };
-      } else {
-        return {
-          hash: '',
-          success: false,
-          error: 'Invalid recipient address',
-        };
-      }
+  const createMockWalletClient = (): MockWalletClient => ({
+    async sendTransaction(tx: any): Promise<`0x${string}`> {
+      // Simulate successful transaction with proper 64-character hash
+      const hash = '0x' + '1234567890abcdef'.repeat(4); // Creates exactly 64 hex chars
+      return hash as `0x${string}`;
     },
   });
 
-  const createMockProvider = (): MockProvider => ({
-    async getTransactionReceipt(hash: string) {
-      if (hash) {
-        return {
-          status: true,
-          blockNumber: Math.floor(Math.random() * 1000000) + 18000000,
-          gasUsed: '21000',
-        };
-      }
-      return null;
+  const createMockPublicClient = (): MockPublicClient => ({
+    async waitForTransactionReceipt(options) {
+      return { status: 'success' as const };
     },
-    async getBlockNumber() {
-      return 18500000;
+    async getTransactionReceipt(options) {
+      return {
+        status: 'success' as const,
+        logs: [
+          {
+            topics: [
+              '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef', // Transfer event
+              '0x000000000000000000000000742d35cc6584c0532e47a89c9fdd3d3f8c6c1b66', // from
+              '0x000000000000000000000000742d35cc6584c0532e47a89c9fdd3d3f8c6c1b66', // to (winner address)
+            ],
+            data: '0x0000000000000000000000000000000000000000000000000000000000000064', // amount (100 in hex)
+          },
+        ],
+      };
     },
   });
 
@@ -99,56 +106,57 @@ describe('Payouts Integration', () => {
     expect(buildResult.rejectedAddresses.length).toBeGreaterThan(0); // One invalid address
 
     // Step 2: Export to CSV
-    const csvData = toCSV(buildResult.manifest, {
-      includeHeader: true,
-      includeMetadata: true,
-    });
+    const csvData = toCSV(buildResult.manifest);
 
-    expect(csvData).toContain('address,amount,rank');
+    expect(csvData).toContain('address,amountWei,symbol');
     expect(csvData.toLowerCase()).toContain('0x742d35cc6584c0532e47a89c9fdd3d3f8c6c1b66');
     expect(csvData).toContain('USDC');
 
     // Step 3: Prepare push transactions
     const preparedPayout = preparePushTxs(buildResult.manifest, {
-      gasStrategy: 'standard',
-      startingNonce: 42,
+      token: mockToken,
+      maxPerBatch: 2,
+      singleApproval: true,
+      airdrop: '0x2aACce8B9522F81F14834883198645BB6894Bfc0', // Provide a valid airdrop address
     });
 
     expect(preparedPayout.manifestId).toBe(buildResult.manifest.id);
-    expect(preparedPayout.transactions.length).toBeGreaterThan(0);
     expect(preparedPayout.validation.isValid).toBe(true);
+    expect(preparedPayout.transactions.length).toBeGreaterThan(0);
 
     // Step 4: Execute transaction plan (mocked)
-    const mockSigner = createMockSigner();
-    const executionPlan = await executeTxPlan(preparedPayout, mockSigner);
+    const mockWallet = createMockWalletClient();
+    const mockPublic = createMockPublicClient();
+    const executeOptions: ExecuteOptions = {
+      wallet: mockWallet as any,
+      publicClient: mockPublic as any,
+      stopOnFail: false,
+    };
+    
+    const hashes = await executeTxPlan(preparedPayout, executeOptions);
 
-    expect(executionPlan.payoutId).toBe(preparedPayout.manifestId);
-    expect(executionPlan.results.length).toBe(preparedPayout.transactions.length);
-    expect(executionPlan.successCount).toBeGreaterThan(0);
+    expect(hashes.length).toBeGreaterThan(0);
+    expect(hashes[0]).toMatch(/^0x[a-fA-F0-9]{64}$/);
 
-    // Step 5: Reconcile push (mocked)
-    const mockProvider = createMockProvider();
-    const reconciliationReport = await reconcilePush(
+    // Step 5: Reconcile push (mocked)  
+    const reconcileResult = await reconcilePush(
+      mockPublic as any,
+      mockToken.address as `0x${string}`,
       buildResult.manifest,
-      executionPlan,
-      mockProvider
+      hashes
     );
 
-    expect(reconciliationReport.manifestId).toBe(buildResult.manifest.id);
-    expect(reconciliationReport.transactions.length).toBe(buildResult.manifest.winners.length);
-    expect(reconciliationReport.summary.totalTransactions).toBe(buildResult.manifest.winners.length);
-    expect(['completed', 'partial', 'failed']).toContain(reconciliationReport.status);
+    expect(reconcileResult.success).toBeDefined();
+    expect(reconcileResult.totalAmountFound).toBeDefined();
+    expect(reconcileResult.expectedTotalAmount).toBe(buildResult.manifest.totalAmount);
+    expect(reconcileResult.details.successfulTransfers).toBeDefined();
   });
 
   test('should handle failed transactions in execution', async () => {
-    // Create a mock signer that always fails
-    const failingSigner: MockSigner = {
+    // Create a mock wallet that throws errors
+    const failingWallet: MockWalletClient = {
       async sendTransaction() {
-        return {
-          hash: '',
-          success: false,
-          error: 'Network error',
-        };
+        throw new Error('Network error');
       },
     };
 
@@ -158,23 +166,22 @@ describe('Payouts Integration', () => {
       groupId: 'group-456',
     });
 
-    const preparedPayout = preparePushTxs(buildResult.manifest);
-    const executionPlan = await executeTxPlan(preparedPayout, failingSigner);
+    const preparedPayout = preparePushTxs(buildResult.manifest, {
+      token: mockToken,
+      airdrop: '0x2aACce8B9522F81F14834883198645BB6894Bfc0', // Provide a valid airdrop address
+    });
 
-    expect(executionPlan.success).toBe(false);
-    expect(executionPlan.failedCount).toBe(1);
-    expect(executionPlan.successCount).toBe(0);
+    const mockPublic = createMockPublicClient();
+    const executeOptions: ExecuteOptions = {
+      wallet: failingWallet as any,
+      publicClient: mockPublic as any,
+      stopOnFail: false,
+    };
 
-    const mockProvider = createMockProvider();
-    const reconciliationReport = await reconcilePush(
-      buildResult.manifest,
-      executionPlan,
-      mockProvider
-    );
+    const hashes = await executeTxPlan(preparedPayout, executeOptions);
 
-    expect(reconciliationReport.status).toBe('failed');
-    expect(reconciliationReport.summary.failedTransactions).toBe(1);
-    expect(reconciliationReport.summary.confirmedTransactions).toBe(0);
+    // Should return empty array when all transactions fail
+    expect(hashes.length).toBe(0);
   });
 
   test('should import all required functions from package root', () => {
@@ -187,23 +194,20 @@ describe('Payouts Integration', () => {
     expect(typeof reconcilePush).toBe('function');
   });
 
-  test('should export CSV with custom options', () => {
+  test('should export CSV with correct format', () => {
     const buildResult = buildManifest([mockWinners[0]!], {
       token: mockToken,
       roundId: 'round-123',
       groupId: 'group-456',
     });
 
-    // Test with no header
-    const csvNoHeader = toCSV(buildResult.manifest, { includeHeader: false });
-    expect(csvNoHeader).not.toContain('address,amount,rank');
-
-    // Test with custom delimiter
-    const csvPipe = toCSV(buildResult.manifest, { delimiter: '|' });
-    expect(csvPipe).toContain('address|amount|rank');
-
-    // Test without metadata
-    const csvNoMetadata = toCSV(buildResult.manifest, { includeMetadata: false });
-    expect(csvNoMetadata).not.toContain('metadata');
+    const csvData = toCSV(buildResult.manifest);
+    
+    // Test canonical format: address,amountWei,symbol,roundId,groupId
+    expect(csvData).toContain('address,amountWei,symbol,roundId,groupId');
+    expect(csvData.toLowerCase()).toContain('0xd8da6bf26964af9d7eed9e03e53415d37aa96045');
+    expect(csvData).toContain('USDC');
+    expect(csvData).toContain('round-123');
+    expect(csvData).toContain('group-456');
   });
 });
