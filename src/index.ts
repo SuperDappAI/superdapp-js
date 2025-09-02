@@ -26,3 +26,6 @@ export * from './webhook/registry';
 
 // Payouts exports
 export * from './payouts';
+
+// AI exports - Model-agnostic AI integration
+export * from './ai';

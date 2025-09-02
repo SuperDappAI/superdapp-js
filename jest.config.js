@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
@@ -7,7 +7,7 @@ export default {
     '^.+\\.ts$': [
       'ts-jest',
       {
-        useESM: true,
+        useESM: false,
       },
     ],
   },
@@ -23,5 +23,4 @@ export default {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  extensionsToTreatAsEsm: ['.ts'],
 };
