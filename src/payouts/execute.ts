@@ -39,8 +39,8 @@ export async function executeTxPlan(
   const successfulHashes: `0x${string}`[] = [];
   const errors: Error[] = [];
 
-  // Use the transactions field from PreparedPayout
-  const transactions = plan.transactions;
+  // Support both 'transactions' and 'txs' fields for flexibility
+  const transactions = plan.txs || plan.transactions;
 
   if (!transactions || transactions.length === 0) {
     throw new Error('No transactions to execute in the payout plan');
