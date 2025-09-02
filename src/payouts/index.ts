@@ -11,6 +11,12 @@ export * from './types';
 // Export builder utilities
 export * from './builder';
 
+// Export execution utilities
+export * from './execute';
+
+// Export reconciliation utilities
+export * from './reconcile';
+
 // Re-export specific types for convenience
 export type {
   ChainId,
@@ -29,3 +35,11 @@ export type {
 } from './builder';
 
 export { buildManifest } from './builder';
+
+// Re-export execution functions for convenience
+export type { ExecuteOptions } from './execute';
+export { executeTxPlan } from './execute';
+
+// Re-export reconciliation functions for convenience
+export type { ReconcileResult } from './reconcile';
+export { reconcilePush, quickReconcileCheck } from './reconcile';
