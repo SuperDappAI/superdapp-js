@@ -14,12 +14,24 @@ import {
   TokenInfo,
   WinnerRow,
   ExecuteOptions,
-  ReconcileResult,
 } from '../index';
+
+interface MockTransaction {
+  to: string;
+  value: string;
+  data: string;
+  gasLimit: string;
+  gasPrice?: string;
+  maxFeePerGas?: string;
+  maxPriorityFeePerGas?: string;
+  nonce: number;
+  chainId: number;
+  type?: number;
+}
 
 // Mock viem types for testing
 interface MockWalletClient {
-  sendTransaction: (tx: any) => Promise<`0x${string}`>;
+  sendTransaction: (tx: MockTransaction) => Promise<`0x${string}`>;
 }
 
 interface MockPublicClient {
@@ -65,7 +77,8 @@ describe('Payouts Integration', () => {
   ];
 
   const createMockWalletClient = (): MockWalletClient => ({
-    async sendTransaction(tx: any): Promise<`0x${string}`> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async sendTransaction(_tx: MockTransaction): Promise<`0x${string}`> {
       // Simulate successful transaction with proper 64-character hash
       const hash = '0x' + '1234567890abcdef'.repeat(4); // Creates exactly 64 hex chars
       return hash as `0x${string}`;
@@ -73,10 +86,12 @@ describe('Payouts Integration', () => {
   });
 
   const createMockPublicClient = (): MockPublicClient => ({
-    async waitForTransactionReceipt(options) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async waitForTransactionReceipt(_options: { hash: `0x${string}`; confirmations: number }) {
       return { status: 'success' as const };
     },
-    async getTransactionReceipt(options) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async getTransactionReceipt(_options: { hash: `0x${string}` }) {
       return {
         status: 'success' as const,
         logs: [
@@ -128,8 +143,8 @@ describe('Payouts Integration', () => {
     const mockWallet = createMockWalletClient();
     const mockPublic = createMockPublicClient();
     const executeOptions: ExecuteOptions = {
-      wallet: mockWallet as any,
-      publicClient: mockPublic as any,
+      wallet: mockWallet as unknown as import('viem').WalletClient,
+      publicClient: mockPublic as unknown as import('viem').PublicClient,
       stopOnFail: false,
     };
     
@@ -140,7 +155,7 @@ describe('Payouts Integration', () => {
 
     // Step 5: Reconcile push (mocked)  
     const reconcileResult = await reconcilePush(
-      mockPublic as any,
+      mockPublic as unknown as import('viem').PublicClient,
       mockToken.address as `0x${string}`,
       buildResult.manifest,
       hashes
@@ -173,8 +188,8 @@ describe('Payouts Integration', () => {
 
     const mockPublic = createMockPublicClient();
     const executeOptions: ExecuteOptions = {
-      wallet: failingWallet as any,
-      publicClient: mockPublic as any,
+      wallet: failingWallet as unknown as import('viem').WalletClient,
+      publicClient: mockPublic as unknown as import('viem').PublicClient,
       stopOnFail: false,
     };
 

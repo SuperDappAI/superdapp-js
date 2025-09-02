@@ -76,8 +76,8 @@ describe('Payouts Exporters', () => {
       const lines = csv.split('\n');
       expect(lines).toHaveLength(3); // header + 2 winners
       
-      // Check first winner row
-      expect(lines[1]).toBe('0x742d35cc6584C0532E47A89c9Fdd3D3f8C6c1B66,100500000000000000000,SUPR,round-123,group-456');
+      // Check first winner row (using proper EIP-55 checksummed address)
+      expect(lines[1]).toBe('0x742D35Cc6584c0532e47a89c9Fdd3d3F8c6c1B66,100500000000000000000,SUPR,round-123,group-456');
       
       // Check second winner row
       expect(lines[2]).toBe('0x1234567890123456789012345678901234567890,50250000000000000000,SUPR,round-123,group-456');
