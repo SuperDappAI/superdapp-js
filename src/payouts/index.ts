@@ -5,19 +5,16 @@
  * to multiple recipients on various blockchain networks.
  */
 
-// Export all types
+// Export all types & utilities from submodules
 export * from './types';
-
-// Export builder utilities
 export * from './builder';
-
-// Export execution utilities
 export * from './execute';
-
-// Export reconciliation utilities
 export * from './reconcile';
+export * from './tx-preparer';
+export * from './chain-config';
+export * from './exporters';
 
-// Re-export specific types for convenience
+// Re-export specific TYPES for convenience (types only to avoid duplicate value exports)
 export type {
   ChainId,
   TokenInfo,
@@ -28,18 +25,13 @@ export type {
   PreparedPayout,
 } from './types';
 
-// Re-export builder functions for convenience
 export type {
   BuildManifestOptions,
   BuildManifestResult,
 } from './builder';
 
-export { buildManifest } from './builder';
-
-// Re-export execution functions for convenience
 export type { ExecuteOptions } from './execute';
-export { executeTxPlan } from './execute';
 
-// Re-export reconciliation functions for convenience
 export type { ReconcileResult } from './reconcile';
-export { reconcilePush, quickReconcileCheck } from './reconcile';
+
+export type { PushPrepareOptions } from './tx-preparer';

@@ -204,7 +204,10 @@ export function buildManifest(
     createdAt: new Date().toISOString(),
     roundId,
     groupId,
-    version: '1.0'
+    version: '1.0',
+    totals: {
+      amountWei: totalAmount
+    }
   };
   
   // Step 5: Compute deterministic hash
