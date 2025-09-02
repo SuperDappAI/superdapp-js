@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
@@ -7,7 +7,8 @@ export default {
     '^.+\\.ts$': [
       'ts-jest',
       {
-        useESM: true,
+        tsconfig: '<rootDir>/tsconfig.json',
+        isolatedModules: true,
       },
     ],
   },
@@ -22,6 +23,9 @@ export default {
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^@/types/(.*)$': '<rootDir>/src/types/$1',
+    '^@/utils/(.*)$': '<rootDir>/src/utils/$1',
+    '^@/core/(.*)$': '<rootDir>/src/core/$1',
+    '^@/cli/(.*)$': '<rootDir>/src/cli/$1',
   },
-  extensionsToTreatAsEsm: ['.ts'],
 };
