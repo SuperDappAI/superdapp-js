@@ -76,7 +76,7 @@ export async function executeTxPlan(
       }
 
       // Send transaction
-      const hash = await wallet.sendTransaction(viemTx as any);
+      const hash = await wallet.sendTransaction(viemTx as Parameters<typeof wallet.sendTransaction>[0]);
       successfulHashes.push(hash);
 
       // Fire progress callback with hash

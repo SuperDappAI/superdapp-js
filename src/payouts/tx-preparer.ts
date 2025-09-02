@@ -84,7 +84,7 @@ export function preparePushTxs(
   opts: PushPrepareOptions
 ): PreparedPayout {
   const { airdrop: providedAirdrop, token, maxPerBatch = 50, singleApproval = true } = opts;
-  const totalWei = manifest.totals.amountWei;
+  const totalWei = manifest.totalAmount;
   const transactions: PreparedTx[] = [];
   const errors: string[] = [];
   const warnings: string[] = [];

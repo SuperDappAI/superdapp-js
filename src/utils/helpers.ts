@@ -126,14 +126,10 @@ export function deepMerge<T extends object>(target: T, source: Partial<T>): T {
 }
 
 /**
- * Extract Ethereum address from event log topic
+ * Extract an Ethereum address from a bytes32 topic (e.g., from event logs)
  * 
- * Event log topics contain addresses padded to 32 bytes (64 hex characters).
- * This function extracts the actual 20-byte address from the padded topic.
- * 
- * @param topic - The hex string topic from an event log (should be 66 chars: 0x + 64 hex)
- * @returns The extracted Ethereum address (20 bytes, 42 chars including 0x prefix)
- * @throws Error if the topic is not properly formatted
+ * @param topic - The bytes32 topic string (66 chars: 0x + 64 hex chars)
+ * @returns The extracted Ethereum address (0x + 40 hex chars)
  */
 export function extractAddressFromTopic(topic: string): `0x${string}` {
   if (!topic || typeof topic !== 'string') {
