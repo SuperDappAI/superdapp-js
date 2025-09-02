@@ -7,6 +7,7 @@
 import type { PublicClient } from 'viem';
 import type { PayoutManifest } from './types';
 import { handleError, logError } from '../utils/errors';
+import { extractAddressFromTopic } from '../utils/helpers';
 
 /**
  * Result of reconciling a payout execution
@@ -106,34 +107,39 @@ export async function reconcilePush(
 
           // Check if this is a Transfer event
           if (log.topics[0] === TRANSFER_EVENT_SIGNATURE && log.topics.length >= 3) {
-            // Extract transfer details
-            const toAddress = `0x${log.topics[2]?.slice(-40)}`;
-            const amount = log.data ? BigInt(log.data) : BigInt(0);
+            try {
+              // Extract transfer details using the utility function
+              const toAddress = extractAddressFromTopic(log.topics[2] || '');
+              const amount = log.data ? BigInt(log.data) : BigInt(0);
 
-            // Check if this transfer is to one of our expected recipients
-            const expectedAmount = expectedTransfers.get(toAddress.toLowerCase());
-            if (expectedAmount) {
-              // Verify the amount matches what we expected
-              const expectedAmountBigInt = BigInt(expectedAmount);
-              
-              if (amount === expectedAmountBigInt) {
-                // Successful transfer found
-                result.details.successfulTransfers.push({
-                  recipient: toAddress,
-                  amount: amount.toString(),
-                  txHash,
-                  logIndex
-                });
-
-                totalAmountFound += amount;
+              // Check if this transfer is to one of our expected recipients
+              const expectedAmount = expectedTransfers.get(toAddress.toLowerCase());
+              if (expectedAmount) {
+                // Verify the amount matches what we expected
+                const expectedAmountBigInt = BigInt(expectedAmount);
                 
-                // Remove from expected transfers (to track what's missing)
-                expectedTransfers.delete(toAddress.toLowerCase());
-              } else {
-                result.errors.push(
-                  `Amount mismatch for ${toAddress}: expected ${expectedAmount}, found ${amount.toString()}`
-                );
+                if (amount === expectedAmountBigInt) {
+                  // Successful transfer found
+                  result.details.successfulTransfers.push({
+                    recipient: toAddress,
+                    amount: amount.toString(),
+                    txHash,
+                    logIndex
+                  });
+
+                  totalAmountFound += amount;
+                  
+                  // Remove from expected transfers (to track what's missing)
+                  expectedTransfers.delete(toAddress.toLowerCase());
+                } else {
+                  result.errors.push(
+                    `Amount mismatch for ${toAddress}: expected ${expectedAmount}, found ${amount.toString()}`
+                  );
+                }
               }
+            } catch (topicError) {
+              const handledTopicError = handleError(topicError);
+              result.errors.push(`Failed to extract address from topic in transaction ${txHash}: ${handledTopicError.message}`);
             }
           }
         }

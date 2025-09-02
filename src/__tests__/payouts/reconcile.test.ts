@@ -49,6 +49,9 @@ describe('Payouts Reconcile Module', () => {
       groupId: 'group-456',
       version: '1.0',
       hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+      totals: {
+        amountWei: '1000000',
+      },
     };
   });
 
@@ -177,6 +180,9 @@ describe('Payouts Reconcile Module', () => {
         ...mockManifest,
         winners: [mockWinner, mockWinner2],
         totalAmount: '1500000',
+        totals: {
+          amountWei: '1500000',
+        },
       };
 
       const txHash1 = '0x1111111111111111111111111111111111111111111111111111111111111111';
