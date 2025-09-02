@@ -5,22 +5,16 @@
  * to multiple recipients on various blockchain networks.
  */
 
-// Export all types
+// Export all types & utilities from submodules
 export * from './types';
-
-// Export builder utilities
 export * from './builder';
-
-// Export transaction preparer utilities
+export * from './execute';
+export * from './reconcile';
 export * from './tx-preparer';
-
-// Export chain configuration utilities
 export * from './chain-config';
-
-// Export exporters utilities
 export * from './exporters';
 
-// Re-export specific types for convenience
+// Re-export specific TYPES for convenience (types only to avoid duplicate value exports)
 export type {
   ChainId,
   TokenInfo,
@@ -31,30 +25,13 @@ export type {
   PreparedPayout,
 } from './types';
 
-// Re-export builder functions for convenience
 export type {
   BuildManifestOptions,
   BuildManifestResult,
 } from './builder';
 
-export { buildManifest } from './builder';
+export type { ExecuteOptions } from './execute';
 
-// Re-export tx-preparer functions for convenience
-export type {
-  PushPrepareOptions,
-  preparePushTxs
-} from './tx-preparer';
+export type { ReconcileResult } from './reconcile';
 
-// Re-export chain configuration functions for convenience
-export {
-  getAirdropAddress,
-  getChainMetadata,
-  isSupportedChain,
-  getSupportedChainIds,
-  getAllConfiguredChainIds,
-  SUPERDAPP_AIRDROP_ADDRESSES,
-  CHAIN_METADATA,
-} from './chain-config';
-
-export { toCSV, toJSON } from './exporters';
-
+export type { PushPrepareOptions } from './tx-preparer';

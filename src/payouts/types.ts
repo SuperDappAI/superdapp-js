@@ -135,6 +135,8 @@ export interface PreparedPayout {
   manifestId: string;
   /** List of prepared transactions */
   transactions: PreparedTx[];
+  /** Alias for transactions (for compatibility) */
+  txs?: PreparedTx[];
   /** Total gas cost estimation */
   estimatedGasCost: string;
   /** Preparation timestamp */

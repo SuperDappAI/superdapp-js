@@ -95,6 +95,9 @@ describe('Payouts Exporters', () => {
         groupId: 'group-456',
         version: '1.0',
         hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+        totals: {
+          amountWei: '0',
+        },
       };
 
       const csv = toCSV(emptyManifest);
