@@ -6,7 +6,7 @@ Welcome to the comprehensive documentation for the SuperDapp Agents SDK. This do
 
 ### 🚀 Getting Started
 
-- **[Quick Start Guide](./quick-start.md)** - Get up and running with your first agent in minutes
+- **[Quick Start Guide](./quick-start.md)** - Complete setup guide including SuperDapp platform registration, API key generation, webhook configuration, and your first agent
 - **[CLI Guide](./cli-guide.md)** - Complete command-line interface documentation
 
 ### 🛠️ Development
@@ -21,6 +21,7 @@ Welcome to the comprehensive documentation for the SuperDapp Agents SDK. This do
 
 | Topic                 | Description                     | Link                                |
 | --------------------- | ------------------------------- | ----------------------------------- |
+| **Platform Setup**    | SuperDapp account & API setup  | [Quick Start](./quick-start.md#platform-setup) |
 | **First Steps**       | Create your first agent         | [Quick Start](./quick-start.md)     |
 | **CLI Commands**      | Manage agents from command line | [CLI Guide](./cli-guide.md)         |
 | **Advanced Features** | Complex patterns and scenarios  | [API Reference](./api-reference.md) |
