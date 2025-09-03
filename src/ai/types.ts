@@ -1,4 +1,4 @@
-export type AiProvider = 'openai' | 'anthropic' | 'google' | 'azure-openai' | 'other';
+export type AiProvider = 'openai' | 'anthropic' | 'google';
 
 export interface AiConfig {
   provider?: AiProvider;

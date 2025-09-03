@@ -93,7 +93,12 @@ describe('AI Client', () => {
         prompt: 'Test prompt',
         temperature: 0.7,
         maxTokens: 100,
-        config: options.config,
+        topP: undefined,
+        topK: undefined,
+        frequencyPenalty: undefined,
+        presencePenalty: undefined,
+        seed: undefined,
+        stop: undefined,
       });
     });
 
@@ -143,7 +148,13 @@ describe('AI Client', () => {
         model: 'mock-model',
         messages,
         temperature: 0.8,
-        config: options.config,
+        maxTokens: undefined,
+        topP: undefined,
+        topK: undefined,
+        frequencyPenalty: undefined,
+        presencePenalty: undefined,
+        seed: undefined,
+        stop: undefined,
       });
     });
 
@@ -162,9 +173,10 @@ describe('AI Client', () => {
       expect(result).toEqual({ outputText: 'Agent response content' });
       expect(mockLoadModel).toHaveBeenCalledWith(undefined);
       expect(mockAgent).toHaveBeenCalledWith({
+        name: 'superdapp-agent',
         model: 'mock-model',
         instructions: 'You are a helpful assistant.',
-        tools: {},
+        tools: [],
       });
     });
 
@@ -187,6 +199,7 @@ describe('AI Client', () => {
       expect(result).toEqual({ outputText: 'Agent response content' });
       expect(mockLoadModel).toHaveBeenCalledWith(options.config);
       expect(mockAgent).toHaveBeenCalledWith({
+        name: 'superdapp-agent',
         model: 'mock-model',
         instructions: 'You are a coding assistant.',
         tools: { codeGenerator: {} },

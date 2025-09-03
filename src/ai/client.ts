@@ -1,6 +1,3 @@
-import { generateText as vercelGenerateText, streamText as vercelStreamText } from 'ai';
-import { Agent } from '@openai/agents';
-import { loadModel } from './config';
 import type { 
   AgentRunOptions, 
   GenerateTextOptions, 
@@ -21,24 +18,33 @@ export async function generateText(
   options: GenerateTextOptions = {}
 ): Promise<string> {
   try {
-    const model = await loadModel(options.config);
+    // Dynamic import to avoid circular dependencies and optional loading
+    const { loadModel } = await import('./config');
+    const { generateText: vercelGenerateText } = await import('ai');
+    
+    const model = await loadModel(options.config as any);
     
     // Handle different input types
+    const generateOptions: any = {
+      model,
+      temperature: options.temperature,
+      maxTokens: options.maxTokens,
+      topP: options.topP,
+      topK: options.topK,
+      frequencyPenalty: options.frequencyPenalty,
+      presencePenalty: options.presencePenalty,
+      seed: options.seed,
+      stop: options.stop,
+    };
+
     if (typeof input === 'string') {
-      const result = await vercelGenerateText({
-        model,
-        prompt: input,
-        ...options,
-      });
-      return result.text;
+      generateOptions.prompt = input;
     } else {
-      const result = await vercelGenerateText({
-        model,
-        messages: input,
-        ...options,
-      });
-      return result.text;
+      generateOptions.messages = input;
     }
+    
+    const result = await vercelGenerateText(generateOptions);
+    return (result as any).text;
   } catch (error) {
     throw new Error(`generateText failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
@@ -56,17 +62,28 @@ export async function streamText(
   options: StreamTextOptions = {}
 ): Promise<AsyncIterable<string>> {
   try {
-    const model = await loadModel(options.config);
+    // Dynamic import to avoid circular dependencies and optional loading
+    const { loadModel } = await import('./config');
+    const { streamText: vercelStreamText } = await import('ai');
+    
+    const model = await loadModel(options.config as any);
     
     const result = await vercelStreamText({
       model,
       messages: input,
-      ...options,
-    });
+      temperature: options.temperature,
+      maxTokens: options.maxTokens,
+      topP: options.topP,
+      topK: options.topK,
+      frequencyPenalty: options.frequencyPenalty,
+      presencePenalty: options.presencePenalty,
+      seed: options.seed,
+      stop: options.stop,
+    } as any);
     
     // Create async generator that yields text chunks
     async function* textStream() {
-      for await (const chunk of result.textStream) {
+      for await (const chunk of (result as any).textStream) {
         yield chunk;
       }
     }
@@ -85,21 +102,26 @@ export async function streamText(
  */
 export async function runAgent(options: AgentRunOptions = {}): Promise<{ outputText: string }> {
   try {
-    const model = await loadModel(options.config);
+    // Dynamic import to avoid circular dependencies and optional loading
+    const { loadModel } = await import('./config');
+    const { Agent } = await import('@openai/agents');
+    
+    const model = await loadModel(options.config as any);
     
     // Create an Agent instance using the OpenAI Agents SDK
     const agent = new Agent({
+      name: 'superdapp-agent',
       model,
       instructions: options.instructions || 'You are a helpful assistant.',
-      tools: options.tools || {},
-    });
+      tools: (options.tools as any) || [],
+    } as any);
     
     // Execute the agent with the provided messages
     const messages = options.messages || [];
-    const result = await agent.run({ messages });
+    const result = await (agent as any).run({ messages });
     
     // Extract the text output from the agent result
-    const outputText = result.content || 'No output generated';
+    const outputText = result?.content || 'No output generated';
     
     return { outputText };
   } catch (error) {
