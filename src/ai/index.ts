@@ -28,3 +28,6 @@ export type AIProvider = typeof AI_PROVIDERS[number];
 export default {
   AI_PROVIDERS,
 };
+
+export * from './types';
+export * from './client';

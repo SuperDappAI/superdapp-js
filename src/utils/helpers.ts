@@ -124,3 +124,33 @@ export function deepMerge<T extends object>(target: T, source: Partial<T>): T {
 
   return result;
 }
+
+/**
+ * Extract an Ethereum address from a bytes32 topic (e.g., from event logs)
+ * 
+ * @param topic - The bytes32 topic string (66 chars: 0x + 64 hex chars)
+ * @returns The extracted Ethereum address (0x + 40 hex chars)
+ */
+export function extractAddressFromTopic(topic: string): `0x${string}` {
+  if (!topic || typeof topic !== 'string') {
+    throw new Error('Topic must be a non-empty string');
+  }
+
+  if (!topic.startsWith('0x')) {
+    throw new Error('Topic must start with 0x prefix');
+  }
+
+  if (topic.length !== 66) {
+    throw new Error(`Topic must be 66 characters long (0x + 64 hex chars), got ${topic.length}`);
+  }
+
+  // Extract the last 40 hex characters (20 bytes) for the address
+  const address = `0x${topic.slice(-40)}`;
+
+  // Validate the extracted address format
+  if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    throw new Error(`Extracted address is not valid hex format: ${address}`);
+  }
+
+  return address as `0x${string}`;
+}

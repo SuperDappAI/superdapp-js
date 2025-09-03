@@ -13,8 +13,8 @@
     "clean": "rm -rf dist",
     "start": "node dist/cli/index.js",
     "dev": "tsx watch src/cli/index.ts",
-    "test": "jest",
-    "test:watch": "jest --watch",
+  "test": "jest --config jest.config.js",
+  "test:watch": "jest --config jest.config.js --watch",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write src/**/*.ts",
@@ -55,6 +55,7 @@
     "inquirer": "^9.2.19",
     "node-schedule": "^2.1.1",
     "ora": "^8.0.1",
+    "viem": "^2.37.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {

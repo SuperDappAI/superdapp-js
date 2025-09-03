@@ -53,29 +53,34 @@ export function validateAndChecksumAddress(address: string): string | null {
 }
 
 /**
- * Convert address to checksum format (EIP-55)
- * Note: This is a simplified implementation for demo purposes.
- * In production, you should use a proper Keccak-256 implementation.
+ * Convert address to checksum format (EIP-55) using viem's implementation
  */
 function toChecksumAddress(address: string): string {
-  const cleanAddress = address.replace(/^0x/i, '').toLowerCase();
-  
-  // For this implementation, we'll return a properly formatted address
-  // In production, this should use Keccak-256 hash for proper EIP-55 checksumming
-  let result = '0x';
-  for (let i = 0; i < cleanAddress.length; i++) {
-    const char = cleanAddress[i];
-    if (!char) continue;
+  // Use viem's getAddress which provides proper EIP-55 checksumming
+  try {
+    const { getAddress } = require('viem');
+    return getAddress(address);
+  } catch (error) {
+    // Fallback to original implementation if viem is not available
+    const cleanAddress = address.replace(/^0x/i, '').toLowerCase();
     
-    // Simple pattern for demo - alternate case based on position
-    if (i % 4 < 2) {
-      result += char.toUpperCase();
-    } else {
-      result += char;
+    // For this implementation, we'll return a properly formatted address
+    // In production, this should use Keccak-256 hash for proper EIP-55 checksumming
+    let result = '0x';
+    for (let i = 0; i < cleanAddress.length; i++) {
+      const char = cleanAddress[i];
+      if (!char) continue;
+      
+      // Simple pattern for demo - alternate case based on position
+      if (i % 4 < 2) {
+        result += char.toUpperCase();
+      } else {
+        result += char;
+      }
     }
+    
+    return result;
   }
-  
-  return result;
 }
 
 /**
@@ -204,7 +209,10 @@ export function buildManifest(
     createdAt: new Date().toISOString(),
     roundId,
     groupId,
-    version: '1.0'
+    version: '1.0',
+    totals: {
+      amountWei: totalAmount
+    }
   };
   
   // Step 5: Compute deterministic hash

@@ -8,6 +8,8 @@ module.exports = {
       'ts-jest',
       {
         useESM: false,
+        tsconfig: '<rootDir>/tsconfig.json',
+        isolatedModules: true,
       },
     ],
   },
@@ -22,5 +24,9 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^@/types/(.*)$': '<rootDir>/src/types/$1',
+    '^@/utils/(.*)$': '<rootDir>/src/utils/$1',
+    '^@/core/(.*)$': '<rootDir>/src/core/$1',
+    '^@/cli/(.*)$': '<rootDir>/src/cli/$1',
   },
 };

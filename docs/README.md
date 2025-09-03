@@ -12,6 +12,8 @@ Welcome to the comprehensive documentation for the SuperDapp Agents SDK. This do
 ### 🛠️ Development
 
 - **[API Reference](./api-reference.md)** - Complete SDK reference with classes, methods, and types
+- **[Payouts Module](./payouts.md)** - Push-only batch payouts for ERC-20 and native
+- **[AI Integration](./ai-integration.md)** - Model-agnostic AI via Agents SDK + AI SDK
 
 ### 🚀 Deployment
 
