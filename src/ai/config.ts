@@ -41,10 +41,10 @@ export class AIConfigError extends Error {
  */
 export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
   const rawConfig = {
-    provider: config?.provider || process.env.AI_PROVIDER || 'openai',
-    model: config?.model || process.env.AI_MODEL || '',
-    apiKey: config?.apiKey || process.env.AI_API_KEY || '',
-    baseUrl: config?.baseUrl || process.env.AI_BASE_URL || undefined,
+    provider: config?.provider ?? process.env.AI_PROVIDER ?? undefined,
+    model: config?.model ?? process.env.AI_MODEL ?? undefined,
+    apiKey: config?.apiKey ?? process.env.AI_API_KEY ?? undefined,
+    baseUrl: config?.baseUrl ?? process.env.AI_BASE_URL ?? undefined,
   };
 
   try {
