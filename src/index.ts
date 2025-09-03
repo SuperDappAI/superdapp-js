@@ -15,6 +15,9 @@ export * from './utils/errors';
 // Validation exports
 export * from './utils/validation';
 
+// AI exports
+export * from './ai';
+
 // Re-export commonly used external libraries
 export { z } from 'zod';
 export * as schedule from 'node-schedule';
