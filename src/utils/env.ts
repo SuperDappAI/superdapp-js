@@ -6,6 +6,11 @@ const envSchema = z.object({
   API_BASE_URL: z.string().url().optional(),
   API_TOKEN: z.string().min(1, 'API_TOKEN is required'),
   NODE_ENV: z.enum(['development', 'production']).optional(),
+  // AI Provider Configuration (optional)
+  AI_PROVIDER: z.enum(['openai', 'anthropic', 'google']).optional(),
+  AI_MODEL: z.string().optional(),
+  AI_API_KEY: z.string().optional(),
+  AI_BASE_URL: z.string().url().optional().or(z.literal('')),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
@@ -140,10 +145,22 @@ export async function loadEnvConfigFromFile(
 export function createBotConfig(customBaseUrl?: string): BotConfig {
   const env = loadEnvConfig();
 
-  return {
+  const config: BotConfig = {
     apiToken: env.API_TOKEN,
     baseUrl: customBaseUrl || env.API_BASE_URL || 'https://api.superdapp.ai',
   };
+
+  // Add AI configuration if present
+  if (env.AI_PROVIDER && env.AI_MODEL && env.AI_API_KEY) {
+    config.ai = {
+      provider: env.AI_PROVIDER,
+      model: env.AI_MODEL,
+      apiKey: env.AI_API_KEY,
+      baseUrl: env.AI_BASE_URL,
+    };
+  }
+
+  return config;
 }
 
 /**
@@ -156,10 +173,22 @@ export async function createBotConfigFromFile(
 ): Promise<BotConfig> {
   const env = await loadEnvConfigFromFile(filePath, format);
 
-  return {
+  const config: BotConfig = {
     apiToken: env.API_TOKEN,
     baseUrl: customBaseUrl || env.API_BASE_URL || 'https://api.superdapp.ai',
   };
+
+  // Add AI configuration if present
+  if (env.AI_PROVIDER && env.AI_MODEL && env.AI_API_KEY) {
+    config.ai = {
+      provider: env.AI_PROVIDER,
+      model: env.AI_MODEL,
+      apiKey: env.AI_API_KEY,
+      baseUrl: env.AI_BASE_URL,
+    };
+  }
+
+  return config;
 }
 
 /**
