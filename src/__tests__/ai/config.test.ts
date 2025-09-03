@@ -237,7 +237,7 @@ describe('AI Config', () => {
           model: 'model',
           apiKey: 'key',
         })
-      ).rejects.toThrow('Invalid enum value');
+      ).rejects.toThrow('AI_PROVIDER must be one of: openai, anthropic, google');
     });
 
     it('should throw AIConfigError for missing configuration', async () => {
