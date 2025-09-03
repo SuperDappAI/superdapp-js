@@ -14,14 +14,19 @@ Before you can build agents, you need to set up your SuperDapp account and get y
 
 ### 2. Generate Your Agent API Key
 
-1. **Go to Agent Settings**: In your SuperDapp dashboard, find the "Agents" or "Developer" section
-2. **Create New Agent**: Click "Create New Agent" or "Add Agent"
-3. **Configure Agent Details**:
-   - **Agent Name**: Choose a descriptive name for your agent
-   - **Agent Description**: Briefly describe what your agent does
-   - **Permissions**: Select the permissions your agent needs (messaging, group access, etc.)
-4. **Generate API Key**: After creating the agent, you'll receive an API token/key
-5. **Save Your Credentials**: Securely store your API token - you'll need it for development
+1. **Go to Settings Menu**: In your SuperDapp dashboard, navigate to the Settings menu
+2. **Access AI Agents**: Click on the "AI Agents" submenu
+3. **Create an Agent**: Select the "Create an agent" option
+4. **Configure Agent Profile**:
+   - **Agent Username**: Choose a unique username for your agent
+   - **Agent Password**: Set a secure password (save this password - you'll need it to get your API key)
+   - **Profile Picture**: Upload an agent profile picture (can be changed later)
+   - **Note**: The username and password cannot be changed after creation. If you make a mistake, you'll need to delete the agent and start over.
+5. **Generate API Key**: After creating the agent, you'll be redirected to the agent page
+   - Click on "View" in the "Agent API key" section
+   - Enter the agent's password when prompted
+   - Your API key will be revealed - securely store this token
+6. **Save Your Credentials**: Keep both your agent password and API token secure - you'll need them for development
 
 > ⚠️ **Security Note**: Never share your API token publicly or commit it to version control. Always use environment variables to store sensitive credentials.
 
@@ -62,8 +67,6 @@ cloudflared tunnel --url http://localhost:3000
      - `message` - Direct messages to your agent
      - `group_message` - Messages in Super Groups where your agent is added
      - `callback_query` - Button clicks and interactions
-     - `member_joined` - When someone joins a group with your agent
-     - `member_left` - When someone leaves a group with your agent
 3. **Test Webhook**: Use the "Test Webhook" feature to verify your endpoint is working
 4. **Save Configuration**: Save your webhook settings
 
@@ -74,20 +77,14 @@ Your agent will receive different types of events:
 - **Direct Messages**: When users message your agent directly
 - **Group Messages**: When your agent is mentioned or receives messages in Super Groups
 - **Button Interactions**: When users click interactive buttons you've created
-- **Group Events**: When users join/leave groups where your agent is active
 
-### 4. Add Agent to Super Groups
+### 4. Add Agent to Super Groups (Optional)
 
 To enable your agent in Super Groups:
 
-1. **Group Admin Access**: Ensure you're an admin of the Super Group
-2. **Add Agent**: In the group settings, add your agent using its username or ID
-3. **Set Permissions**: Configure what your agent can do in the group:
-   - Send messages
-   - Read messages
-   - Manage members (if needed)
-   - Post announcements
-4. **Test Integration**: Send a test message to verify your agent responds
+1. **Direct Messages**: Send a message to your agent directly to interact with it
+2. **Group Messages**: Add your agent to Super Groups where it can respond to messages
+3. **Agent Setup**: Use the `/setup` command in DM with your agent to select a Super Group that you are owner or admin of
 
 ## 🚀 Getting Started with Development
 
@@ -136,11 +133,10 @@ Once your agent is running:
 2. **Test Webhook Endpoint**: Your webhook endpoint should be available at `http://localhost:3000/webhook`
 3. **Check SuperDapp Connection**: 
    - Go to your SuperDapp dashboard
-   - Use the "Test Webhook" feature to send a test event to your agent
+   - Use the "Test Webhook" feature to send a test event to your agent *(Note: This feature is not supported yet)*
    - Check your agent's console logs for incoming webhook events
 4. **Send Test Message**: 
    - Open SuperDapp and send a direct message to your agent
-   - Or mention your agent in a Super Group where it's been added
    - Verify your agent receives and responds to the message
 
 > 🔧 **Troubleshooting**: If webhooks aren't working, check:
