@@ -29,7 +29,7 @@ export default {
   AI_PROVIDERS,
 };
 
-// Export AI configuration and model loading
+// NEW: Export AI configuration and model loading functionality
 export {
   loadModel,
   loadAIConfig,
