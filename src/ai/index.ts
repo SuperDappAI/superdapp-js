@@ -29,5 +29,15 @@ export default {
   AI_PROVIDERS,
 };
 
+// Export AI configuration and model loading
+export {
+  loadModel,
+  loadAIConfig,
+  isSupportedProvider,
+  getSupportedProviders,
+  AIConfigError,
+} from './config';
+export type { AIConfig as AdvancedAIConfig, AIProvider as AdvancedAIProvider } from './config';
+
 export * from './types';
 export * from './client';
