@@ -2,7 +2,93 @@
 
 Welcome to the SuperDapp Agents SDK! This guide will help you get started with building AI agents for the SuperDapp platform.
 
-## 🚀 Getting Started
+## 🌐 Platform Setup
+
+Before you can build agents, you need to set up your SuperDapp account and get your API credentials.
+
+### 1. Create Your SuperDapp Account
+
+1. **Visit the SuperDapp Platform**: Go to [https://web.superdapp.ai](https://web.superdapp.ai)
+2. **Sign Up or Sign In**: Create a new account or log in with your existing credentials
+3. **Access Agent Dashboard**: Navigate to the agent development section
+
+### 2. Generate Your Agent API Key
+
+1. **Go to Settings Menu**: In your SuperDapp dashboard, navigate to the Settings menu
+2. **Access AI Agents**: Click on the "AI Agents" submenu
+3. **Create an Agent**: Select the "Create an agent" option
+4. **Configure Agent Profile**:
+   - **Agent Username**: Choose a unique username for your agent
+   - **Agent Password**: Set a secure password (save this password - you'll need it to get your API key)
+   - **Profile Picture**: Upload an agent profile picture (can be changed later)
+   - **Note**: The username and password cannot be changed after creation. If you make a mistake, you'll need to delete the agent and start over.
+5. **Generate API Key**: After creating the agent, you'll be redirected to the agent page
+   - Click on "View" in the "Agent API key" section
+   - Enter the agent's password when prompted
+   - Your API key will be revealed - securely store this token
+6. **Save Your Credentials**: Keep both your agent password and API token secure - you'll need them for development
+
+> ⚠️ **Security Note**: Never share your API token publicly or commit it to version control. Always use environment variables to store sensitive credentials.
+
+### 3. Configure Webhook URL
+
+Webhooks enable real-time communication between SuperDapp and your agent. Your agent will receive messages from Super Groups and direct conversations through webhook endpoints.
+
+#### Development Setup (Local Testing)
+
+For local development, you'll need to expose your local server to the internet so SuperDapp can send webhooks to your agent.
+
+**Option 1: Using ngrok (Recommended)**
+```bash
+# Install ngrok if you haven't already
+npm install -g ngrok
+
+# In a separate terminal, expose your local port (e.g., 3000)
+ngrok http 3000
+
+# Copy the HTTPS URL (e.g., https://abc123.ngrok.io)
+```
+
+**Option 2: Using Cloudflare Tunnel**
+```bash
+# Install cloudflared
+# Visit: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/
+
+# Create tunnel
+cloudflared tunnel --url http://localhost:3000
+```
+
+#### Setting Up Webhook in SuperDapp
+
+1. **Go to Agent Settings**: In your SuperDapp dashboard, find your agent
+2. **Configure Webhook URL**: 
+   - **Webhook URL**: Enter your public URL + `/webhook` (e.g., `https://abc123.ngrok.io/webhook`)
+   - **Webhook Events**: Select the events you want to receive:
+     - `message` - Direct messages to your agent
+     - `group_message` - Messages in Super Groups where your agent is added
+     - `callback_query` - Button clicks and interactions
+3. **Test Webhook**: Use the "Test Webhook" feature to verify your endpoint is working
+4. **Save Configuration**: Save your webhook settings
+
+#### Understanding Webhook Events
+
+Your agent will receive different types of events:
+
+- **Direct Messages**: When users message your agent directly
+- **Group Messages**: When your agent is mentioned or receives messages in Super Groups
+- **Button Interactions**: When users click interactive buttons you've created
+
+### 4. Add Agent to Super Groups (Optional)
+
+To enable your agent in Super Groups:
+
+1. **Direct Messages**: Send a message to your agent directly to interact with it
+2. **Group Messages**: Add your agent to Super Groups where it can respond to messages
+3. **Agent Setup**: Use the `/setup` command in DM with your agent to select a Super Group that you are owner or admin of
+
+## 🚀 Getting Started with Development
+
+Now that your platform is set up, let's create your first agent!
 
 ### 1. Initialize a New Project
 
@@ -14,21 +100,98 @@ superagent create my-awesome-agent
 
 ### 2. Configure Your Environment
 
+Use the API token you generated in the Platform Setup section above:
+
 ```bash
 superagent configure
 ```
 
+When prompted, enter your API token from Step 2 of Platform Setup.
+
 Or manually create a `.env` file:
 
 ```env
-API_TOKEN=your_superdapp_api_token_here
+API_TOKEN=your_api_token_from_superdapp_dashboard
 API_BASE_URL=https://api.superdapp.ai
 ```
+
+> 💡 **Tip**: Your API token should be the one you generated in your SuperDapp dashboard in the Platform Setup section above.
 
 ### 3. Run Your Agent
 
 ```bash
 superagent run
+```
+
+This will start your agent's webhook server, typically on port 3000.
+
+### 4. Test Your Webhook Connection
+
+Once your agent is running:
+
+1. **Verify Local Server**: Visit `http://localhost:3000/health` to ensure your server is running
+2. **Test Webhook Endpoint**: Your webhook endpoint should be available at `http://localhost:3000/webhook`
+3. **Check SuperDapp Connection**: 
+   - Go to your SuperDapp dashboard
+   - Use the "Test Webhook" feature to send a test event to your agent *(Note: This feature is not supported yet)*
+   - Check your agent's console logs for incoming webhook events
+4. **Send Test Message**: 
+   - Open SuperDapp and send a direct message to your agent
+   - Verify your agent receives and responds to the message
+
+> 🔧 **Troubleshooting**: If webhooks aren't working, check:
+> - Your ngrok/tunnel is still running and the URL hasn't changed
+> - Your webhook URL in SuperDapp dashboard is correct
+> - Your agent server is running and listening on the right port
+> - Check console logs for any errors
+
+## 🚀 Production Webhook Setup
+
+When deploying your agent to production, you'll need a stable webhook URL.
+
+### Deployment Options
+
+**Option 1: Cloudflare Workers** (Recommended)
+```bash
+superagent deploy --platform cloudflare
+```
+
+**Option 2: AWS Lambda**
+```bash
+superagent deploy --platform aws
+```
+
+**Option 3: Traditional Server** (VPS, Docker, etc.)
+- Deploy your agent to a server with a public IP
+- Use a domain name with HTTPS (required for webhooks)
+- Update your webhook URL in SuperDapp dashboard to: `https://yourdomain.com/webhook`
+
+### Webhook Security Best Practices
+
+1. **Use HTTPS**: SuperDapp requires HTTPS for webhook URLs in production
+2. **Validate Webhooks**: Verify webhook requests come from SuperDapp
+3. **Handle Errors Gracefully**: Always respond with appropriate HTTP status codes
+4. **Rate Limiting**: Implement rate limiting to handle high message volumes
+5. **Logging**: Log webhook events for debugging and monitoring
+
+Example webhook validation:
+```typescript
+app.post('/webhook', async (req, res) => {
+  try {
+    // Validate request (add your validation logic here)
+    const isValid = validateSuperdappWebhook(req);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Process the webhook
+    await agent.processRequest(req.body);
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 ```
 
 ## 💬 Sending Simple Messages
@@ -244,7 +407,15 @@ callback_data: 'CONFIRM_TOPICS';
 
 ## 🚀 Next Steps
 
-- Check out the [CLI Documentation](./cli-guide.md) for detailed command usage
-- Explore [API Reference](./api-reference.md) for more complex scenarios and complete documentation
-- Learn about [Deployment](./deployment.md) options
-- Review the [API Reference](./api-reference.md) for complete SDK documentation
+- **Platform Integration**: Review the Platform Setup section if you haven't configured your SuperDapp account yet
+- **Advanced Features**: Check out the [CLI Documentation](./cli-guide.md) for detailed command usage
+- **API Reference**: Explore [API Reference](./api-reference.md) for more complex scenarios and complete documentation
+- **Production Deployment**: Learn about [Deployment](./deployment.md) options for scaling your agent
+- **Examples**: Study the [examples directory](../examples/) for real-world agent implementations
+
+## 🔗 Additional Resources
+
+- **[SuperDapp Platform](https://web.superdapp.ai)** - Agent dashboard and management
+- **[SDK Repository](https://github.com/SuperDappAI/superdapp-js)** - Source code and community
+- **[API Documentation](https://docs.superdapp.ai)** - Complete platform API reference
+- **[Community Support](https://discord.gg/superdapp)** - Get help from other developers
