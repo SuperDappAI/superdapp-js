@@ -1,8 +1,7 @@
 {
   "name": "@superdapp/agents",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "SuperDapp AI Agents SDK and CLI for Node.js/TypeScript",
-  "type": "commonjs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
