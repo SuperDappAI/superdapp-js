@@ -1,0 +1,230 @@
+/**
+ * Enhanced OpenAI Agents Example
+ * 
+ * This example shows how to use the SuperDapp Enhanced AI Client with OpenAI Agents SDK integration.
+ * 
+ * Prerequisites:
+ * 1. Install the OpenAI Agents SDK: npm install @openai/agents @openai/agents-extensions
+ * 2. Set environment variables:
+ *    - AI_PROVIDER=openai
+ *    - AI_MODEL=gpt-4
+ *    - AI_API_KEY=your_openai_api_key
+ *    - SUPERDAPP_AI_AGENTS=1 (to enable OpenAI Agents SDK features)
+ * 
+ * Features demonstrated:
+ * - Basic agent execution with OpenAI Agents SDK
+ * - Tool usage with parallel execution
+ * - Agent handoffs between multiple agents
+ * - Streaming agent events
+ * - Fallback to basic generateText when Agents SDK is not available
+ */
+
+import { createEnhancedAIClient, EnhancedAgentRunOptions } from '@superdapp/agents';
+
+async function main() {
+  try {
+    // Create enhanced AI client with OpenAI Agents configuration
+    const client = await createEnhancedAIClient({
+      provider: 'openai',
+      model: 'gpt-4',
+      apiKey: process.env.AI_API_KEY || 'your_api_key_here',
+      agents: {
+        enabled: true,          // Enable OpenAI Agents SDK features
+        streaming: true,        // Enable streaming events
+        maxTurns: 10,          // Maximum conversation turns
+      },
+    });
+
+    console.log('🤖 Enhanced AI Client initialized with OpenAI Agents support');
+
+    // Enable tracing for debugging
+    client.setTracing(true);
+
+    // Example 1: Basic agent execution
+    console.log('\n📝 Example 1: Basic Agent Execution');
+    const basicResult = await client.runEnhancedAgent({
+      instructions: 'You are a helpful coding assistant. Help users with TypeScript questions.',
+      messages: [
+        { role: 'user', content: 'How do I create a TypeScript interface?' }
+      ],
+    });
+    console.log('Response:', basicResult.outputText);
+
+    // Example 2: Agent with tools and parallel execution
+    console.log('\n🛠️  Example 2: Agent with Tools');
+    const toolsResult = await client.runEnhancedAgent({
+      instructions: 'You are a math assistant that can perform calculations.',
+      messages: [
+        { role: 'user', content: 'Calculate the fibonacci sequence for the first 10 numbers and find their sum.' }
+      ],
+      tools: {
+        calculator: {
+          type: 'function',
+          function: {
+            name: 'calculator',
+            description: 'Perform mathematical calculations',
+            parameters: {
+              type: 'object',
+              properties: {
+                expression: {
+                  type: 'string',
+                  description: 'Mathematical expression to evaluate'
+                }
+              },
+              required: ['expression']
+            }
+          }
+        },
+        fibonacci: {
+          type: 'function',
+          function: {
+            name: 'fibonacci',
+            description: 'Generate fibonacci sequence',
+            parameters: {
+              type: 'object',
+              properties: {
+                count: {
+                  type: 'number',
+                  description: 'Number of fibonacci numbers to generate'
+                }
+              },
+              required: ['count']
+            }
+          }
+        }
+      },
+      parallelTools: true, // Allow parallel tool execution
+    });
+    console.log('Tools Result:', toolsResult.outputText);
+
+    // Example 3: Agent handoffs
+    console.log('\n🔄 Example 3: Agent Handoffs');
+    const handoffResult = await client.runEnhancedAgent({
+      instructions: 'You are a triage agent that routes user requests to specialized agents.',
+      messages: [
+        { role: 'user', content: 'I need help with both a math problem and writing code.' }
+      ],
+      handoffs: [
+        {
+          agent: 'math_assistant',
+          instructions: 'You are a specialized math assistant. Only handle mathematical questions.',
+          context: { specialty: 'mathematics' }
+        },
+        {
+          agent: 'code_assistant',
+          instructions: 'You are a specialized coding assistant. Only help with programming questions.',
+          context: { specialty: 'programming' }
+        }
+      ],
+    });
+    console.log('Handoff Result:', handoffResult.outputText);
+
+    // Example 4: Streaming agent events
+    console.log('\n📡 Example 4: Streaming Agent Events');
+    const streamOptions: EnhancedAgentRunOptions = {
+      instructions: 'You are a creative writing assistant. Write a short story.',
+      messages: [
+        { role: 'user', content: 'Write a short story about an AI that discovers creativity.' }
+      ],
+      streaming: true,
+    };
+
+    console.log('Streaming events:');
+    for await (const event of client.streamAgentEvents(streamOptions)) {
+      console.log(`[${event.type}] ${event.timestamp.toISOString()}: `, event.data);
+      
+      // Handle different event types
+      if (event.type === 'text') {
+        // Process text chunks
+      } else if (event.type === 'tool_call') {
+        // Handle tool calls
+      } else if (event.type === 'error') {
+        console.error('Streaming error:', event.data);
+        break;
+      }
+    }
+
+    // Example 5: Guardrails and human approval
+    console.log('\n🛡️  Example 5: Guardrails and Human Approval');
+    const guardrailsResult = await client.runEnhancedAgent({
+      instructions: 'You are an assistant that helps with sensitive content.',
+      messages: [
+        { role: 'user', content: 'Help me understand a complex topic.' }
+      ],
+      guardrails: {
+        inputValidation: {
+          maxLength: 1000,
+          bannedWords: ['inappropriate', 'harmful'],
+        },
+        outputValidation: {
+          maxLength: 2000,
+          requireApproval: false, // Set to true to require human approval
+        },
+      },
+      humanApproval: {
+        required: false, // Set to true to require approval for sensitive requests
+        timeout: 30000,
+        fallbackResponse: 'This request requires human approval.',
+      },
+    });
+    console.log('Guardrails Result:', guardrailsResult.outputText);
+
+    // Example 6: Parallel agent execution for comparison
+    console.log('\n⚡ Example 6: Parallel Agent Execution');
+    const parallelResults = await client.runParallelAgents([
+      {
+        instructions: 'You are a creative writer. Write in a poetic style.',
+        messages: [{ role: 'user', content: 'Describe the ocean.' }],
+      },
+      {
+        instructions: 'You are a scientist. Write in a technical style.',
+        messages: [{ role: 'user', content: 'Describe the ocean.' }],
+      },
+      {
+        instructions: 'You are a philosopher. Write in a contemplative style.',
+        messages: [{ role: 'user', content: 'Describe the ocean.' }],
+      },
+    ]);
+
+    console.log('Parallel Results:');
+    parallelResults.results.forEach((result, index) => {
+      console.log(`Agent ${index + 1}:`, result.outputText.substring(0, 100) + '...');
+    });
+    console.log('Best Result (Agent', parallelResults.best.index + 1, '):', parallelResults.best.outputText);
+
+    // Show tracing data
+    const tracingData = client.getTracingData();
+    if (tracingData) {
+      console.log('\n📊 Tracing Data:');
+      console.log('Session ID:', tracingData.sessionId);
+      console.log('Duration:', tracingData.duration, 'ms');
+      console.log('Events:', tracingData.events.length);
+      console.log('Event Types:', [...new Set(tracingData.events.map(e => e.type))]);
+    }
+
+  } catch (error) {
+    console.error('❌ Error:', error instanceof Error ? error.message : 'Unknown error');
+    
+    if (error instanceof Error && error.message.includes('OpenAI Agents SDK')) {
+      console.log('💡 Tip: Make sure to install the OpenAI Agents SDK:');
+      console.log('   npm install @openai/agents @openai/agents-extensions');
+      console.log('   And set SUPERDAPP_AI_AGENTS=1 in your environment variables');
+    }
+  }
+}
+
+// Configuration tips
+console.log('🔧 Configuration Tips:');
+console.log('1. Set SUPERDAPP_AI_AGENTS=1 to enable OpenAI Agents SDK features');
+console.log('2. Install: npm install @openai/agents @openai/agents-extensions');
+console.log('3. Set AI_PROVIDER=openai, AI_MODEL=gpt-4, AI_API_KEY=your_key');
+console.log('4. Optional: Set SUPERDAPP_AI_AGENTS_STREAMING=1 for default streaming');
+console.log('5. Optional: Set SUPERDAPP_AI_AGENTS_MAX_TURNS=10 for conversation limits\n');
+
+// Run the example
+if (require.main === module) {
+  main().catch(console.error);
+}
+
+// Export for use in other modules
+export { main as runEnhancedAgentsExample };

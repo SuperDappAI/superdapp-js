@@ -338,4 +338,127 @@ describe('AI Config', () => {
       ).rejects.toThrow('Failed to load Anthropic provider');
     });
   });
+
+  describe('Agents Configuration', () => {
+    beforeEach(() => {
+      // Clear agents-related env vars
+      delete process.env.SUPERDAPP_AI_AGENTS;
+      delete process.env.SUPERDAPP_AI_AGENTS_STREAMING;
+      delete process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS;
+    });
+
+    it('should load agents config from environment variable', () => {
+      process.env.AI_PROVIDER = 'openai';
+      process.env.AI_MODEL = 'gpt-4';
+      process.env.AI_API_KEY = 'sk-test123';
+      process.env.SUPERDAPP_AI_AGENTS = '1';
+      process.env.SUPERDAPP_AI_AGENTS_STREAMING = '1';
+      process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS = '5';
+
+      const config = loadAIConfig();
+
+      expect(config.agents).toEqual({
+        enabled: true,
+        streaming: true,
+        maxTurns: 5,
+      });
+    });
+
+    it('should load agents config from parameter', () => {
+      process.env.AI_PROVIDER = 'openai';
+      process.env.AI_MODEL = 'gpt-4';
+      process.env.AI_API_KEY = 'sk-test123';
+
+      const config = loadAIConfig({
+        agents: {
+          enabled: true,
+          streaming: false,
+          maxTurns: 10,
+        },
+      });
+
+      expect(config.agents).toEqual({
+        enabled: true,
+        streaming: false,
+        maxTurns: 10,
+      });
+    });
+
+    it('should prioritize parameter over environment variable', () => {
+      process.env.AI_PROVIDER = 'openai';
+      process.env.AI_MODEL = 'gpt-4';
+      process.env.AI_API_KEY = 'sk-test123';
+      process.env.SUPERDAPP_AI_AGENTS = '1';
+
+      const config = loadAIConfig({
+        agents: {
+          enabled: false, // Override env var
+        },
+      });
+
+      expect(config.agents?.enabled).toBe(false);
+    });
+
+    it('should not include agents config when not specified', () => {
+      process.env.AI_PROVIDER = 'openai';
+      process.env.AI_MODEL = 'gpt-4';
+      process.env.AI_API_KEY = 'sk-test123';
+
+      const config = loadAIConfig();
+
+      expect(config.agents).toBeUndefined();
+    });
+
+    it('should handle partial agents configuration', () => {
+      process.env.AI_PROVIDER = 'openai';
+      process.env.AI_MODEL = 'gpt-4';
+      process.env.AI_API_KEY = 'sk-test123';
+
+      const config = loadAIConfig({
+        agents: {
+          enabled: true,
+          // streaming and maxTurns not specified
+        },
+      });
+
+      expect(config.agents).toEqual({
+        enabled: true,
+        // streaming and maxTurns should not be included when not specified
+      });
+    });
+
+    it('should validate maxTurns range', () => {
+      process.env.AI_PROVIDER = 'openai';
+      process.env.AI_MODEL = 'gpt-4';
+      process.env.AI_API_KEY = 'sk-test123';
+
+      // Test valid range
+      expect(() => loadAIConfig({
+        agents: { maxTurns: 5 },
+      })).not.toThrow();
+
+      // Test invalid range (too high)
+      expect(() => loadAIConfig({
+        agents: { maxTurns: 101 },
+      })).toThrow(AIConfigError);
+
+      // Test invalid range (too low)
+      expect(() => loadAIConfig({
+        agents: { maxTurns: 0 },
+      })).toThrow(AIConfigError);
+    });
+
+    it('should handle invalid environment variable values gracefully', () => {
+      process.env.AI_PROVIDER = 'openai';
+      process.env.AI_MODEL = 'gpt-4';
+      process.env.AI_API_KEY = 'sk-test123';
+      process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS = 'invalid';
+
+      const config = loadAIConfig({ agents: { enabled: true } });
+
+      // Should ignore invalid env var and not include maxTurns
+      expect(config.agents?.maxTurns).toBeUndefined();
+      expect(config.agents?.enabled).toBe(true);
+    });
+  });
 });

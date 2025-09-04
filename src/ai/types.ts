@@ -5,6 +5,11 @@ export interface AiConfig {
   model?: string;
   apiKey?: string;
   baseUrl?: string;
+  agents?: {
+    enabled?: boolean;
+    streaming?: boolean;
+    maxTurns?: number;
+  };
 }
 
 // Input types for AI functions

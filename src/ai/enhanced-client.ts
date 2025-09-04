@@ -4,6 +4,7 @@
  */
 
 import type { AgentRunOptions, AiConfig } from './types';
+import type { OpenAIAgentOptions } from './providers/openai-agents';
 
 /**
  * Extended types for enhanced AI features
@@ -40,6 +41,8 @@ export interface EnhancedAgentRunOptions extends AgentRunOptions {
   humanApproval?: HumanApprovalOptions;
   enableTracing?: boolean;
   parallelTools?: boolean;
+  maxTurns?: number;
+  streaming?: boolean;
 }
 
 export interface AgentEvent {
@@ -228,6 +231,118 @@ export class EnhancedAIClient {
   }
 
   /**
+   * Check if OpenAI Agents SDK should be used based on configuration
+   */
+  private shouldUseOpenAIAgents(options: EnhancedAgentRunOptions): boolean {
+    // Check if the feature is enabled in config
+    const agentsEnabled = this.aiConfig.agents?.enabled;
+    
+    // Only use OpenAI Agents SDK for OpenAI provider
+    const isOpenAIProvider = this.aiConfig.provider === 'openai';
+    
+    // Feature must be enabled and provider must be OpenAI
+    return Boolean(agentsEnabled && isOpenAIProvider);
+  }
+
+  /**
+   * Run agent using OpenAI Agents SDK when available and enabled
+   */
+  private async runWithOpenAIAgents(
+    options: EnhancedAgentRunOptions
+  ): Promise<{ outputText: string; tracing?: TracingData }> {
+    try {
+      // Dynamic import of the OpenAI Agents provider
+      const { runOpenAIAgent, isOpenAIAgentsSupported } = await import('./providers/openai-agents');
+      
+      // Check if OpenAI Agents is supported in current environment
+      const supportCheck = await isOpenAIAgentsSupported();
+      if (!supportCheck.available) {
+        throw new Error(`OpenAI Agents SDK not available: ${supportCheck.reason}`);
+      }
+
+      this.addEvent('text', {
+        type: 'agent_start_openai_agents',
+        options: {
+          instructions: options.instructions,
+          toolCount: options.tools ? Object.keys(options.tools).length : 0,
+        },
+      });
+
+      // Map options to OpenAI Agents format
+      const agentOptions: Partial<OpenAIAgentOptions> = {
+        config: this.aiConfig,
+        ...(options.instructions && { instructions: options.instructions }),
+        ...(options.messages && { messages: options.messages }),
+        ...(options.tools && { tools: options.tools }),
+        ...(options.handoffs && { handoffs: options.handoffs }),
+        ...(options.parallelTools && { parallelTools: options.parallelTools }),
+        ...(options.maxTurns && { maxTurns: options.maxTurns }),
+        ...(options.streaming && { streaming: options.streaming }),
+        ...(this.aiConfig.agents?.maxTurns && !options.maxTurns && { maxTurns: this.aiConfig.agents.maxTurns }),
+        ...(this.aiConfig.agents?.streaming && !options.streaming && { streaming: this.aiConfig.agents.streaming }),
+      };
+
+      // Execute using OpenAI Agents SDK
+      const result = await runOpenAIAgent(agentOptions);
+
+      this.addEvent('text', {
+        type: 'agent_complete_openai_agents',
+        outputLength: result.outputText.length,
+        metadata: result.metadata,
+      });
+
+      return {
+        outputText: result.outputText,
+        ...(this.getTracingData() && { tracing: this.getTracingData()! }),
+      };
+    } catch (error) {
+      this.addEvent('error', {
+        type: 'openai_agents_error',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      
+      // If OpenAI Agents fails, throw error so we can fallback
+      throw error;
+    }
+  }
+
+  /**
+   * Run agent using the basic generateText fallback
+   */
+  private async runWithGenerateText(
+    options: EnhancedAgentRunOptions
+  ): Promise<{ outputText: string; tracing?: TracingData }> {
+    // Load the basic AI functionality
+    const { generateText } = await import('./client');
+
+    // Use the basic generateText function as fallback
+    const messages = options.messages || [
+      { role: 'user' as const, content: options.instructions || 'Hello' },
+    ];
+
+    this.addEvent('text', {
+      type: 'agent_fallback_generatetext',
+      model: options.config?.model || this.aiConfig.model || 'default',
+    });
+
+    // Use generateText as fallback
+    const outputText = await generateText(
+      messages.map((m) => m.content).join('\n'),
+      options.config ? { config: options.config } : { config: this.aiConfig }
+    );
+
+    this.addEvent('text', {
+      type: 'agent_complete_generatetext',
+      outputLength: outputText.length,
+    });
+
+    return {
+      outputText,
+      ...(this.getTracingData() && { tracing: this.getTracingData()! }),
+    };
+  }
+
+  /**
    * Enhanced agent runner with full OpenAI Agents SDK feature support
    */
   async runEnhancedAgent(
@@ -267,30 +382,28 @@ export class EnhancedAIClient {
         }
       }
 
-      // Load the basic AI functionality instead of OpenAI Agents SDK directly
-      // since the OpenAI Agents SDK may not be available
-      const { generateText } = await import('./client');
-
-      // For now, use the basic generateText function since OpenAI Agents SDK
-      // may not be available or properly typed
-      const messages = options.messages || [
-        { role: 'user' as const, content: options.instructions || 'Hello' },
-      ];
-
-      this.addEvent('text', {
-        type: 'agent_created',
-        model: options.config?.model || 'default',
-      });
-
-      // Use generateText instead of the OpenAI Agents SDK for now
-      const outputText = await generateText(
-        messages.map((m) => m.content).join('\n'),
-        options.config ? { config: options.config } : undefined
-      );
+      // Try to use OpenAI Agents SDK if enabled and available
+      let result: { outputText: string; tracing?: TracingData };
+      
+      if (this.shouldUseOpenAIAgents(options)) {
+        try {
+          result = await this.runWithOpenAIAgents(options);
+        } catch (error) {
+          // If OpenAI Agents fails, fall back to generateText
+          this.addEvent('text', {
+            type: 'fallback_to_generatetext',
+            reason: error instanceof Error ? error.message : 'Unknown error',
+          });
+          result = await this.runWithGenerateText(options);
+        }
+      } else {
+        // Use generateText fallback
+        result = await this.runWithGenerateText(options);
+      }
 
       // Output validation
       if (
-        !this.validateOutput(outputText, options.guardrails?.outputValidation)
+        !this.validateOutput(result.outputText, options.guardrails?.outputValidation)
       ) {
         throw new Error('Output validation failed');
       }
@@ -298,7 +411,7 @@ export class EnhancedAIClient {
       // Human approval for output if required
       if (options.guardrails?.outputValidation?.requireApproval) {
         const approved = await this.requestHumanApproval(
-          `Agent wants to respond: "${outputText}"`,
+          `Agent wants to respond: "${result.outputText}"`,
           { required: true, timeout: 30000 }
         );
         if (!approved) {
@@ -309,15 +422,7 @@ export class EnhancedAIClient {
         }
       }
 
-      this.addEvent('text', {
-        type: 'agent_complete',
-        outputLength: outputText.length,
-      });
-
-      return {
-        outputText,
-        ...(this.getTracingData() && { tracing: this.getTracingData()! }),
-      };
+      return result;
     } catch (error) {
       this.addEvent('error', {
         type: 'agent_error',
@@ -336,7 +441,6 @@ export class EnhancedAIClient {
     options: EnhancedAgentRunOptions = {}
   ): AsyncGenerator<AgentEvent, void, unknown> {
     try {
-      // This is a simplified version - full implementation would require OpenAI Agents SDK streaming support
       this.setTracing(true);
 
       yield {
@@ -345,6 +449,48 @@ export class EnhancedAIClient {
         timestamp: new Date(),
       };
 
+      // Try to use OpenAI Agents SDK streaming if enabled and available
+      if (this.shouldUseOpenAIAgents(options)) {
+        try {
+          const { streamOpenAIAgent, isOpenAIAgentsSupported } = await import('./providers/openai-agents');
+          
+          // Check if OpenAI Agents is supported
+          const supportCheck = await isOpenAIAgentsSupported();
+          if (supportCheck.available) {
+            // Map options to OpenAI Agents format
+            const agentOptions: Partial<OpenAIAgentOptions> = {
+              config: this.aiConfig,
+              ...(options.instructions && { instructions: options.instructions }),
+              ...(options.messages && { messages: options.messages }),
+              ...(options.tools && { tools: options.tools }),
+              ...(options.handoffs && { handoffs: options.handoffs }),
+              ...(options.parallelTools && { parallelTools: options.parallelTools }),
+              ...(options.maxTurns && { maxTurns: options.maxTurns }),
+              ...(options.streaming && { streaming: options.streaming }),
+              ...(this.aiConfig.agents?.maxTurns && !options.maxTurns && { maxTurns: this.aiConfig.agents.maxTurns }),
+              ...(this.aiConfig.agents?.streaming && !options.streaming && { streaming: this.aiConfig.agents.streaming }),
+            };
+
+            // Stream using OpenAI Agents SDK
+            for await (const event of streamOpenAIAgent(agentOptions)) {
+              yield {
+                type: event.type as AgentEvent['type'],
+                data: event.data,
+                timestamp: event.timestamp,
+              };
+            }
+            return;
+          }
+        } catch (error) {
+          yield {
+            type: 'text',
+            data: `OpenAI Agents streaming failed, falling back to basic mode: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            timestamp: new Date(),
+          };
+        }
+      }
+
+      // Fallback to basic streaming (using runEnhancedAgent)
       const result = await this.runEnhancedAgent(options);
 
       yield { type: 'text', data: result.outputText, timestamp: new Date() };

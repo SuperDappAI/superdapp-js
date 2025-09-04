@@ -14,6 +14,11 @@ const AIConfigSchema = z.object({
   model: z.string().min(1, 'AI_MODEL is required'),
   apiKey: z.string().min(1, 'AI_API_KEY is required'),
   baseUrl: z.string().url().optional().or(z.literal('')),
+  agents: z.object({
+    enabled: z.boolean().optional(),
+    streaming: z.boolean().optional(),
+    maxTurns: z.number().min(1).max(100).optional(),
+  }).optional(),
 });
 
 /**
@@ -24,6 +29,11 @@ export interface AIConfig {
   model: string;
   apiKey: string;
   baseUrl?: string;
+  agents?: {
+    enabled?: boolean;
+    streaming?: boolean;
+    maxTurns?: number;
+  };
 }
 
 /**
@@ -40,11 +50,33 @@ export class AIConfigError extends Error {
  * Load AI configuration from environment variables or BotConfig
  */
 export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
+  // Check for agents feature flag from environment
+  const agentsEnabled = process.env.SUPERDAPP_AI_AGENTS === '1';
+  const configAgentsEnabled = config?.agents?.enabled;
+  
+  // Allow config to override environment variable, but only include if explicitly set
+  const finalAgentsEnabled = configAgentsEnabled !== undefined ? configAgentsEnabled : (agentsEnabled || undefined);
+  
+  const agentsStreaming = config?.agents?.streaming !== undefined 
+    ? config.agents.streaming 
+    : (process.env.SUPERDAPP_AI_AGENTS_STREAMING === '1' || undefined);
+    
+  const agentsMaxTurns = config?.agents?.maxTurns !== undefined
+    ? config.agents.maxTurns
+    : (process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS && !isNaN(parseInt(process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS, 10))
+        ? parseInt(process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS, 10)
+        : undefined);
+  
   const rawConfig = {
     provider: config?.provider ?? process.env.AI_PROVIDER ?? undefined,
     model: config?.model ?? process.env.AI_MODEL ?? undefined,
     apiKey: config?.apiKey ?? process.env.AI_API_KEY ?? undefined,
     baseUrl: config?.baseUrl ?? process.env.AI_BASE_URL ?? undefined,
+    agents: (finalAgentsEnabled !== undefined || agentsStreaming !== undefined || agentsMaxTurns !== undefined) ? {
+      ...(finalAgentsEnabled !== undefined && { enabled: finalAgentsEnabled }),
+      ...(agentsStreaming !== undefined && { streaming: agentsStreaming }),
+      ...(agentsMaxTurns !== undefined && { maxTurns: agentsMaxTurns }),
+    } : undefined,
   };
 
   try {
@@ -58,6 +90,19 @@ export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
     
     if (parsed.baseUrl) {
       result.baseUrl = parsed.baseUrl;
+    }
+    
+    if (parsed.agents && (parsed.agents.enabled !== undefined || parsed.agents.streaming !== undefined || parsed.agents.maxTurns !== undefined)) {
+      result.agents = {};
+      if (parsed.agents.enabled !== undefined) {
+        result.agents.enabled = parsed.agents.enabled;
+      }
+      if (parsed.agents.streaming !== undefined) {
+        result.agents.streaming = parsed.agents.streaming;
+      }
+      if (parsed.agents.maxTurns !== undefined) {
+        result.agents.maxTurns = parsed.agents.maxTurns;
+      }
     }
     
     return result;
