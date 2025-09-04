@@ -144,22 +144,22 @@ export class SuperDappAgent {
    * Get the AI client for LLM operations
    * @throws Error if AI is not configured
    */
-  getAiClient(): AIClient {
+  async getAiClient(): Promise<AIClient> {
     if (!this.aiConfig) {
       throw new Error('AI is not configured for this agent. Please provide ai configuration in BotConfig to use AI features.');
     }
     
     if (!this.aiClient) {
       // Lazy load the AI client to avoid import issues when AI is not used
-      this.aiClient = this.createAiClient();
+      this.aiClient = await this.createAiClient();
     }
     
     return this.aiClient;
   }
 
-  private createAiClient(): AIClient {
+  private async createAiClient(): Promise<AIClient> {
     // Dynamic import to avoid loading AI dependencies when not needed
-    const { generateText, streamText, runAgent } = require('../ai/client');
+    const { generateText, streamText, runAgent } = await import('../ai/client');
     
     return {
       generateText: (input: any, options: any = {}) => {
