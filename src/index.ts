@@ -29,3 +29,24 @@ export * from './payouts';
 
 // AI types only (no implementation to avoid loading AI dependencies)
 export type { AiConfig, AiProvider, GenerateTextOptions, StreamTextOptions, AgentRunOptions } from './ai/types';
+
+// Enhanced AI exports (lazy loaded)
+export type { 
+  EnhancedAgentRunOptions,
+  AgentHandoff,
+  GuardrailsConfig,
+  HumanApprovalOptions,
+  AgentEvent,
+  TracingData
+} from './ai/enhanced-client';
+
+// OpenAI Agents provider types (lazy loaded)
+export type {
+  OpenAIAgentOptions,
+  OpenAIAgentResult,
+  OpenAIAgentEvent,
+  OpenAIAgentsNotAvailableError
+} from './ai/providers/openai-agents';
+
+// Enhanced AI client factory (lazy loaded to avoid loading dependencies)
+export { createEnhancedAIClient, EnhancedAIClient } from './ai/enhanced-client';

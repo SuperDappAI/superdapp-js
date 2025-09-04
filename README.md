@@ -121,8 +121,11 @@ npm install @ai-sdk/openai        # For OpenAI GPT models
 npm install @ai-sdk/anthropic     # For Anthropic Claude models  
 npm install @ai-sdk/google        # For Google Gemini models
 
+# Optional: Enhanced OpenAI Agents SDK (advanced features)
+npm install @openai/agents        # For advanced agent workflows, tools, streaming
+
 # All providers at once
-npm install ai @ai-sdk/openai @ai-sdk/anthropic @ai-sdk/google
+npm install ai @ai-sdk/openai @ai-sdk/anthropic @ai-sdk/google @openai/agents
 ```
 
 ## 🛠️ Development
@@ -197,7 +200,74 @@ AI_PROVIDER=openai        # or anthropic, google
 AI_MODEL=gpt-4           # Provider-specific model
 AI_API_KEY=sk-your-key   # Your API key
 AI_BASE_URL=https://...  # Optional custom endpoint
+
+# OpenAI Agents SDK Configuration (optional)
+SUPERDAPP_AI_AGENTS=1                    # Enable OpenAI Agents SDK features
+SUPERDAPP_AI_AGENTS_STREAMING=1          # Enable streaming mode
+SUPERDAPP_AI_AGENTS_MAX_TURNS=10         # Maximum agent conversation turns
 ```
+
+### Enhanced OpenAI Agents Integration
+
+**NEW**: Optional OpenAI Agents SDK integration for advanced features:
+
+```typescript
+import { createEnhancedAIClient } from '@superdapp/agents';
+
+// Enhanced client with OpenAI Agents support
+const enhancedClient = await createEnhancedAIClient({
+  provider: 'openai',
+  model: 'gpt-4',
+  apiKey: process.env.AI_API_KEY,
+  agents: {
+    enabled: true,        // Enable OpenAI Agents features
+    streaming: true,      // Enable real-time streaming  
+    maxTurns: 10,        // Conversation turn limit
+  },
+});
+
+// Advanced agent with tools and guardrails
+const result = await enhancedClient.runEnhancedAgent({
+  instructions: 'You are a helpful assistant with calculation abilities.',
+  messages: [{ role: 'user', content: 'Calculate 15% tip on $45' }],
+  tools: {
+    calculator: {
+      type: 'function',
+      function: {
+        name: 'calculate',
+        description: 'Perform mathematical calculations',
+        parameters: {
+          type: 'object',
+          properties: {
+            expression: { type: 'string' },
+          },
+        },
+      },
+    },
+  },
+  guardrails: {
+    outputValidation: {
+      maxLength: 500,
+      bannedWords: ['inappropriate'],
+    },
+  },
+  enableTracing: true,
+});
+
+console.log('Agent Response:', result.outputText);
+console.log('Tracing Data:', result.tracing);
+```
+
+**Features when OpenAI Agents SDK is installed:**
+
+- 🛠️ **Advanced Tools**: Function calling with parallel execution
+- 📡 **Real-time Streaming**: Live event streaming from agents
+- 🛡️ **Built-in Guardrails**: Input/output validation and content filtering
+- 👥 **Agent Handoffs**: Transfer conversations between specialized agents
+- 📊 **Enhanced Tracing**: Detailed execution monitoring and token usage
+- ⚡ **Parallel Execution**: Run multiple agents simultaneously
+
+**Graceful Fallback**: When `@openai/agents` is not installed, the SDK automatically falls back to the standard `generateText` functionality with no breaking changes.
 
 ### Features
 
@@ -206,6 +276,8 @@ AI_BASE_URL=https://...  # Optional custom endpoint
 - **Error Handling**: Clear error messages and fallback behavior
 - **TypeScript Support**: Full type safety for all AI operations
 - **Cost Control**: Built-in token limits and usage monitoring
+- **OpenAI Agents SDK**: Optional advanced features when installed
+- **Production Ready**: Graceful fallback and robust error handling
 
 **See the complete [AI Integration Guide](./docs/ai-integration.md) for setup instructions, examples, and best practices.**
 

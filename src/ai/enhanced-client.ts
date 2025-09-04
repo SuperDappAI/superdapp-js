@@ -4,6 +4,13 @@
  */
 
 import type { AgentRunOptions, AiConfig } from './types';
+import type { AIConfig } from './config';
+import type { 
+  OpenAIAgentOptions, 
+  OpenAIAgentResult,
+  OpenAIAgentsNotAvailableError,
+  OpenAIAgentEvent 
+} from './providers/openai-agents';
 
 /**
  * Extended types for enhanced AI features
@@ -60,12 +67,12 @@ export interface TracingData {
  * Enhanced AI Client class with full OpenAI Agents SDK integration
  */
 export class EnhancedAIClient {
-  private aiConfig: AiConfig;
+  private aiConfig: AIConfig;
   private tracingEnabled: boolean = false;
   private currentSession: string | null = null;
   private events: AgentEvent[] = [];
 
-  constructor(aiConfig: AiConfig) {
+  constructor(aiConfig: AIConfig) {
     this.aiConfig = aiConfig;
   }
 
@@ -267,26 +274,89 @@ export class EnhancedAIClient {
         }
       }
 
-      // Load the basic AI functionality instead of OpenAI Agents SDK directly
-      // since the OpenAI Agents SDK may not be available
-      const { generateText } = await import('./client');
+      // Check if we should use OpenAI Agents SDK
+      const shouldUseAgents = this.aiConfig.provider === 'openai' && 
+                             this.aiConfig.agents?.enabled === true;
 
-      // For now, use the basic generateText function since OpenAI Agents SDK
-      // may not be available or properly typed
-      const messages = options.messages || [
-        { role: 'user' as const, content: options.instructions || 'Hello' },
-      ];
+      let outputText: string;
 
-      this.addEvent('text', {
-        type: 'agent_created',
-        model: options.config?.model || 'default',
-      });
+      if (shouldUseAgents) {
+        // Try to use OpenAI Agents SDK
+        try {
+          const { loadModel } = await import('./config');
+          const { 
+            runOpenAIAgent, 
+            createOpenAIAgentOptions,
+            isOpenAIAgentsAvailable
+          } = await import('./providers/openai-agents');
 
-      // Use generateText instead of the OpenAI Agents SDK for now
-      const outputText = await generateText(
-        messages.map((m) => m.content).join('\n'),
-        options.config ? { config: options.config } : undefined
-      );
+          // Check if the SDK is available
+          const isAvailable = await isOpenAIAgentsAvailable();
+          
+          if (isAvailable) {
+            this.addEvent('text', {
+              type: 'using_openai_agents',
+              model: options.config?.model || this.aiConfig.model,
+            });
+
+            const model = await loadModel(options.config || this.aiConfig);
+            
+            const agentOptions = createOpenAIAgentOptions(
+              this.aiConfig,
+              model,
+              {
+                ...(options.instructions !== undefined && { instructions: options.instructions }),
+                ...(options.messages !== undefined && { messages: options.messages }),
+                ...(options.tools !== undefined && { tools: options.tools }),
+                ...(this.aiConfig.agents?.maxTurns !== undefined && { maxTurns: this.aiConfig.agents.maxTurns }),
+                ...(this.aiConfig.agents?.streaming !== undefined && { streaming: this.aiConfig.agents.streaming }),
+                ...(options.temperature !== undefined && { temperature: options.temperature }),
+                ...(options.maxTokens !== undefined && { maxTokens: options.maxTokens }),
+              }
+            );
+
+            const result = await runOpenAIAgent(agentOptions);
+            outputText = result.outputText;
+
+            // Add usage information to tracing if available
+            if (result.usage) {
+              this.addEvent('text', {
+                type: 'usage_info',
+                usage: result.usage,
+              });
+            }
+          } else {
+            // OpenAI Agents SDK not available, fall back to basic generateText
+            this.addEvent('text', {
+              type: 'fallback_to_generatetext',
+              reason: 'openai_agents_not_available',
+            });
+
+            outputText = await this.fallbackToGenerateText(options);
+          }
+        } catch (error) {
+          // If it's specifically an OpenAI Agents not available error, fall back gracefully
+          if (error && (error as any).name === 'OpenAIAgentsNotAvailableError') {
+            this.addEvent('text', {
+              type: 'fallback_to_generatetext',
+              reason: 'openai_agents_not_installed',
+            });
+
+            outputText = await this.fallbackToGenerateText(options);
+          } else {
+            // Other errors should be thrown
+            throw error;
+          }
+        }
+      } else {
+        // Use basic generateText path
+        this.addEvent('text', {
+          type: 'using_generatetext',
+          reason: shouldUseAgents ? 'agents_disabled' : 'non_openai_provider',
+        });
+
+        outputText = await this.fallbackToGenerateText(options);
+      }
 
       // Output validation
       if (
@@ -330,21 +400,111 @@ export class EnhancedAIClient {
   }
 
   /**
+   * Fallback to basic generateText when OpenAI Agents SDK is not available
+   */
+  private async fallbackToGenerateText(
+    options: EnhancedAgentRunOptions
+  ): Promise<string> {
+    // Load the basic AI functionality instead of OpenAI Agents SDK directly
+    const { generateText } = await import('./client');
+
+    // Prepare messages for generateText
+    const messages = options.messages || [
+      { role: 'user' as const, content: options.instructions || 'Hello' },
+    ];
+
+    this.addEvent('text', {
+      type: 'agent_created',
+      model: options.config?.model || 'default',
+    });
+
+    // Use generateText instead of the OpenAI Agents SDK
+    return await generateText(
+      messages.map((m) => m.content).join('\n'),
+      options.config ? { config: options.config } : undefined
+    );
+  }
+
+  /**
    * Stream agent events in real-time
    */
   async *streamAgentEvents(
     options: EnhancedAgentRunOptions = {}
   ): AsyncGenerator<AgentEvent, void, unknown> {
     try {
-      // This is a simplified version - full implementation would require OpenAI Agents SDK streaming support
+      // Check if we should use OpenAI Agents SDK for streaming
+      const shouldUseAgents = this.aiConfig.provider === 'openai' && 
+                             this.aiConfig.agents?.enabled === true &&
+                             this.aiConfig.agents?.streaming === true;
+
       this.setTracing(true);
 
       yield {
         type: 'text',
-        data: 'Starting agent execution...',
+        data: shouldUseAgents ? 'Starting OpenAI Agents streaming...' : 'Starting basic agent execution...',
         timestamp: new Date(),
       };
 
+      if (shouldUseAgents) {
+        try {
+          const { loadModel } = await import('./config');
+          const { 
+            streamOpenAIAgent, 
+            createOpenAIAgentOptions,
+            isOpenAIAgentsAvailable
+          } = await import('./providers/openai-agents');
+
+          // Check if the SDK is available
+          const isAvailable = await isOpenAIAgentsAvailable();
+          
+          if (isAvailable) {
+            const model = await loadModel(options.config || this.aiConfig);
+            
+            const agentOptions = createOpenAIAgentOptions(
+              this.aiConfig,
+              model,
+              {
+                ...(options.instructions !== undefined && { instructions: options.instructions }),
+                ...(options.messages !== undefined && { messages: options.messages }),
+                ...(options.tools !== undefined && { tools: options.tools }),
+                ...(this.aiConfig.agents?.maxTurns !== undefined && { maxTurns: this.aiConfig.agents.maxTurns }),
+                streaming: true,
+                ...(options.temperature !== undefined && { temperature: options.temperature }),
+                ...(options.maxTokens !== undefined && { maxTokens: options.maxTokens }),
+              }
+            );
+
+            // Stream from OpenAI Agents SDK
+            for await (const agentEvent of streamOpenAIAgent(agentOptions as any)) {
+              // Convert OpenAI agent event to our standard format
+              yield {
+                type: agentEvent.type as AgentEvent['type'],
+                data: agentEvent.data,
+                timestamp: agentEvent.timestamp,
+              };
+              
+              // Add to tracing
+              this.addEvent(agentEvent.type as AgentEvent['type'], agentEvent.data);
+            }
+            
+            return;
+          } else {
+            yield {
+              type: 'text',
+              data: 'OpenAI Agents SDK not available, falling back to basic execution...',
+              timestamp: new Date(),
+            };
+          }
+        } catch (error) {
+          yield {
+            type: 'text',
+            data: 'OpenAI Agents streaming failed, falling back to basic execution...',
+            timestamp: new Date(),
+          };
+        }
+      }
+
+      // Fallback to basic execution
       const result = await this.runEnhancedAgent(options);
 
       yield { type: 'text', data: result.outputText, timestamp: new Date() };
@@ -410,7 +570,7 @@ export class EnhancedAIClient {
  * Create an enhanced AI client instance
  */
 export async function createEnhancedAIClient(
-  config?: AiConfig
+  config?: Partial<AIConfig>
 ): Promise<EnhancedAIClient> {
   const { loadAIConfig } = await import('./config');
   const aiConfig = loadAIConfig(config);
