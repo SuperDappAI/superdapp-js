@@ -213,6 +213,13 @@ export class ConfigureCommand extends Command {
       apiToken: options.apiToken || initialAnswers.apiToken,
       apiUrl: options.apiUrl || initialAnswers.apiUrl,
       ...aiConfig,
+    } as {
+      apiToken: string;
+      apiUrl: string;
+      aiProvider?: string;
+      aiModel?: string;
+      aiApiKey?: string;
+      aiBaseUrl?: string;
     };
   }
 
