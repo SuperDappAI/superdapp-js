@@ -10,7 +10,7 @@ const envSchema = z.object({
   AI_PROVIDER: z.enum(['openai', 'anthropic', 'google']).optional(),
   AI_MODEL: z.string().optional(),
   AI_API_KEY: z.string().optional(),
-  AI_BASE_URL: z.string().url().optional().or(z.literal('')),
+  AI_BASE_URL: z.string().url().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
