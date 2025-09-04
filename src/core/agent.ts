@@ -9,8 +9,16 @@ import {
   ReplyMarkupAction,
   Message,
   MessageContent,
+  AIAgentConfig,
 } from '../types';
 import { formatBody } from '../utils/messageFormatter';
+
+// AI Client interface for minimal coupling
+interface AIClient {
+  generateText(input: string | Array<{ role: 'system' | 'user' | 'assistant'; content: string }>, options?: any): Promise<string>;
+  streamText(input: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>, options?: any): Promise<AsyncIterable<string>>;
+  runAgent(options?: any): Promise<{ outputText: string }>;
+}
 
 export interface SuperDappAgentOptions {
   secret?: string | undefined;
@@ -21,9 +29,16 @@ export class SuperDappAgent {
   private client: SuperDappClient;
   private commands: AgentCommands = {};
   private messages: AgentMessages = {};
+  private aiConfig?: AIAgentConfig;
+  private aiClient?: AIClient;
 
   constructor(config: BotConfig) {
     this.client = new SuperDappClient(config);
+
+    // Store AI config if provided
+    if (config.ai) {
+      this.aiConfig = config.ai;
+    }
 
     this.webhookAgent = new WebhookAgent();
 
@@ -123,6 +138,40 @@ export class SuperDappAgent {
    */
   getClient(): SuperDappClient {
     return this.client;
+  }
+
+  /**
+   * Get the AI client for LLM operations
+   * @throws Error if AI is not configured
+   */
+  async getAiClient(): Promise<AIClient> {
+    if (!this.aiConfig) {
+      throw new Error('AI is not configured for this agent. Please provide ai configuration in BotConfig to use AI features.');
+    }
+    
+    if (!this.aiClient) {
+      // Lazy load the AI client to avoid import issues when AI is not used
+      this.aiClient = await this.createAiClient();
+    }
+    
+    return this.aiClient;
+  }
+
+  private async createAiClient(): Promise<AIClient> {
+    // Dynamic import to avoid loading AI dependencies when not needed
+    const { generateText, streamText, runAgent } = await import('../ai/client');
+    
+    return {
+      generateText: (input: any, options: any = {}) => {
+        return generateText(input, { ...options, config: this.aiConfig });
+      },
+      streamText: (input: any, options: any = {}) => {
+        return streamText(input, { ...options, config: this.aiConfig });
+      },
+      runAgent: (options: any = {}) => {
+        return runAgent({ ...options, config: this.aiConfig });
+      },
+    };
   }
 
   private createCommandWrapper(handler: CommandHandler) {

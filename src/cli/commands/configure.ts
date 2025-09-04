@@ -18,6 +18,10 @@ export class ConfigureCommand extends Command {
     )
       .option('--api-token <token>', 'SuperDapp API token')
       .option('--api-url <url>', 'SuperDapp API base URL')
+      .option('--ai-provider <provider>', 'AI provider (openai, anthropic, google)')
+      .option('--ai-model <model>', 'AI model to use')
+      .option('--ai-api-key <key>', 'AI provider API key')
+      .option('--ai-base-url <url>', 'AI provider base URL (optional)')
       .option('--interactive', 'Interactive configuration mode', true)
       .action(this.execute.bind(this));
   }
@@ -25,6 +29,10 @@ export class ConfigureCommand extends Command {
   private async execute(options: {
     apiToken?: string;
     apiUrl?: string;
+    aiProvider?: string;
+    aiModel?: string;
+    aiApiKey?: string;
+    aiBaseUrl?: string;
     interactive?: boolean;
   }) {
     const spinner = ora('Detecting runtime environment...').start();
@@ -55,6 +63,19 @@ export class ConfigureCommand extends Command {
       );
       console.log(`  API URL: ${config.apiUrl || 'Default'}`);
 
+      // Show AI configuration if present
+      if (config.aiProvider) {
+        console.log(`\n${chalk.blue('AI Configuration:')}`);
+        console.log(`  Provider: ${config.aiProvider}`);
+        console.log(`  Model: ${config.aiModel}`);
+        console.log(
+          `  API Key: ${config.aiApiKey ? '***' + config.aiApiKey.slice(-4) : 'Not set'}`
+        );
+        if (config.aiBaseUrl) {
+          console.log(`  Base URL: ${config.aiBaseUrl}`);
+        }
+      }
+
       // Show runtime-specific instructions
       this.showRuntimeInstructions(runtimeInfo);
 
@@ -74,6 +95,10 @@ export class ConfigureCommand extends Command {
   private async getConfiguration(options: {
     apiToken?: string;
     apiUrl?: string;
+    aiProvider?: string;
+    aiModel?: string;
+    aiApiKey?: string;
+    aiBaseUrl?: string;
     interactive?: boolean;
   }) {
     const questions = [];
@@ -100,16 +125,114 @@ export class ConfigureCommand extends Command {
       });
     }
 
-    const answers = await inquirer.prompt(questions);
+    // AI Configuration (optional)
+    questions.push({
+      type: 'confirm',
+      name: 'configureAI',
+      message: 'Would you like to configure AI integration?',
+      default: false,
+    });
+
+    const initialAnswers = await inquirer.prompt(questions);
+
+    let aiConfig = {};
+    if (initialAnswers.configureAI || options.aiProvider) {
+      const aiQuestions = [];
+
+      if (!options.aiProvider) {
+        aiQuestions.push({
+          type: 'list',
+          name: 'aiProvider',
+          message: 'Select AI provider:',
+          choices: [
+            { name: 'OpenAI', value: 'openai' },
+            { name: 'Anthropic', value: 'anthropic' },
+            { name: 'Google', value: 'google' },
+          ],
+          default: 'openai',
+        });
+      }
+
+      if (!options.aiModel) {
+        aiQuestions.push({
+          type: 'input',
+          name: 'aiModel',
+          message: 'AI model:',
+          default: (answers: any) => {
+            const provider = options.aiProvider || answers.aiProvider;
+            switch (provider) {
+              case 'openai':
+                return 'gpt-4';
+              case 'anthropic':
+                return 'claude-3-sonnet-20240229';
+              case 'google':
+                return 'gemini-pro';
+              default:
+                return 'gpt-4';
+            }
+          },
+          validate: (input: string) => {
+            if (!input.trim()) return 'AI model is required';
+            return true;
+          },
+        });
+      }
+
+      if (!options.aiApiKey) {
+        aiQuestions.push({
+          type: 'password',
+          name: 'aiApiKey',
+          message: 'AI provider API key:',
+          mask: '*',
+          validate: (input: string) => {
+            if (!input.trim()) return 'AI API key is required';
+            return true;
+          },
+        });
+      }
+
+      if (!options.aiBaseUrl) {
+        aiQuestions.push({
+          type: 'input',
+          name: 'aiBaseUrl',
+          message: 'AI provider base URL (optional):',
+          default: '',
+        });
+      }
+
+      const aiAnswers = await inquirer.prompt(aiQuestions);
+      aiConfig = {
+        aiProvider: options.aiProvider || aiAnswers.aiProvider,
+        aiModel: options.aiModel || aiAnswers.aiModel,
+        aiApiKey: options.aiApiKey || aiAnswers.aiApiKey,
+        aiBaseUrl: options.aiBaseUrl || aiAnswers.aiBaseUrl,
+      };
+    }
 
     return {
-      apiToken: options.apiToken || answers.apiToken,
-      apiUrl: options.apiUrl || answers.apiUrl,
+      aiProvider: (aiConfig as any).aiProvider,
+      aiModel: (aiConfig as any).aiModel,
+      aiApiKey: (aiConfig as any).aiApiKey,
+      aiBaseUrl: (aiConfig as any).aiBaseUrl,
+    } as {
+      apiToken: string;
+      apiUrl: string;
+      aiProvider?: string;
+      aiModel?: string;
+      aiApiKey?: string;
+      aiBaseUrl?: string;
     };
   }
 
   private async writeEnvFile(
-    config: { apiToken: string; apiUrl?: string },
+    config: { 
+      apiToken: string; 
+      apiUrl?: string;
+      aiProvider?: string;
+      aiModel?: string;
+      aiApiKey?: string;
+      aiBaseUrl?: string;
+    },
     runtimeInfo: { envFile: string; envFormat: 'dotenv' | 'json' | 'devvars' }
   ) {
     const envPath = path.join(process.cwd(), runtimeInfo.envFile);

@@ -1,15 +1,5 @@
 // AI Module - Model-agnostic AI integration
-// Basic exports to enable AI functionality
-
-// Re-export core AI SDK
-export * from 'ai';
-
-// Re-export OpenAI Agents
-export * from '@openai/agents';
-
-// Re-export AI provider with specific exports to avoid conflicts
-export { openai } from '@ai-sdk/openai';
-export type { OpenAIProvider as OpenAISDKProvider } from '@ai-sdk/openai';
+// All AI functionality is loaded dynamically to avoid requiring AI dependencies when not used
 
 // AI utility types for SuperDapp integration
 export interface AIConfig {
@@ -29,7 +19,7 @@ export default {
   AI_PROVIDERS,
 };
 
-// NEW: Export AI configuration and model loading functionality
+// Export AI configuration and model loading functionality
 export {
   loadModel,
   loadAIConfig,

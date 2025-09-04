@@ -1,28 +1,130 @@
-import type { AgentRunOptions, GenerateTextOptions, StreamTextOptions } from './types';
+import type { 
+  AgentRunOptions, 
+  GenerateTextOptions, 
+  StreamTextOptions,
+  GenerateTextInput,
+  StreamTextInput 
+} from './types';
 
-// Temporary, provider-agnostic fallbacks; will be implemented in issues #36-#38
+/**
+ * Generate text using the configured AI model
+ * 
+ * @param input - String prompt or messages array
+ * @param options - Generation options including AI config overrides
+ * @returns Promise resolving to generated text
+ */
+export async function generateText(
+  input: GenerateTextInput,
+  options: GenerateTextOptions = {}
+): Promise<string> {
+  try {
+    // Dynamic import to avoid circular dependencies and optional loading
+    const { loadModel } = await import('./config');
+    const { generateText: vercelGenerateText } = await import('ai');
+    
+    const model = await loadModel(options.config as any);
+    
+    // Handle different input types
+    const generateOptions: any = {
+      model,
+      temperature: options.temperature,
+      maxTokens: options.maxTokens,
+      topP: options.topP,
+      topK: options.topK,
+      frequencyPenalty: options.frequencyPenalty,
+      presencePenalty: options.presencePenalty,
+      seed: options.seed,
+      stop: options.stop,
+    };
 
-export async function generateText(prompt: string, _options: GenerateTextOptions = {}): Promise<string> {
-  // Placeholder to keep API surface stable; real implementation will route to Vercel AI SDK models
-  if (!prompt || prompt.trim().length === 0) {
-    throw new Error('generateText: prompt must be a non-empty string');
+    if (typeof input === 'string') {
+      generateOptions.prompt = input;
+    } else {
+      generateOptions.messages = input;
+    }
+    
+    const result = await vercelGenerateText(generateOptions);
+    return (result as any).text;
+  } catch (error) {
+    throw new Error(`generateText failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  // Provide a deterministic placeholder output to avoid surprising callers during scaffold
-  return `AI response (scaffold): ${prompt.slice(0, 64)}`;
 }
 
+/**
+ * Stream text generation using the configured AI model
+ * 
+ * @param input - Messages array for the conversation
+ * @param options - Streaming options including AI config overrides
+ * @returns Promise resolving to an async iterable of text chunks
+ */
 export async function streamText(
-  _messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
-  _options: StreamTextOptions = {}
+  input: StreamTextInput,
+  options: StreamTextOptions = {}
 ): Promise<AsyncIterable<string>> {
-  // Minimal mock stream: yields one chunk. Real impl will return a stream from AI SDK
-  async function* oneShot() {
-    yield 'AI stream (scaffold)';
+  try {
+    // Dynamic import to avoid circular dependencies and optional loading
+    const { loadModel } = await import('./config');
+    const { streamText: vercelStreamText } = await import('ai');
+    
+    const model = await loadModel(options.config as any);
+    
+    const result = await vercelStreamText({
+      model,
+      messages: input,
+      temperature: options.temperature,
+      maxTokens: options.maxTokens,
+      topP: options.topP,
+      topK: options.topK,
+      frequencyPenalty: options.frequencyPenalty,
+      presencePenalty: options.presencePenalty,
+      seed: options.seed,
+      stop: options.stop,
+    } as any);
+    
+    // Create async generator that yields text chunks
+    async function* textStream() {
+      for await (const chunk of (result as any).textStream) {
+        yield chunk;
+      }
+    }
+    
+    return textStream();
+  } catch (error) {
+    throw new Error(`streamText failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  return oneShot();
 }
 
-export async function runAgent(_options: AgentRunOptions = {}): Promise<{ outputText: string }> {
-  // Stub implementation; real one will construct an Agents SDK Agent with aisdk(model)
-  return { outputText: 'Agent output (scaffold)' };
+/**
+ * Run an AI agent with tools and instructions
+ * 
+ * @param options - Agent execution options including instructions, messages, and tools
+ * @returns Promise resolving to agent output
+ */
+export async function runAgent(options: AgentRunOptions = {}): Promise<{ outputText: string }> {
+  try {
+    // Dynamic import to avoid circular dependencies and optional loading
+    const { loadModel } = await import('./config');
+    const { Agent } = await import('@openai/agents');
+    
+    const model = await loadModel(options.config as any);
+    
+    // Create an Agent instance using the OpenAI Agents SDK
+    const agent = new Agent({
+      name: 'superdapp-agent',
+      model,
+      instructions: options.instructions || 'You are a helpful assistant.',
+      tools: (options.tools as any) || [],
+    } as any);
+    
+    // Execute the agent with the provided messages
+    const messages = options.messages || [];
+    const result = await (agent as any).run({ messages });
+    
+    // Extract the text output from the agent result
+    const outputText = result?.content || 'No output generated';
+    
+    return { outputText };
+  } catch (error) {
+    throw new Error(`runAgent failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
 }

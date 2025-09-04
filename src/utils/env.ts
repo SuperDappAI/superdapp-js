@@ -1,11 +1,16 @@
 import { z } from 'zod';
-import { BotConfig } from '../types';
+import { BotConfig, AIAgentConfig } from '../types';
 import fs from 'fs/promises';
 
 const envSchema = z.object({
   API_BASE_URL: z.string().url().optional(),
   API_TOKEN: z.string().min(1, 'API_TOKEN is required'),
   NODE_ENV: z.enum(['development', 'production']).optional(),
+  // AI Provider Configuration (optional)
+  AI_PROVIDER: z.enum(['openai', 'anthropic', 'google']).optional(),
+  AI_MODEL: z.string().optional(),
+  AI_API_KEY: z.string().optional(),
+  AI_BASE_URL: z.string().url().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;
@@ -140,10 +145,28 @@ export async function loadEnvConfigFromFile(
 export function createBotConfig(customBaseUrl?: string): BotConfig {
   const env = loadEnvConfig();
 
-  return {
+  const config: BotConfig = {
     apiToken: env.API_TOKEN,
     baseUrl: customBaseUrl || env.API_BASE_URL || 'https://api.superdapp.ai',
   };
+
+  // Add AI configuration if present
+  if (env.AI_PROVIDER && env.AI_MODEL && env.AI_API_KEY) {
+    const aiConfig: AIAgentConfig = {
+      provider: env.AI_PROVIDER,
+      model: env.AI_MODEL,
+      apiKey: env.AI_API_KEY,
+    };
+    
+    // Only add baseUrl if it's defined
+    if (env.AI_BASE_URL) {
+      aiConfig.baseUrl = env.AI_BASE_URL;
+    }
+    
+    config.ai = aiConfig;
+  }
+
+  return config;
 }
 
 /**
@@ -156,10 +179,88 @@ export async function createBotConfigFromFile(
 ): Promise<BotConfig> {
   const env = await loadEnvConfigFromFile(filePath, format);
 
-  return {
+  const config: BotConfig = {
     apiToken: env.API_TOKEN,
     baseUrl: customBaseUrl || env.API_BASE_URL || 'https://api.superdapp.ai',
   };
+
+  // Add AI configuration if present
+  if (env.AI_PROVIDER && env.AI_MODEL && env.AI_API_KEY) {
+    const aiConfig: AIAgentConfig = {
+      provider: env.AI_PROVIDER,
+      model: env.AI_MODEL,
+      apiKey: env.AI_API_KEY,
+    };
+    
+    // Only add baseUrl if it's defined
+    if (env.AI_BASE_URL) {
+      aiConfig.baseUrl = env.AI_BASE_URL;
+    }
+    
+    config.ai = aiConfig;
+  }
+
+  return config;
+}
+
+/**
+ * Validate AI configuration and provide clear error messages
+ */
+export function validateAiConfig(config?: AIAgentConfig): { isValid: boolean; error?: string } {
+  if (!config) {
+    return { isValid: true }; // AI is optional
+  }
+
+  if (!config.provider) {
+    return { 
+      isValid: false, 
+      error: 'AI_PROVIDER is required when AI configuration is present. Supported providers: openai, anthropic, google' 
+    };
+  }
+
+  if (!config.model) {
+    return { 
+      isValid: false, 
+      error: 'AI_MODEL is required when AI configuration is present. Example models: gpt-4, claude-3-sonnet-20240229, gemini-pro' 
+    };
+  }
+
+  if (!config.apiKey) {
+    return { 
+      isValid: false, 
+      error: 'AI_API_KEY is required when AI configuration is present. Get your API key from your AI provider.' 
+    };
+  }
+
+  // Validate provider-specific requirements
+  switch (config.provider) {
+    case 'openai':
+      if (!config.apiKey.startsWith('sk-')) {
+        return {
+          isValid: false,
+          error: 'OpenAI API key should start with "sk-". Check your API key format.'
+        };
+      }
+      break;
+    case 'anthropic':
+      if (!config.apiKey.startsWith('sk-ant-')) {
+        return {
+          isValid: false,
+          error: 'Anthropic API key should start with "sk-ant-". Check your API key format.'
+        };
+      }
+      break;
+    case 'google':
+      // Google API keys have various formats, so just check it's not empty
+      break;
+    default:
+      return {
+        isValid: false,
+        error: `Unsupported AI provider: ${config.provider}. Supported providers: openai, anthropic, google`
+      };
+  }
+
+  return { isValid: true };
 }
 
 /**

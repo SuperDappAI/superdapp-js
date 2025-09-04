@@ -10,7 +10,7 @@ export type AIProvider = 'openai' | 'anthropic' | 'google';
  * AI configuration schema for validation
  */
 const AIConfigSchema = z.object({
-  provider: z.enum(['openai', 'anthropic', 'google']),
+  provider: z.enum(['openai', 'anthropic', 'google']).default('openai'),
   model: z.string().min(1, 'AI_MODEL is required'),
   apiKey: z.string().min(1, 'AI_API_KEY is required'),
   baseUrl: z.string().url().optional().or(z.literal('')),
@@ -63,9 +63,26 @@ export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
     return result;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const issues = error.issues.map(issue => issue.message).join(', ');
+      // Create more specific error messages based on the validation issue
+      const issues = error.issues.map(issue => {
+        if (issue.path.length > 0) {
+          const fieldName = issue.path[0] as string;
+          if (fieldName === 'model' && (issue.code === 'too_small' || issue.code === 'invalid_type')) {
+            return 'AI_MODEL is required';
+          }
+          if (fieldName === 'apiKey' && (issue.code === 'too_small' || issue.code === 'invalid_type')) {
+            return 'AI_API_KEY is required';
+          }
+          if (fieldName === 'provider' && issue.code === 'invalid_enum_value') {
+            return 'AI_PROVIDER must be one of: openai, anthropic, google';
+          }
+        }
+        // Return original message for other validation issues
+        return issue.message;
+      });
+      
       throw new AIConfigError(
-        `Invalid AI configuration: ${issues}`,
+        `Invalid AI configuration: ${issues.join(', ')}`,
         'INVALID_CONFIG'
       );
     }
