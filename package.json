@@ -44,12 +44,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^2.0.9",
-    "@ai-sdk/google": "^2.0.11",
-    "@ai-sdk/openai": "^2.0.23",
-    "@openai/agents": "^0.1.0",
-    "@openai/agents-extensions": "^0.1.0",
-    "ai": "^4.0.12",
     "axios": "^1.11.0",
     "chalk": "^5.3.0",
     "commander": "^12.1.0",
@@ -60,13 +54,47 @@
     "viem": "^2.37.1",
     "zod": "^3.23.8"
   },
+  "peerDependencies": {
+    "@ai-sdk/anthropic": "^2.0.0",
+    "@ai-sdk/google": "^2.0.0",
+    "@ai-sdk/openai": "^2.0.0",
+    "@openai/agents": "^0.1.0",
+    "@openai/agents-extensions": "^0.1.0",
+    "ai": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@ai-sdk/anthropic": {
+      "optional": true
+    },
+    "@ai-sdk/google": {
+      "optional": true
+    },
+    "@ai-sdk/openai": {
+      "optional": true
+    },
+    "@openai/agents": {
+      "optional": true
+    },
+    "@openai/agents-extensions": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@ai-sdk/anthropic": "^2.0.9",
+    "@ai-sdk/google": "^2.0.11",
+    "@ai-sdk/openai": "^2.0.23",
+    "@openai/agents": "^0.1.0",
+    "@openai/agents-extensions": "^0.1.0",
     "@types/inquirer": "^9.0.7",
     "@types/jest": "^29.5.12",
     "@types/node": "^24.3.0",
     "@types/node-schedule": "^2.1.8",
     "@typescript-eslint/eslint-plugin": "^7.9.0",
     "@typescript-eslint/parser": "^7.9.0",
+    "ai": "^4.0.12",
     "eslint": "^8.57.0",
     "jest": "^29.7.0",
     "prettier": "^3.2.5",

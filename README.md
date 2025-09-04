@@ -108,6 +108,23 @@ yarn add @superdapp/agents
 pnpm add @superdapp/agents
 ```
 
+### AI Dependencies (Optional)
+
+For AI integration, install the providers you need:
+
+```bash
+# Base AI SDK (required for any AI functionality)
+npm install ai
+
+# Provider-specific packages (install only what you need)
+npm install @ai-sdk/openai        # For OpenAI GPT models
+npm install @ai-sdk/anthropic     # For Anthropic Claude models  
+npm install @ai-sdk/google        # For Google Gemini models
+
+# All providers at once
+npm install ai @ai-sdk/openai @ai-sdk/anthropic @ai-sdk/google
+```
+
 ## 🛠️ Development
 
 For local development and testing, see [DEVELOPMENT.md](./DEVELOPMENT.md) for instructions on setting up the development environment using `npm link`.

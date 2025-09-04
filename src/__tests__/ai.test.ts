@@ -63,21 +63,29 @@ describe('AI Module', () => {
       expect(typeof aiModule.default).toBe('object');
     });
 
-    it('should export openai provider', async () => {
+    it('should export AI configuration functions', async () => {
       const aiModule = await import('../ai');
       
-      // Access through any to avoid TypeScript issues in tests
-      expect(typeof (aiModule as any).openai).toBe('function');
+      // Check that configuration functions are exported
+      expect(typeof aiModule.loadModel).toBe('function');
+      expect(typeof aiModule.loadAIConfig).toBe('function');
+      expect(typeof aiModule.isSupportedProvider).toBe('function');
+      expect(typeof aiModule.getSupportedProviders).toBe('function');
+      expect(typeof aiModule.AIConfigError).toBe('function');
     });
 
-    it('should export AI functions through wildcard exports', async () => {
+    it('should export AI client functions for internal use', async () => {
       const aiModule = await import('../ai');
       
-      // Check that key functions exist through wildcard export
-      expect(typeof (aiModule as any).generateText).toBe('function');
-      expect(typeof (aiModule as any).generateObject).toBe('function');
-      expect(typeof (aiModule as any).streamText).toBe('function');
-      expect(typeof (aiModule as any).streamObject).toBe('function');
+      // These functions are exported for internal use by the agent's getAiClient() method
+      // Users should access these through agent.getAiClient() rather than direct imports
+      expect(typeof aiModule.generateText).toBe('function');
+      expect(typeof aiModule.streamText).toBe('function');
+      expect(typeof aiModule.runAgent).toBe('function');
+      
+      // But AI SDK functions and providers should not be directly exported
+      expect((aiModule as any).generateObject).toBeUndefined();
+      expect((aiModule as any).openai).toBeUndefined();
     });
   });
 });
