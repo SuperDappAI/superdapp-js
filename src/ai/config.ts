@@ -65,7 +65,6 @@ export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
     if (error instanceof z.ZodError) {
       // Create more specific error messages based on the validation issue
       const issues = error.issues.map(issue => {
-        // console.log('Issue:', JSON.stringify(issue, null, 2));
         if (issue.path.length > 0) {
           const fieldName = issue.path[0] as string;
           if (fieldName === 'model' && (issue.code === 'too_small' || issue.code === 'invalid_type')) {
