@@ -4,10 +4,12 @@ import { BotConfig } from '../../types';
 // Mock the AI client module
 jest.mock('../../ai/client', () => ({
   generateText: jest.fn().mockResolvedValue('Generated AI response'),
-  streamText: jest.fn().mockResolvedValue((async function* () {
-    yield 'chunk1';
-    yield 'chunk2';
-  })()),
+  streamText: jest.fn().mockResolvedValue(
+    (async function* () {
+      yield 'chunk1';
+      yield 'chunk2';
+    })()
+  ),
   runAgent: jest.fn().mockResolvedValue({ outputText: 'Agent response' }),
 }));
 
@@ -16,6 +18,10 @@ describe('SuperDappAgent AI Integration', () => {
     apiToken: 'test-token',
     baseUrl: 'https://api.test.com',
   };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   describe('with AI configuration', () => {
     it('should provide AI client when configured', async () => {
@@ -29,7 +35,7 @@ describe('SuperDappAgent AI Integration', () => {
       };
 
       const agent = new SuperDappAgent(configWithAI);
-      const aiClient = agent.getAiClient();
+      const aiClient = await agent.getAiClient();
 
       expect(aiClient).toBeDefined();
       expect(typeof aiClient.generateText).toBe('function');
@@ -48,14 +54,14 @@ describe('SuperDappAgent AI Integration', () => {
       };
 
       const agent = new SuperDappAgent(configWithAI);
-      const aiClient = agent.getAiClient();
+      const aiClient = await agent.getAiClient();
 
       const result = await aiClient.generateText('Hello, AI!');
       expect(result).toBe('Generated AI response');
 
       // Verify the mock was called with the right arguments
-      const { generateText } = require('../../ai/client');
-      expect(generateText).toHaveBeenCalledWith('Hello, AI!', {
+      const aiClientModule = jest.requireMock('../../ai/client');
+      expect(aiClientModule.generateText).toHaveBeenCalledWith('Hello, AI!', {
         config: configWithAI.ai,
       });
     });
@@ -71,7 +77,7 @@ describe('SuperDappAgent AI Integration', () => {
       };
 
       const agent = new SuperDappAgent(configWithAI);
-      const aiClient = agent.getAiClient();
+      const aiClient = await agent.getAiClient();
 
       const messages = [{ role: 'user' as const, content: 'Tell me a story' }];
       const stream = await aiClient.streamText(messages);
@@ -84,8 +90,8 @@ describe('SuperDappAgent AI Integration', () => {
       expect(chunks).toEqual(['chunk1', 'chunk2']);
 
       // Verify the mock was called with the right arguments
-      const { streamText } = require('../../ai/client');
-      expect(streamText).toHaveBeenCalledWith(messages, {
+      const aiClientModule = jest.requireMock('../../ai/client');
+      expect(aiClientModule.streamText).toHaveBeenCalledWith(messages, {
         config: configWithAI.ai,
       });
     });
@@ -101,7 +107,7 @@ describe('SuperDappAgent AI Integration', () => {
       };
 
       const agent = new SuperDappAgent(configWithAI);
-      const aiClient = agent.getAiClient();
+      const aiClient = await agent.getAiClient();
 
       const options = {
         instructions: 'You are a helpful assistant',
@@ -112,8 +118,8 @@ describe('SuperDappAgent AI Integration', () => {
       expect(result).toEqual({ outputText: 'Agent response' });
 
       // Verify the mock was called with the right arguments
-      const { runAgent } = require('../../ai/client');
-      expect(runAgent).toHaveBeenCalledWith({
+      const aiClientModule = jest.requireMock('../../ai/client');
+      expect(aiClientModule.runAgent).toHaveBeenCalledWith({
         ...options,
         config: configWithAI.ai,
       });
@@ -133,8 +139,22 @@ describe('SuperDappAgent AI Integration', () => {
 
       // Add a command that uses AI
       agent.addCommand('/ask', async ({ message, roomId }) => {
-        const aiClient = agent.getAiClient();
-        const prompt = message.body.m?.body?.split(' ').slice(1).join(' ') || 'Hello';
+        const aiClient = await agent.getAiClient();
+
+        // Handle different message body formats
+        let prompt = 'Hello';
+        if (typeof message.body.m === 'object' && message.body.m?.body) {
+          const bodyContent =
+            typeof message.body.m.body === 'string'
+              ? message.body.m.body
+              : message.body.m.body;
+          if (typeof bodyContent === 'string') {
+            prompt = bodyContent.split(' ').slice(1).join(' ') || 'Hello';
+          }
+        } else if (typeof message.body.m === 'string') {
+          prompt = message.body.m.split(' ').slice(1).join(' ') || 'Hello';
+        }
+
         const response = await aiClient.generateText(prompt);
         await agent.sendConnectionMessage(roomId, response);
       });
@@ -144,7 +164,7 @@ describe('SuperDappAgent AI Integration', () => {
       expect(commands).toContain('/ask');
     });
 
-    it('should lazy load AI client on first access', () => {
+    it('should lazy load AI client on first access', async () => {
       const configWithAI: BotConfig = {
         ...baseConfig,
         ai: {
@@ -157,19 +177,19 @@ describe('SuperDappAgent AI Integration', () => {
       const agent = new SuperDappAgent(configWithAI);
 
       // First call should create the client
-      const aiClient1 = agent.getAiClient();
+      const aiClient1 = await agent.getAiClient();
       // Second call should return the same instance
-      const aiClient2 = agent.getAiClient();
+      const aiClient2 = await agent.getAiClient();
 
       expect(aiClient1).toBe(aiClient2);
     });
   });
 
   describe('without AI configuration', () => {
-    it('should throw clear error when AI not configured', () => {
+    it('should throw clear error when AI not configured', async () => {
       const agent = new SuperDappAgent(baseConfig);
 
-      expect(() => agent.getAiClient()).toThrow(
+      await expect(agent.getAiClient()).rejects.toThrow(
         'AI is not configured for this agent. Please provide ai configuration in BotConfig to use AI features.'
       );
     });

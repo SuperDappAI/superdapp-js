@@ -11,4 +11,6 @@ tmp
 my-test-project
 /examples/*/package-lock.json
 projects/
+projects/*/
+docs/sessions
 *.tgz

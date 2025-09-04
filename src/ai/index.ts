@@ -12,7 +12,7 @@ export interface AIConfig {
 
 // Basic AI utilities
 export const AI_PROVIDERS = ['openai', 'anthropic', 'google'] as const;
-export type AIProvider = typeof AI_PROVIDERS[number];
+export type AIProvider = (typeof AI_PROVIDERS)[number];
 
 // Default export for convenience
 export default {
@@ -27,7 +27,13 @@ export {
   getSupportedProviders,
   AIConfigError,
 } from './config';
-export type { AIConfig as AdvancedAIConfig, AIProvider as AdvancedAIProvider } from './config';
+export type {
+  AIConfig as AdvancedAIConfig,
+  AIProvider as AdvancedAIProvider,
+} from './config';
 
 export * from './types';
 export * from './client';
+
+// Enhanced AI features
+export * from './enhanced-client';

@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
@@ -9,7 +9,6 @@ module.exports = {
       {
         useESM: false,
         tsconfig: '<rootDir>/tsconfig.json',
-        isolatedModules: true,
       },
     ],
   },

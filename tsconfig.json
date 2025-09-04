@@ -21,6 +21,7 @@
     "exactOptionalPropertyTypes": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
     "moduleResolution": "node",
     "baseUrl": "./src",
     "paths": {
@@ -48,6 +49,7 @@
     "node_modules",
     "dist",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "examples/**/*.ts"
   ]
 }
