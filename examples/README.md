@@ -1,30 +1,47 @@
 # SuperDapp Examples
 
-This directory contains example implementations of SuperDapp agents with different levels of complexity.
+This directory contains example implementations of SuperDapp agents with different levels of complexity and capabilities.
 
 ## Examples
 
 ### Basic Example (`basic/`)
 
-A simple agent with basic commands.
+A simple agent with basic commands and interactive features.
 
 **Features:**
-
 - Basic commands (`/start`, `/ping`, `/help`)
 - Interactive menu with buttons
 - Message handling
 
 ### Advanced Example (`advanced/`)
 
-A comprehensive agent with advanced features including scheduled tasks.
+A comprehensive agent with advanced features including scheduled tasks and data management.
 
 **Features:**
-
 - All basic features
 - User subscriptions
 - Scheduled notifications
 - Crypto price simulation
 - Portfolio management
+
+### AI Examples (`ai/`)
+
+Complete AI-powered agent examples demonstrating different AI providers and capabilities.
+
+**Projects:**
+- **[basic-openai/](./ai/basic-openai/)** - OpenAI integration with Q&A, chat, code assistance
+- **[anthropic-chat/](./ai/anthropic-chat/)** - Claude-powered analysis and reasoning
+- **[multi-provider/](./ai/multi-provider/)** - Model-agnostic development with multiple providers
+- **[enhanced-features/](./ai/enhanced-features/)** - Advanced AI features with guardrails and monitoring
+
+**Features:**
+- Multiple AI provider support (OpenAI, Anthropic, Google AI)
+- Safety guardrails and content validation
+- Parallel processing and streaming responses
+- Comprehensive error handling and monitoring
+- Enterprise-ready features for production use
+
+See the [AI Examples README](./ai/README.md) for detailed setup and usage instructions.
 
 ## Running the Examples
 
@@ -48,6 +65,17 @@ npm run build  # Build the project first
 npm start      # Run the built version
 ```
 
+### AI Examples:
+
+```bash
+# Choose any AI example (basic-openai, anthropic-chat, multi-provider, enhanced-features)
+cd examples/ai/basic-openai
+npm install
+cp .env.example .env  # Configure your API keys
+npm run build
+npm start
+```
+
 ### Development Mode:
 
 For development with auto-reload:
@@ -59,6 +87,10 @@ npm run dev
 
 # Advanced example
 cd examples/advanced
+npm run dev
+
+# AI examples
+cd examples/ai/basic-openai
 npm run dev
 ```
 

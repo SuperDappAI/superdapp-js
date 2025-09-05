@@ -2,270 +2,259 @@
 
 This directory contains comprehensive examples demonstrating how to build AI-powered agents using the SuperDapp Agents SDK with multiple AI providers.
 
-## 📁 Examples Overview
+## 🏗️ Project Structure
 
-### 🤖 [OpenAI Example](./openai-example.ts)
-Demonstrates integration with OpenAI's GPT models, showcasing:
-- Basic Q&A with `/ask` command
-- Conversational chat with `/chat` command  
-- Code assistance with `/code` command
-- Creative writing with `/write` command
-- Proper error handling and user guidance
+The AI examples are organized as standalone, runnable projects, each demonstrating different aspects of AI integration:
 
-### 🧠 [Anthropic Example](./anthropic-example.ts)
-Shows how to leverage Claude's reasoning and analysis capabilities:
-- Deep topic analysis with `/analyze` command
-- Academic essay writing with `/essay` command
-- Research assistance with `/research` command
-- Ethical discussions with `/ethics` command
-- Creative storytelling with `/story` command
-- Natural conversation with `/claude` command
+```
+ai/
+├── basic-openai/          # Basic OpenAI integration
+├── anthropic-chat/        # Anthropic Claude capabilities  
+├── multi-provider/        # Model-agnostic development
+├── enhanced-features/     # Advanced AI capabilities
+└── README.md             # This overview
+```
 
-### 🔄 [Multi-Provider Example](./multi-provider-example.ts)
-Demonstrates the model-agnostic nature of the SDK:
-- Single codebase that works with any provider
-- Configuration status checking with `/status` command
-- Universal text generation with `/generate` command
-- Provider comparison capabilities
-- Adaptive system prompts based on provider strengths
-- Optimal task suggestions per provider
+## 📁 Example Projects
 
-## 🚀 Quick Start
+### 🤖 [Basic OpenAI](./basic-openai/)
+**Perfect for getting started with OpenAI integration**
 
-### 1. Prerequisites
+- **Focus**: Essential OpenAI features and commands
+- **Commands**: `/ask`, `/chat`, `/code`, `/write`, `/status`, `/help`
+- **Features**: Q&A, conversations, code assistance, creative writing
+- **Best for**: Learning OpenAI basics, general-purpose AI agent
 
-Install the base SuperDapp SDK:
+**Quick Start:**
 ```bash
-npm install @superdapp/agents
+cd examples/ai/basic-openai
+npm install && npm run dev
 ```
 
-Install AI dependencies for your chosen provider(s):
+### 🧠 [Anthropic Chat](./anthropic-chat/)
+**Showcases Claude's reasoning and analysis strengths**
+
+- **Focus**: Claude-specific capabilities for deep thinking
+- **Commands**: `/analyze`, `/research`, `/essay`, `/ethics`, `/story`, `/claude`
+- **Features**: Topic analysis, research assistance, academic writing, ethical discussions
+- **Best for**: Analysis, research, thoughtful conversations, academic content
+
+**Quick Start:**
 ```bash
-# For OpenAI
-npm install ai @ai-sdk/openai
-
-# For Anthropic
-npm install ai @ai-sdk/anthropic
-
-# For Google AI
-npm install ai @ai-sdk/google
-
-# Or install all for maximum flexibility
-npm install ai @ai-sdk/openai @ai-sdk/anthropic @ai-sdk/google
+cd examples/ai/anthropic-chat  
+npm install && npm run dev
 ```
 
-### 2. Configuration
+### 🔄 [Multi-Provider](./multi-provider/)
+**Demonstrates model-agnostic AI development**
 
-Set up your environment variables. Choose one provider to start:
+- **Focus**: Universal commands that work with any AI provider
+- **Commands**: `/generate`, `/chat`, `/compare`, `/optimal`, `/status`
+- **Providers**: OpenAI, Anthropic, Google AI
+- **Features**: Easy provider switching, provider comparison, optimal task suggestions
+- **Best for**: Flexible deployments, provider experimentation, cost optimization
 
-#### OpenAI Configuration
+**Quick Start:**
 ```bash
-export API_TOKEN=your_superdapp_api_token
-export AI_PROVIDER=openai
-export AI_MODEL=gpt-4
-export AI_API_KEY=sk-your-openai-api-key
+cd examples/ai/multi-provider
+npm install && npm run dev
 ```
 
-#### Anthropic Configuration
+### 🚀 [Enhanced Features](./enhanced-features/)
+**Advanced AI capabilities and enterprise features**
+
+- **Focus**: Production-ready AI features and safety
+- **Commands**: `/ask`, `/compare`, `/stream`, `/safe`, `/trace`
+- **Features**: Guardrails, parallel processing, streaming, tracing, monitoring
+- **Best for**: Enterprise applications, safety-critical systems, performance optimization
+
+**Quick Start:**
 ```bash
-export API_TOKEN=your_superdapp_api_token
-export AI_PROVIDER=anthropic
-export AI_MODEL=claude-3-sonnet-20240229
-export AI_API_KEY=sk-ant-your-anthropic-api-key
+cd examples/ai/enhanced-features
+npm install && npm run dev
 ```
 
-#### Google AI Configuration
+## 🚀 Quick Start Guide
+
+### Prerequisites
+- Node.js 18+
+- SuperDapp API token
+- AI provider API key (OpenAI, Anthropic, or Google AI)
+
+### 1. Choose Your Starting Point
+
+**New to AI?** → Start with [Basic OpenAI](./basic-openai/)
+**Need Analysis?** → Try [Anthropic Chat](./anthropic-chat/)  
+**Want Flexibility?** → Use [Multi-Provider](./multi-provider/)
+**Building Production?** → Explore [Enhanced Features](./enhanced-features/)
+
+### 2. Setup Any Example
+
 ```bash
-export API_TOKEN=your_superdapp_api_token
-export AI_PROVIDER=google
-export AI_MODEL=gemini-pro
-export AI_API_KEY=your-google-ai-api-key
+# Navigate to your chosen example
+cd examples/ai/[example-name]
+
+# Install dependencies
+npm install
+
+# Copy environment template
+cp .env.example .env
+
+# Configure your API keys in .env
+# Start development server
+npm run dev
 ```
 
-Or use the interactive CLI:
-```bash
-superagent configure
+### 3. Environment Configuration
+
+Each example includes comprehensive environment setup:
+
+```env
+# SuperDapp API (Required for all)
+API_TOKEN=your_superdapp_token
+API_BASE_URL=https://api.superdapp.ai
+
+# AI Provider (Choose one)
+AI_PROVIDER=openai|anthropic|google
+AI_MODEL=model_name
+AI_API_KEY=your_api_key
 ```
 
-### 3. Run Examples
+## 🔧 Common Commands
 
-```bash
-# OpenAI example
-npx ts-node examples/ai/openai-example.ts
+All examples follow consistent patterns:
 
-# Anthropic example  
-npx ts-node examples/ai/anthropic-example.ts
+| Command | Purpose | Available In |
+|---------|---------|--------------|
+| `/start` | Welcome and introduction | All examples |
+| `/help` | Show available commands | All examples |
+| `/status` | Check AI configuration | All examples |
+| `/ask` or `/generate` | Basic AI text generation | All examples |
+| `/chat` | Conversational AI | All examples |
 
-# Multi-provider example
-npx ts-node examples/ai/multi-provider-example.ts
-```
+## 🎯 Use Case Guide
 
-## 🎯 Example Use Cases
+### Content Creation
+- **Blog posts, articles**: [Anthropic Chat](./anthropic-chat/) → `/essay`
+- **Creative writing**: [Basic OpenAI](./basic-openai/) → `/write`
+- **Multiple perspectives**: [Enhanced Features](./enhanced-features/) → `/compare`
 
-### OpenAI Example Commands
-- `/ask What is machine learning?` - General Q&A
-- `/chat How's your day going?` - Conversational AI
-- `/code How do I use async/await?` - Programming help
-- `/write A story about robots` - Creative content
-- `/help` - Show all commands
+### Code Assistance  
+- **Programming help**: [Basic OpenAI](./basic-openai/) → `/code`
+- **Technical explanations**: [Multi-Provider](./multi-provider/) → `/generate`
 
-### Anthropic Example Commands
-- `/analyze Climate change impacts` - Deep analysis
-- `/research Quantum computing trends` - Research assistance
-- `/essay The future of AI` - Academic writing
-- `/ethics Should AI have rights?` - Ethical discussions  
-- `/story A time traveler's dilemma` - Creative storytelling
-- `/claude What fascinates you about creativity?` - Natural conversation
+### Research & Analysis
+- **Deep analysis**: [Anthropic Chat](./anthropic-chat/) → `/analyze`
+- **Research assistance**: [Anthropic Chat](./anthropic-chat/) → `/research`
+- **Multi-approach analysis**: [Enhanced Features](./enhanced-features/) → `/compare`
 
-### Multi-Provider Commands
-- `/status` - Check current AI configuration
-- `/generate Explain quantum physics` - Universal text generation
-- `/chat Hello, how are you?` - Provider-adaptive conversation
-- `/compare Write a haiku about technology` - Compare provider capabilities
-- `/optimal` - See optimal tasks for current provider
+### Business Applications
+- **Safe content**: [Enhanced Features](./enhanced-features/) → `/safe`
+- **Performance monitoring**: [Enhanced Features](./enhanced-features/) → `/trace`
+- **Provider cost optimization**: [Multi-Provider](./multi-provider/)
 
-## 🔧 Customization
+## 🔐 Security & Best Practices
 
-### Adding Custom Commands
+### Environment Variables
+- ✅ Use `.env` files for configuration (automatically gitignored)
+- ✅ Never commit API keys to version control
+- ✅ Use different keys for development and production
+- ✅ Rotate API keys regularly
 
-```typescript
-agent.addCommand('/custom', async (message, replyMessage, roomId) => {
-  const input = message.body.m?.body?.split(' ').slice(1).join(' ');
-  
-  try {
-    const aiClient = agent.getAiClient();
-    const response = await aiClient.generateText([
-      { role: "system", content: "Your custom system prompt here" },
-      { role: "user", content: input }
-    ], {
-      temperature: 0.7,
-      maxTokens: 500
-    });
-    
-    await agent.sendConnectionMessage(roomId, response);
-  } catch (error) {
-    console.error('Custom Command Error:', error);
-    await agent.sendConnectionMessage(roomId, 'Sorry, something went wrong.');
-  }
-});
-```
+### Input Validation
+- ✅ Validate all user inputs before processing
+- ✅ Implement length limits and content filtering
+- ✅ Use the guardrails features in [Enhanced Features](./enhanced-features/)
 
-### Provider-Specific Optimization
+### Error Handling
+- ✅ All examples include comprehensive error handling
+- ✅ User-friendly error messages with actionable guidance
+- ✅ Graceful degradation when AI services are unavailable
 
-```typescript
-const config = agent.getConfig();
-const provider = config.ai?.provider;
+### Rate Limiting
+- ✅ Implement request throttling for production use
+- ✅ Monitor API usage and costs
+- ✅ Use appropriate model selection for your use case
 
-// Adapt behavior based on provider
-switch (provider) {
-  case 'openai':
-    // Optimize for OpenAI's strengths
-    break;
-  case 'anthropic':  
-    // Leverage Claude's reasoning abilities
-    break;
-  case 'google':
-    // Use Gemini's knowledge synthesis
-    break;
-}
-```
+## 📊 Performance Considerations
 
-### Environment-Based Configuration
+### Model Selection
+- **GPT-4**: Maximum capability, higher cost
+- **GPT-3.5 Turbo**: Balanced performance and cost
+- **Claude 3 Sonnet**: Great reasoning, competitive pricing  
+- **Gemini Pro**: Good knowledge synthesis, cost-effective
 
-```typescript
-// Check if AI is configured before using
-const config = agent.getConfig();
-if (config.ai) {
-  const aiClient = agent.getAiClient();
-  // Use AI features
-} else {
-  // Fallback behavior
-  await agent.sendConnectionMessage(roomId, 'AI is not configured.');
-}
-```
+### Temperature Settings
+- **0.2-0.4**: Technical, factual content
+- **0.5-0.7**: Balanced responses
+- **0.8-0.9**: Creative, varied content
 
-## 🛡️ Error Handling
-
-All examples include comprehensive error handling:
-
-```typescript
-try {
-  const aiClient = agent.getAiClient();
-  const response = await aiClient.generateText(prompt);
-  await agent.sendConnectionMessage(roomId, response);
-} catch (error) {
-  if (error.message.includes('AI configuration')) {
-    // Guide user to configure AI
-    await agent.sendConnectionMessage(roomId, 
-      'AI is not configured. Run `superagent configure` to set up AI integration.');
-  } else {
-    // Handle other errors gracefully
-    console.error('AI Error:', error);
-    await agent.sendConnectionMessage(roomId, 
-      'Sorry, I encountered an error processing your request.');
-  }
-}
-```
-
-## 💡 Best Practices
-
-### 1. Temperature Settings
-- **Creative tasks** (stories, poems): 0.8-0.9
-- **Conversational**: 0.7-0.8  
-- **Factual/Research**: 0.3-0.5
-- **Code generation**: 0.2-0.4
-
-### 2. Token Limits
+### Token Management
 - **Short responses**: 300-500 tokens
 - **Medium content**: 500-1000 tokens
-- **Long-form**: 1000-1500 tokens
-- **Monitor costs** with appropriate limits
+- **Long-form**: 1000+ tokens
+- Monitor costs with appropriate limits
 
-### 3. System Prompts
-- Be specific about the desired output format
-- Include personality and tone guidelines
-- Set clear boundaries and expectations
-- Adapt prompts to provider strengths
+## 🔄 Migration Guide
 
-### 4. User Experience
-- Always validate user input
-- Provide clear usage instructions
-- Handle edge cases gracefully
-- Give feedback on processing status
+### From Old Structure
 
-## 🔗 Provider-Specific Resources
+If you were using the previous flat file structure:
 
-### OpenAI
-- [OpenAI API Documentation](https://platform.openai.com/docs)
-- [Model Capabilities](https://platform.openai.com/docs/models)
-- [Best Practices](https://platform.openai.com/docs/guides/best-practices)
+1. **Choose equivalent project**: 
+   - `openai-example.ts` → [Basic OpenAI](./basic-openai/)
+   - `anthropic-example.ts` → [Anthropic Chat](./anthropic-chat/)
+   - `multi-provider-example.ts` → [Multi-Provider](./multi-provider/)
+   - Enhanced examples → [Enhanced Features](./enhanced-features/)
 
-### Anthropic
-- [Anthropic API Documentation](https://docs.anthropic.com/)
-- [Claude Model Cards](https://docs.anthropic.com/claude/docs/models-overview)
-- [Prompt Engineering](https://docs.anthropic.com/claude/docs/prompt-engineering)
+2. **Copy your customizations**: Import any custom commands or configurations
 
-### Google AI
-- [Google AI Documentation](https://ai.google.dev/docs)
-- [Gemini Models](https://ai.google.dev/models/gemini)
-- [API Reference](https://ai.google.dev/api)
+3. **Update imports**: Use the new project structure paths
+
+4. **Test thoroughly**: Verify all functionality works with the new structure
+
+### From Direct SDK Usage
+
+To migrate from direct SDK usage to these examples:
+
+1. **Identify your use case**: Choose the most appropriate example
+2. **Copy example structure**: Use as a starting point
+3. **Add your commands**: Follow the established patterns
+4. **Configure environment**: Set up proper environment variables
 
 ## 📚 Additional Resources
 
+### Documentation
 - [AI Integration Guide](../../docs/ai-integration.md) - Complete setup and usage guide
 - [SuperDapp SDK Documentation](../../docs/README.md) - Full SDK documentation
 - [Test Files](../../src/__tests__/ai/) - Additional usage patterns in tests
 
+### Provider Documentation
+- **OpenAI**: [API Docs](https://platform.openai.com/docs) | [Model Info](https://platform.openai.com/docs/models)
+- **Anthropic**: [API Docs](https://docs.anthropic.com/) | [Claude Models](https://docs.anthropic.com/claude/docs/models-overview)
+- **Google AI**: [API Docs](https://ai.google.dev/docs) | [Gemini Models](https://ai.google.dev/models/gemini)
+
+### Community
+- [Discord Community](https://discord.gg/superdappai) - Get help and share projects
+- [GitHub Issues](https://github.com/SuperDapp/superdapp-js/issues) - Report bugs and request features
+
 ## 🤝 Contributing
 
-Have an idea for a new AI example? Found a bug or improvement? Please:
+### Adding New Examples
 
-1. Fork the repository
-2. Create a feature branch
-3. Add your example with proper documentation
-4. Include error handling and user guidance
-5. Test with multiple providers if applicable
-6. Submit a pull request
+1. **Create project directory**: Follow the established naming pattern
+2. **Use template structure**: Copy from existing examples
+3. **Add unique functionality**: Demonstrate specific capabilities
+4. **Include documentation**: Comprehensive README with examples
+5. **Test thoroughly**: Ensure builds, runs, and commands work
+6. **Update this README**: Add your example to the overview
+
+### Improving Existing Examples
+
+1. **Follow patterns**: Maintain consistency across examples
+2. **Test changes**: Verify builds and functionality
+3. **Update documentation**: Keep READMEs current
+4. **Add value**: Focus on educational and practical improvements
 
 ## 📝 License
 
