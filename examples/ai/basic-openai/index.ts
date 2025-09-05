@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import axios from 'axios';
 import { SuperDappAgent, createBotConfig } from '../../../src';
 
 const app = express();
@@ -13,19 +14,38 @@ app.use(express.text({ type: 'application/json' }));
 
 /**
  * Basic OpenAI SuperDapp Agent
- *
+ * 
  * This example demonstrates how to build an AI-powered agent using OpenAI.
  * It combines basic configuration examples with practical AI commands.
- *
+ * 
  * Features:
  * - Basic Q&A with /ask command
- * - Conversational chat with /chat command
+ * - Conversational chat with /chat command  
  * - Code assistance with /code command
  * - Creative writing with /write command
  * - Proper error handling and user guidance
  */
 
-async function main() {
+// Helper: try to discover ngrok public URL and print webhook
+async function printNgrokWebhook() {
+  const apiUrl = 'http://127.0.0.1:4040/api/tunnels';
+  for (let attempt = 0; attempt < 12; attempt++) {
+    try {
+      const resp = await axios.get(apiUrl, { timeout: 1000 });
+      const tunnels = resp.data?.tunnels || [];
+      const selected =
+        tunnels.find((t: any) => t.proto === 'https') || tunnels[0];
+      const publicUrl = selected?.public_url;
+      if (publicUrl) {
+        console.log(`🌐 Public webhook: ${publicUrl}/webhook`);
+        return;
+      }
+    } catch (_) {
+      // ignore and retry
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+}async function main() {
   try {
     console.log('🚀 Starting Basic OpenAI SuperDapp Agent...');
 
@@ -311,6 +331,8 @@ Type \`/help\` to see all available commands!`;
       );
       console.log(`🌐 Health check: http://localhost:${PORT}/health`);
       console.log(`📡 Webhook endpoint: http://localhost:${PORT}/webhook`);
+      // Print ngrok URL if a tunnel is active (dev:tunnel)
+      void printNgrokWebhook();
     });
   } catch (error: any) {
     if (error.message?.includes('AI configuration')) {

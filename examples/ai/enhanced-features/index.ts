@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import axios from 'axios';
 import { SuperDappAgent, createBotConfig } from '../../../src';
 
 const app = express();
@@ -25,6 +26,27 @@ app.use(express.text({ type: 'application/json' }));
  * - OpenAI API key (primary provider for enhanced features)
  * - Environment variables for enhanced AI features enabled
  */
+
+// Helper: try to discover ngrok public URL and print webhook
+async function printNgrokWebhook() {
+  const apiUrl = 'http://127.0.0.1:4040/api/tunnels';
+  for (let attempt = 0; attempt < 12; attempt++) {
+    try {
+      const resp = await axios.get(apiUrl, { timeout: 1000 });
+      const tunnels = resp.data?.tunnels || [];
+      const selected =
+        tunnels.find((t: any) => t.proto === 'https') || tunnels[0];
+      const publicUrl = selected?.public_url;
+      if (publicUrl) {
+        console.log(`🌐 Public webhook: ${publicUrl}/webhook`);
+        return;
+      }
+    } catch (_) {
+      // ignore and retry
+    }
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+}
 
 async function main() {
   try {
@@ -549,6 +571,8 @@ Type \`/status\` to check feature configuration.
       );
       console.log(`🌐 Health check: http://localhost:${PORT}/health`);
       console.log(`📡 Webhook endpoint: http://localhost:${PORT}/webhook`);
+      // Print ngrok URL if a tunnel is active (dev:tunnel)
+      void printNgrokWebhook();
     });
   } catch (error: any) {
     if (error.message?.includes('AI configuration')) {
