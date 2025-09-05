@@ -9,11 +9,13 @@ export type AIProvider = 'openai' | 'anthropic' | 'google';
 /**
  * Agents configuration schema
  */
-const AgentsConfigSchema = z.object({
-  enabled: z.boolean().optional(),
-  streaming: z.boolean().optional(),
-  maxTurns: z.number().int().min(1).max(50).optional(),
-}).optional();
+const AgentsConfigSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    streaming: z.boolean().optional(),
+    maxTurns: z.number().int().min(1).max(50).optional(),
+  })
+  .optional();
 
 /**
  * AI configuration schema for validation
@@ -45,7 +47,10 @@ export interface AIConfig {
  * Error class for AI configuration errors
  */
 export class AIConfigError extends Error {
-  constructor(message: string, public readonly code?: string) {
+  constructor(
+    message: string,
+    public readonly code?: string
+  ) {
     super(message);
     this.name = 'AIConfigError';
   }
@@ -63,7 +68,7 @@ function envVarToBoolean(value: string | undefined): boolean {
  */
 export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
   const agentsEnabled = envVarToBoolean(process.env.SUPERDAPP_AI_AGENTS);
-  
+
   const rawConfig = {
     provider: config?.provider ?? process.env.AI_PROVIDER ?? undefined,
     model: config?.model ?? process.env.AI_MODEL ?? undefined,
@@ -71,8 +76,14 @@ export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
     baseUrl: config?.baseUrl ?? process.env.AI_BASE_URL ?? undefined,
     agents: {
       enabled: config?.agents?.enabled ?? agentsEnabled,
-      streaming: config?.agents?.streaming ?? envVarToBoolean(process.env.SUPERDAPP_AI_AGENTS_STREAMING),
-      maxTurns: config?.agents?.maxTurns ?? (process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS ? parseInt(process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS, 10) : undefined),
+      streaming:
+        config?.agents?.streaming ??
+        envVarToBoolean(process.env.SUPERDAPP_AI_AGENTS_STREAMING),
+      maxTurns:
+        config?.agents?.maxTurns ??
+        (process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS
+          ? parseInt(process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS, 10)
+          : undefined),
     },
   };
 
@@ -84,40 +95,63 @@ export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
       model: parsed.model,
       apiKey: parsed.apiKey,
     };
-    
+
     if (parsed.baseUrl) {
       result.baseUrl = parsed.baseUrl;
     }
-    
-    if (parsed.agents && (parsed.agents.enabled !== undefined || parsed.agents.streaming !== undefined || parsed.agents.maxTurns !== undefined)) {
-      const agentsConfig: { enabled?: boolean; streaming?: boolean; maxTurns?: number } = {};
-      if (parsed.agents.enabled !== undefined) agentsConfig.enabled = parsed.agents.enabled;
-      if (parsed.agents.streaming !== undefined) agentsConfig.streaming = parsed.agents.streaming;
-      if (parsed.agents.maxTurns !== undefined) agentsConfig.maxTurns = parsed.agents.maxTurns;
+
+    if (
+      parsed.agents &&
+      (parsed.agents.enabled !== undefined ||
+        parsed.agents.streaming !== undefined ||
+        parsed.agents.maxTurns !== undefined)
+    ) {
+      const agentsConfig: {
+        enabled?: boolean;
+        streaming?: boolean;
+        maxTurns?: number;
+      } = {};
+      if (parsed.agents.enabled !== undefined)
+        agentsConfig.enabled = parsed.agents.enabled;
+      if (parsed.agents.streaming !== undefined)
+        agentsConfig.streaming = parsed.agents.streaming;
+      if (parsed.agents.maxTurns !== undefined)
+        agentsConfig.maxTurns = parsed.agents.maxTurns;
       result.agents = agentsConfig;
     }
-    
+
     return result;
   } catch (error) {
     if (error instanceof z.ZodError) {
       // Create more specific error messages based on the validation issue
-      const issues = error.issues.map(issue => {
+      const issues = error.issues.map((issue) => {
         if (issue.path.length > 0) {
           const fieldName = issue.path[0] as string;
-          if (fieldName === 'model' && (issue.code === 'too_small' || issue.code === 'invalid_type')) {
+          if (
+            fieldName === 'model' &&
+            (issue.code === 'too_small' || issue.code === 'invalid_type')
+          ) {
             return 'AI_MODEL is required';
           }
-          if (fieldName === 'apiKey' && (issue.code === 'too_small' || issue.code === 'invalid_type')) {
+          if (
+            fieldName === 'apiKey' &&
+            (issue.code === 'too_small' || issue.code === 'invalid_type')
+          ) {
             return 'AI_API_KEY is required';
           }
-          if (fieldName === 'provider' && issue.code === 'invalid_enum_value') {
+          if (
+            fieldName === 'provider' &&
+            (issue.code === 'invalid_type' ||
+              issue.code === 'invalid_union' ||
+              issue.message.includes('Expected'))
+          ) {
             return 'AI_PROVIDER must be one of: openai, anthropic, google';
           }
         }
         // Return original message for other validation issues
         return issue.message;
       });
-      
+
       throw new AIConfigError(
         `Invalid AI configuration: ${issues.join(', ')}`,
         'INVALID_CONFIG'
@@ -192,15 +226,15 @@ async function createModel(config: AIConfig) {
 
 /**
  * Load and wrap a model instance with the Agents SDK adapter
- * 
+ *
  * @param config Optional AI configuration. If not provided, will load from environment variables
  * @returns A usable model instance wrapped with aisdk()
- * 
+ *
  * @example
  * ```typescript
  * // Load from environment variables
  * const model = await loadModel();
- * 
+ *
  * // Load with explicit configuration
  * const model = await loadModel({
  *   provider: 'openai',

@@ -24,7 +24,7 @@ export async function generateText(
 
     const model = await loadModel(options.config as any);
 
-    // Handle different input types
+    // Handle different input types - AI SDK v5 compatible
     const generateOptions: any = {
       model,
       temperature: options.temperature,
@@ -44,7 +44,10 @@ export async function generateText(
     }
 
     const result = await vercelGenerateText(generateOptions);
-    return (result as any).text;
+    // In AI SDK v5, check if result is string or object
+    return typeof result === 'string'
+      ? result
+      : (result as { text: string }).text;
   } catch (error) {
     throw new Error(
       `generateText failed: ${error instanceof Error ? error.message : 'Unknown error'}`

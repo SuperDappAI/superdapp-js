@@ -22,8 +22,8 @@
   "author": "SuperDapp Team",
   "license": "MIT",
   "dependencies": {
-    "ai": "^3.0.0",
-    "@ai-sdk/openai": "^0.0.66",
+    "ai": "^5.0.33",
+    "@ai-sdk/openai": "^2.0.24",
     "axios": "^1.7.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

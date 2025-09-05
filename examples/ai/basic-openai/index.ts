@@ -14,13 +14,13 @@ app.use(express.text({ type: 'application/json' }));
 
 /**
  * Basic OpenAI SuperDapp Agent
- * 
+ *
  * This example demonstrates how to build an AI-powered agent using OpenAI.
  * It combines basic configuration examples with practical AI commands.
- * 
+ *
  * Features:
  * - Basic Q&A with /ask command
- * - Conversational chat with /chat command  
+ * - Conversational chat with /chat command
  * - Code assistance with /code command
  * - Creative writing with /write command
  * - Proper error handling and user guidance
@@ -45,7 +45,8 @@ async function printNgrokWebhook() {
     }
     await new Promise((r) => setTimeout(r, 1500));
   }
-}async function main() {
+}
+async function main() {
   try {
     console.log('🚀 Starting Basic OpenAI SuperDapp Agent...');
 

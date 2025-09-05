@@ -108,7 +108,7 @@ export function validateEnv(
 
   if (!result.success) {
     console.error('❌ Invalid environment variables:');
-    result.error.errors.forEach((error) => {
+    result.error.issues.forEach((error) => {
       console.error(`  - ${error.path.join('.')}: ${error.message}`);
     });
     throw new Error('Invalid environment variables');
@@ -157,12 +157,12 @@ export function createBotConfig(customBaseUrl?: string): BotConfig {
       model: env.AI_MODEL,
       apiKey: env.AI_API_KEY,
     };
-    
+
     // Only add baseUrl if it's defined
     if (env.AI_BASE_URL) {
       aiConfig.baseUrl = env.AI_BASE_URL;
     }
-    
+
     config.ai = aiConfig;
   }
 
@@ -191,12 +191,12 @@ export async function createBotConfigFromFile(
       model: env.AI_MODEL,
       apiKey: env.AI_API_KEY,
     };
-    
+
     // Only add baseUrl if it's defined
     if (env.AI_BASE_URL) {
       aiConfig.baseUrl = env.AI_BASE_URL;
     }
-    
+
     config.ai = aiConfig;
   }
 
@@ -206,29 +206,35 @@ export async function createBotConfigFromFile(
 /**
  * Validate AI configuration and provide clear error messages
  */
-export function validateAiConfig(config?: AIAgentConfig): { isValid: boolean; error?: string } {
+export function validateAiConfig(config?: AIAgentConfig): {
+  isValid: boolean;
+  error?: string;
+} {
   if (!config) {
     return { isValid: true }; // AI is optional
   }
 
   if (!config.provider) {
-    return { 
-      isValid: false, 
-      error: 'AI_PROVIDER is required when AI configuration is present. Supported providers: openai, anthropic, google' 
+    return {
+      isValid: false,
+      error:
+        'AI_PROVIDER is required when AI configuration is present. Supported providers: openai, anthropic, google',
     };
   }
 
   if (!config.model) {
-    return { 
-      isValid: false, 
-      error: 'AI_MODEL is required when AI configuration is present. Example models: gpt-4, claude-3-sonnet-20240229, gemini-pro' 
+    return {
+      isValid: false,
+      error:
+        'AI_MODEL is required when AI configuration is present. Example models: gpt-4, claude-3-sonnet-20240229, gemini-pro',
     };
   }
 
   if (!config.apiKey) {
-    return { 
-      isValid: false, 
-      error: 'AI_API_KEY is required when AI configuration is present. Get your API key from your AI provider.' 
+    return {
+      isValid: false,
+      error:
+        'AI_API_KEY is required when AI configuration is present. Get your API key from your AI provider.',
     };
   }
 
@@ -238,7 +244,8 @@ export function validateAiConfig(config?: AIAgentConfig): { isValid: boolean; er
       if (!config.apiKey.startsWith('sk-')) {
         return {
           isValid: false,
-          error: 'OpenAI API key should start with "sk-". Check your API key format.'
+          error:
+            'OpenAI API key should start with "sk-". Check your API key format.',
         };
       }
       break;
@@ -246,7 +253,8 @@ export function validateAiConfig(config?: AIAgentConfig): { isValid: boolean; er
       if (!config.apiKey.startsWith('sk-ant-')) {
         return {
           isValid: false,
-          error: 'Anthropic API key should start with "sk-ant-". Check your API key format.'
+          error:
+            'Anthropic API key should start with "sk-ant-". Check your API key format.',
         };
       }
       break;
@@ -256,7 +264,7 @@ export function validateAiConfig(config?: AIAgentConfig): { isValid: boolean; er
     default:
       return {
         isValid: false,
-        error: `Unsupported AI provider: ${config.provider}. Supported providers: openai, anthropic, google`
+        error: `Unsupported AI provider: ${config.provider}. Supported providers: openai, anthropic, google`,
       };
   }
 

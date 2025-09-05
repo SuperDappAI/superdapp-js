@@ -23,8 +23,8 @@
   "author": "SuperDapp Team",
   "license": "MIT",
   "dependencies": {
-    "ai": "^3.0.0",
-    "@ai-sdk/anthropic": "^0.0.54",
+    "ai": "^5.0.33",
+    "@ai-sdk/anthropic": "^1.0.36",
     "axios": "^1.7.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
