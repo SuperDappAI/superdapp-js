@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { aisdk } from '@openai/agents-extensions';
 
 /**
  * Supported AI providers
@@ -225,10 +224,10 @@ async function createModel(config: AIConfig) {
 }
 
 /**
- * Load and wrap a model instance with the Agents SDK adapter
+ * Load and return a native AI SDK v5 model instance
  *
  * @param config Optional AI configuration. If not provided, will load from environment variables
- * @returns A usable model instance wrapped with aisdk()
+ * @returns A native AI SDK v5 model instance compatible with Language Model Specification V2
  *
  * @example
  * ```typescript
@@ -247,7 +246,8 @@ export async function loadModel(config?: Partial<AIConfig>) {
   try {
     const aiConfig = loadAIConfig(config);
     const model = await createModel(aiConfig);
-    return aisdk(model);
+    // Return the native AI SDK v5 model directly (no aisdk wrapper needed)
+    return model;
   } catch (error) {
     if (error instanceof AIConfigError) {
       throw error;

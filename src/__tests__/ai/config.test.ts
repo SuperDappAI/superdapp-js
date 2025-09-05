@@ -33,11 +33,15 @@ jest.mock('@ai-sdk/google', () => ({
   })),
 }));
 
-jest.mock('@openai/agents-extensions', () => ({
-  aisdk: jest.fn((model) => ({
-    ...model,
-    wrapped: true,
-  })),
+// Mock AI SDK providers
+jest.mock('@ai-sdk/openai', () => ({
+  createOpenAI: jest.fn(() =>
+    jest.fn(() => ({
+      specificationVersion: 'V2',
+      provider: 'openai',
+      modelId: 'gpt-4',
+    }))
+  ),
 }));
 
 describe('AI Config', () => {
@@ -339,7 +343,9 @@ describe('AI Config', () => {
           model: 'model',
           apiKey: 'key',
         })
-      ).rejects.toThrow('AI_PROVIDER must be one of: openai, anthropic, google');
+      ).rejects.toThrow(
+        'AI_PROVIDER must be one of: openai, anthropic, google'
+      );
     });
 
     it('should throw AIConfigError for missing configuration', async () => {
@@ -359,15 +365,17 @@ describe('AI Config', () => {
       expect((model as any).config.baseURL).toBe('https://custom.openai.com');
     });
 
-    it('should wrap model with aisdk', async () => {
+    it('should return native AI SDK v5 model', async () => {
       const result = await loadModel({
         provider: 'openai',
         model: 'gpt-4',
         apiKey: 'sk-test123',
       });
 
-      // The result should be wrapped by aisdk
-      expect((result as any).wrapped).toBe(true);
+      // The result should be a native AI SDK v5 model with V2 specification
+      expect(result.specificationVersion).toBe('V2');
+      expect(result.provider).toBe('openai');
+      expect(result.modelId).toBe('gpt-4');
     });
   });
 
