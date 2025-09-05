@@ -71,6 +71,10 @@ describe('AI Config', () => {
         model: 'gpt-4',
         apiKey: 'sk-test123',
         baseUrl: 'https://api.custom.com',
+        agents: {
+          enabled: false,
+          streaming: false,
+        },
       });
     });
 
@@ -89,6 +93,10 @@ describe('AI Config', () => {
         provider: 'openai',
         model: 'gpt-4',
         apiKey: 'config-key',
+        agents: {
+          enabled: false,
+          streaming: false,
+        },
       });
     });
 
@@ -147,6 +155,100 @@ describe('AI Config', () => {
         provider: 'openai',
         model: 'gpt-4',
         apiKey: 'sk-test123',
+        agents: {
+          enabled: false,
+          streaming: false,
+        },
+      });
+    });
+  });
+
+  describe('Agents configuration', () => {
+    beforeEach(() => {
+      // Clean up any existing agent-related env vars
+      delete process.env.SUPERDAPP_AI_AGENTS;
+      delete process.env.SUPERDAPP_AI_AGENTS_STREAMING;
+      delete process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS;
+    });
+
+    it('should enable agents when SUPERDAPP_AI_AGENTS=1', () => {
+      process.env.AI_PROVIDER = 'openai';
+      process.env.AI_MODEL = 'gpt-4';
+      process.env.AI_API_KEY = 'sk-test123';
+      process.env.SUPERDAPP_AI_AGENTS = '1';
+
+      const config = loadAIConfig();
+
+      expect(config.agents).toEqual({
+        enabled: true,
+        streaming: false,
+      });
+    });
+
+    it('should enable agents when SUPERDAPP_AI_AGENTS=true', () => {
+      process.env.AI_PROVIDER = 'openai';
+      process.env.AI_MODEL = 'gpt-4';
+      process.env.AI_API_KEY = 'sk-test123';
+      process.env.SUPERDAPP_AI_AGENTS = 'true';
+
+      const config = loadAIConfig();
+
+      expect(config.agents).toEqual({
+        enabled: true,
+        streaming: false,
+      });
+    });
+
+    it('should configure streaming and max turns', () => {
+      process.env.AI_PROVIDER = 'openai';
+      process.env.AI_MODEL = 'gpt-4';
+      process.env.AI_API_KEY = 'sk-test123';
+      process.env.SUPERDAPP_AI_AGENTS = '1';
+      process.env.SUPERDAPP_AI_AGENTS_STREAMING = '1';
+      process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS = '15';
+
+      const config = loadAIConfig();
+
+      expect(config.agents).toEqual({
+        enabled: true,
+        streaming: true,
+        maxTurns: 15,
+      });
+    });
+
+    it('should prioritize provided config over environment for agents', () => {
+      process.env.AI_PROVIDER = 'openai';
+      process.env.AI_MODEL = 'gpt-4';
+      process.env.AI_API_KEY = 'sk-test123';
+      process.env.SUPERDAPP_AI_AGENTS = '1';
+      process.env.SUPERDAPP_AI_AGENTS_STREAMING = '1';
+
+      const config = loadAIConfig({
+        agents: {
+          enabled: false,
+          streaming: false,
+          maxTurns: 5,
+        },
+      });
+
+      expect(config.agents).toEqual({
+        enabled: false,
+        streaming: false,
+        maxTurns: 5,
+      });
+    });
+
+    it('should disable agents by default', () => {
+      process.env.AI_PROVIDER = 'openai';
+      process.env.AI_MODEL = 'gpt-4';
+      process.env.AI_API_KEY = 'sk-test123';
+      // No SUPERDAPP_AI_AGENTS env var
+
+      const config = loadAIConfig();
+
+      expect(config.agents).toEqual({
+        enabled: false,
+        streaming: false,
       });
     });
   });

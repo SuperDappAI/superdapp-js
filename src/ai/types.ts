@@ -1,10 +1,17 @@
 export type AiProvider = 'openai' | 'anthropic' | 'google';
 
+export interface AgentsConfig {
+  enabled?: boolean;
+  streaming?: boolean;
+  maxTurns?: number;
+}
+
 export interface AiConfig {
   provider?: AiProvider;
   model?: string;
   apiKey?: string;
   baseUrl?: string;
+  agents?: AgentsConfig;
 }
 
 // Input types for AI functions

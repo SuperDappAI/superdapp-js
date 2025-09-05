@@ -7,6 +7,15 @@ import { aisdk } from '@openai/agents-extensions';
 export type AIProvider = 'openai' | 'anthropic' | 'google';
 
 /**
+ * Agents configuration schema
+ */
+const AgentsConfigSchema = z.object({
+  enabled: z.boolean().optional(),
+  streaming: z.boolean().optional(),
+  maxTurns: z.number().int().min(1).max(50).optional(),
+}).optional();
+
+/**
  * AI configuration schema for validation
  */
 const AIConfigSchema = z.object({
@@ -14,6 +23,7 @@ const AIConfigSchema = z.object({
   model: z.string().min(1, 'AI_MODEL is required'),
   apiKey: z.string().min(1, 'AI_API_KEY is required'),
   baseUrl: z.string().url().optional().or(z.literal('')),
+  agents: AgentsConfigSchema,
 });
 
 /**
@@ -24,6 +34,11 @@ export interface AIConfig {
   model: string;
   apiKey: string;
   baseUrl?: string;
+  agents?: {
+    enabled?: boolean;
+    streaming?: boolean;
+    maxTurns?: number;
+  };
 }
 
 /**
@@ -37,14 +52,28 @@ export class AIConfigError extends Error {
 }
 
 /**
+ * Helper function to convert environment variable string to boolean
+ */
+function envVarToBoolean(value: string | undefined): boolean {
+  return value === '1' || value === 'true';
+}
+
+/**
  * Load AI configuration from environment variables or BotConfig
  */
 export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
+  const agentsEnabled = envVarToBoolean(process.env.SUPERDAPP_AI_AGENTS);
+  
   const rawConfig = {
     provider: config?.provider ?? process.env.AI_PROVIDER ?? undefined,
     model: config?.model ?? process.env.AI_MODEL ?? undefined,
     apiKey: config?.apiKey ?? process.env.AI_API_KEY ?? undefined,
     baseUrl: config?.baseUrl ?? process.env.AI_BASE_URL ?? undefined,
+    agents: {
+      enabled: config?.agents?.enabled ?? agentsEnabled,
+      streaming: config?.agents?.streaming ?? envVarToBoolean(process.env.SUPERDAPP_AI_AGENTS_STREAMING),
+      maxTurns: config?.agents?.maxTurns ?? (process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS ? parseInt(process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS, 10) : undefined),
+    },
   };
 
   try {
@@ -58,6 +87,14 @@ export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
     
     if (parsed.baseUrl) {
       result.baseUrl = parsed.baseUrl;
+    }
+    
+    if (parsed.agents && (parsed.agents.enabled !== undefined || parsed.agents.streaming !== undefined || parsed.agents.maxTurns !== undefined)) {
+      const agentsConfig: { enabled?: boolean; streaming?: boolean; maxTurns?: number } = {};
+      if (parsed.agents.enabled !== undefined) agentsConfig.enabled = parsed.agents.enabled;
+      if (parsed.agents.streaming !== undefined) agentsConfig.streaming = parsed.agents.streaming;
+      if (parsed.agents.maxTurns !== undefined) agentsConfig.maxTurns = parsed.agents.maxTurns;
+      result.agents = agentsConfig;
     }
     
     return result;
