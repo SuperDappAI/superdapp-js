@@ -62,8 +62,8 @@ export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
     model: config?.model ?? process.env.AI_MODEL ?? undefined,
     apiKey: config?.apiKey ?? process.env.AI_API_KEY ?? undefined,
     baseUrl: config?.baseUrl ?? process.env.AI_BASE_URL ?? undefined,
-    agents: config?.agents ?? {
-      enabled: agentsEnabled,
+    agents: {
+      enabled: config?.agents?.enabled ?? agentsEnabled,
       streaming: config?.agents?.streaming ?? (process.env.SUPERDAPP_AI_AGENTS_STREAMING === '1'),
       maxTurns: config?.agents?.maxTurns ?? (process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS ? parseInt(process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS, 10) : undefined),
     },
