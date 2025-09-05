@@ -13,10 +13,10 @@ app.use(express.text({ type: 'application/json' }));
 
 /**
  * Anthropic Claude SuperDapp Agent
- * 
+ *
  * This example demonstrates how to build an AI-powered agent using Anthropic Claude.
  * Claude excels at reasoning, analysis, and thoughtful conversation.
- * 
+ *
  * Features:
  * - Deep topic analysis with /analyze command
  * - Academic essay writing with /essay command
@@ -40,19 +40,24 @@ async function main() {
         console.error('Please set up your SuperDapp API token in .env file:');
         console.error('1. Copy .env.example to .env');
         console.error('2. Add your API_TOKEN=your_actual_token');
-        console.error('3. Configure AI settings (AI_PROVIDER=anthropic, AI_MODEL, AI_API_KEY)');
+        console.error(
+          '3. Configure AI settings (AI_PROVIDER=anthropic, AI_MODEL, AI_API_KEY)'
+        );
         process.exit(1);
       }
       throw error;
     }
-    
+
     const agent = new SuperDappAgent(config);
 
     // Intelligent Q&A with Claude's reasoning capabilities
     agent.addCommand('/analyze', async ({ roomId, message }) => {
       const topic = message.data?.split(' ').slice(1).join(' ');
       if (!topic) {
-        await agent.sendConnectionMessage(roomId, '🧠 Please provide a topic to analyze!\n\n**Usage:** `/analyze climate change impacts`');
+        await agent.sendConnectionMessage(
+          roomId,
+          '🧠 Please provide a topic to analyze!\n\n**Usage:** `/analyze climate change impacts`'
+        );
         return;
       }
 
@@ -61,25 +66,32 @@ async function main() {
         const aiClient = await agent.getAiClient();
         const conversation = [
           {
-            role: "system" as const,
-            content: "You are Claude, an AI assistant created by Anthropic. You excel at thoughtful analysis, breaking down complex topics, and providing well-reasoned responses. Always think step by step and present your analysis clearly."
+            role: 'system' as const,
+            content:
+              'You are Claude, an AI assistant created by Anthropic. You excel at thoughtful analysis, breaking down complex topics, and providing well-reasoned responses. Always think step by step and present your analysis clearly.',
           },
           {
-            role: "user" as const,
-            content: `Please provide a thorough analysis of: ${topic}. Include key points, implications, and different perspectives where relevant.`
-          }
+            role: 'user' as const,
+            content: `Please provide a thorough analysis of: ${topic}. Include key points, implications, and different perspectives where relevant.`,
+          },
         ];
 
         const response = await aiClient.generateText(conversation, {
           temperature: 0.6,
-          maxTokens: 1200
+          maxTokens: 1200,
         });
-        
-        await agent.sendConnectionMessage(roomId, `🧠 **Analysis:**\n\n${response}`);
+
+        await agent.sendConnectionMessage(
+          roomId,
+          `🧠 **Analysis:**\n\n${response}`
+        );
         console.log(`✅ Analysis completed successfully`);
       } catch (error: any) {
         console.error('Analysis Error:', error);
-        await agent.sendConnectionMessage(roomId, '❌ Sorry, I had trouble analyzing that topic. Please try again.');
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ Sorry, I had trouble analyzing that topic. Please try again.'
+        );
       }
     });
 
@@ -87,7 +99,10 @@ async function main() {
     agent.addCommand('/essay', async ({ roomId, message }) => {
       const prompt = message.data?.split(' ').slice(1).join(' ');
       if (!prompt) {
-        await agent.sendConnectionMessage(roomId, '✍️ Please provide an essay topic!\n\n**Usage:** `/essay The importance of renewable energy`');
+        await agent.sendConnectionMessage(
+          roomId,
+          '✍️ Please provide an essay topic!\n\n**Usage:** `/essay The importance of renewable energy`'
+        );
         return;
       }
 
@@ -96,25 +111,32 @@ async function main() {
         const aiClient = await agent.getAiClient();
         const conversation = [
           {
-            role: "system" as const,
-            content: "You are an expert academic writer. Write well-structured, informative essays with clear introductions, body paragraphs with supporting evidence, and thoughtful conclusions. Use a formal but engaging tone."
+            role: 'system' as const,
+            content:
+              'You are an expert academic writer. Write well-structured, informative essays with clear introductions, body paragraphs with supporting evidence, and thoughtful conclusions. Use a formal but engaging tone.',
           },
           {
-            role: "user" as const,
-            content: `Write a concise but comprehensive essay on: ${prompt}. Include an introduction, main points with explanations, and a conclusion.`
-          }
+            role: 'user' as const,
+            content: `Write a concise but comprehensive essay on: ${prompt}. Include an introduction, main points with explanations, and a conclusion.`,
+          },
         ];
 
         const response = await aiClient.generateText(conversation, {
           temperature: 0.4, // Lower temperature for more structured writing
-          maxTokens: 1500
+          maxTokens: 1500,
         });
-        
-        await agent.sendConnectionMessage(roomId, `📝 **Essay:**\n\n${response}`);
+
+        await agent.sendConnectionMessage(
+          roomId,
+          `📝 **Essay:**\n\n${response}`
+        );
         console.log(`✅ Essay completed successfully`);
       } catch (error: any) {
         console.error('Essay Writing Error:', error);
-        await agent.sendConnectionMessage(roomId, '❌ Sorry, I had trouble writing that essay.');
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ Sorry, I had trouble writing that essay.'
+        );
       }
     });
 
@@ -122,7 +144,10 @@ async function main() {
     agent.addCommand('/research', async ({ roomId, message }) => {
       const query = message.data?.split(' ').slice(1).join(' ');
       if (!query) {
-        await agent.sendConnectionMessage(roomId, '🔬 Please provide a research query!\n\n**Usage:** `/research latest developments in quantum computing`');
+        await agent.sendConnectionMessage(
+          roomId,
+          '🔬 Please provide a research query!\n\n**Usage:** `/research latest developments in quantum computing`'
+        );
         return;
       }
 
@@ -131,25 +156,32 @@ async function main() {
         const aiClient = await agent.getAiClient();
         const conversation = [
           {
-            role: "system" as const,
-            content: "You are a research assistant. Provide comprehensive information on the requested topic, including key concepts, recent developments, and important considerations. Always acknowledge the limitations of your knowledge cutoff and suggest areas for further research."
+            role: 'system' as const,
+            content:
+              'You are a research assistant. Provide comprehensive information on the requested topic, including key concepts, recent developments, and important considerations. Always acknowledge the limitations of your knowledge cutoff and suggest areas for further research.',
           },
           {
-            role: "user" as const,
-            content: `Please help me research: ${query}. Provide key information, recent trends, and suggest what specific aspects I should investigate further.`
-          }
+            role: 'user' as const,
+            content: `Please help me research: ${query}. Provide key information, recent trends, and suggest what specific aspects I should investigate further.`,
+          },
         ];
 
         const response = await aiClient.generateText(conversation, {
           temperature: 0.3, // Lower temperature for factual research
-          maxTokens: 1000
+          maxTokens: 1000,
         });
-        
-        await agent.sendConnectionMessage(roomId, `🔬 **Research Results:**\n\n${response}`);
+
+        await agent.sendConnectionMessage(
+          roomId,
+          `🔬 **Research Results:**\n\n${response}`
+        );
         console.log(`✅ Research completed successfully`);
       } catch (error: any) {
         console.error('Research Error:', error);
-        await agent.sendConnectionMessage(roomId, '❌ Sorry, I had trouble with that research request.');
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ Sorry, I had trouble with that research request.'
+        );
       }
     });
 
@@ -157,7 +189,10 @@ async function main() {
     agent.addCommand('/ethics', async ({ roomId, message }) => {
       const question = message.data?.split(' ').slice(1).join(' ');
       if (!question) {
-        await agent.sendConnectionMessage(roomId, '🤔 Please provide an ethical question!\n\n**Usage:** `/ethics Is AI consciousness possible?`');
+        await agent.sendConnectionMessage(
+          roomId,
+          '🤔 Please provide an ethical question!\n\n**Usage:** `/ethics Is AI consciousness possible?`'
+        );
         return;
       }
 
@@ -166,25 +201,32 @@ async function main() {
         const aiClient = await agent.getAiClient();
         const conversation = [
           {
-            role: "system" as const,
-            content: "You are a thoughtful philosopher engaging in ethical discussions. Present multiple perspectives on complex issues, acknowledge nuances and uncertainties, and help users think deeply about moral questions. Be balanced and avoid taking strong partisan positions."
+            role: 'system' as const,
+            content:
+              'You are a thoughtful philosopher engaging in ethical discussions. Present multiple perspectives on complex issues, acknowledge nuances and uncertainties, and help users think deeply about moral questions. Be balanced and avoid taking strong partisan positions.',
           },
           {
-            role: "user" as const,
-            content: `Let's discuss this ethical question: ${question}. What are the key considerations and different perspectives on this issue?`
-          }
+            role: 'user' as const,
+            content: `Let's discuss this ethical question: ${question}. What are the key considerations and different perspectives on this issue?`,
+          },
         ];
 
         const response = await aiClient.generateText(conversation, {
           temperature: 0.7, // Moderate temperature for thoughtful discussion
-          maxTokens: 1000
+          maxTokens: 1000,
         });
-        
-        await agent.sendConnectionMessage(roomId, `🤔 **Ethical Discussion:**\n\n${response}`);
+
+        await agent.sendConnectionMessage(
+          roomId,
+          `🤔 **Ethical Discussion:**\n\n${response}`
+        );
         console.log(`✅ Ethics discussion completed successfully`);
       } catch (error: any) {
         console.error('Ethics Discussion Error:', error);
-        await agent.sendConnectionMessage(roomId, '❌ Sorry, I had trouble with that ethical discussion.');
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ Sorry, I had trouble with that ethical discussion.'
+        );
       }
     });
 
@@ -192,7 +234,10 @@ async function main() {
     agent.addCommand('/story', async ({ roomId, message }) => {
       const prompt = message.data?.split(' ').slice(1).join(' ');
       if (!prompt) {
-        await agent.sendConnectionMessage(roomId, '📖 Please provide a story prompt!\n\n**Usage:** `/story A detective who can see emotions as colors`');
+        await agent.sendConnectionMessage(
+          roomId,
+          '📖 Please provide a story prompt!\n\n**Usage:** `/story A detective who can see emotions as colors`'
+        );
         return;
       }
 
@@ -201,25 +246,32 @@ async function main() {
         const aiClient = await agent.getAiClient();
         const conversation = [
           {
-            role: "system" as const,
-            content: "You are a skilled storyteller. Create engaging narratives with rich character development, vivid descriptions, and compelling plots. Write in a style that draws readers in and makes them care about the characters."
+            role: 'system' as const,
+            content:
+              'You are a skilled storyteller. Create engaging narratives with rich character development, vivid descriptions, and compelling plots. Write in a style that draws readers in and makes them care about the characters.',
           },
           {
-            role: "user" as const,
-            content: `Write a captivating short story based on this prompt: ${prompt}. Include interesting characters, a clear plot, and engaging dialogue.`
-          }
+            role: 'user' as const,
+            content: `Write a captivating short story based on this prompt: ${prompt}. Include interesting characters, a clear plot, and engaging dialogue.`,
+          },
         ];
 
         const response = await aiClient.generateText(conversation, {
           temperature: 0.8, // Higher temperature for creativity
-          maxTokens: 1200
+          maxTokens: 1200,
         });
-        
-        await agent.sendConnectionMessage(roomId, `📖 **Story:**\n\n${response}`);
+
+        await agent.sendConnectionMessage(
+          roomId,
+          `📖 **Story:**\n\n${response}`
+        );
         console.log(`✅ Story completed successfully`);
       } catch (error: any) {
         console.error('Story Writing Error:', error);
-        await agent.sendConnectionMessage(roomId, '❌ Sorry, I had trouble writing that story.');
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ Sorry, I had trouble writing that story.'
+        );
       }
     });
 
@@ -227,7 +279,10 @@ async function main() {
     agent.addCommand('/claude', async ({ roomId, message }) => {
       const userMessage = message.data?.split(' ').slice(1).join(' ');
       if (!userMessage) {
-        await agent.sendConnectionMessage(roomId, '💬 Please provide a message!\n\n**Usage:** `/claude How do you think about consciousness?`');
+        await agent.sendConnectionMessage(
+          roomId,
+          '💬 Please provide a message!\n\n**Usage:** `/claude How do you think about consciousness?`'
+        );
         return;
       }
 
@@ -236,25 +291,29 @@ async function main() {
         const aiClient = await agent.getAiClient();
         const conversation = [
           {
-            role: "system" as const,
-            content: "You are Claude, made by Anthropic. You're helpful, harmless, and honest. You're curious about the world and enjoy thoughtful conversations. You're direct but friendly, and you acknowledge uncertainty when you have it."
+            role: 'system' as const,
+            content:
+              "You are Claude, made by Anthropic. You're helpful, harmless, and honest. You're curious about the world and enjoy thoughtful conversations. You're direct but friendly, and you acknowledge uncertainty when you have it.",
           },
           {
-            role: "user" as const,
-            content: userMessage
-          }
+            role: 'user' as const,
+            content: userMessage,
+          },
         ];
 
         const response = await aiClient.generateText(conversation, {
           temperature: 0.7,
-          maxTokens: 600
+          maxTokens: 600,
         });
-        
+
         await agent.sendConnectionMessage(roomId, `🤖 ${response}`);
         console.log(`✅ Claude conversation completed successfully`);
       } catch (error: any) {
         console.error('Claude Conversation Error:', error);
-        await agent.sendConnectionMessage(roomId, '❌ Sorry, I encountered an issue. Please try again.');
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ Sorry, I encountered an issue. Please try again.'
+        );
       }
     });
 
@@ -264,9 +323,12 @@ async function main() {
       const aiModel = process.env.AI_MODEL;
       const aiApiKey = process.env.AI_API_KEY;
       const aiBaseUrl = process.env.AI_BASE_URL;
-      
+
       if (!aiProvider || !aiModel || !aiApiKey) {
-        await agent.sendConnectionMessage(roomId, '❌ **AI Not Configured**\n\nTo configure AI, set these environment variables:\n- `AI_PROVIDER=anthropic`\n- `AI_MODEL=claude-3-sonnet-20240229`\n- `AI_API_KEY=sk-ant-your-api-key`\n\nOr run: `superagent configure`');
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ **AI Not Configured**\n\nTo configure AI, set these environment variables:\n- `AI_PROVIDER=anthropic`\n- `AI_MODEL=claude-3-sonnet-20240229`\n- `AI_API_KEY=sk-ant-your-api-key`\n\nOr run: `superagent configure`'
+        );
         return;
       }
 
@@ -334,35 +396,35 @@ Type \`/help\` to see all available commands!`;
 
     // Health check endpoint
     app.get('/health', (req, res) => {
-      res.json({ 
-        status: 'healthy', 
+      res.json({
+        status: 'healthy',
         service: 'Anthropic Claude SuperDapp Agent',
         model: process.env.AI_MODEL || 'claude-3-sonnet-20240229',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     });
 
-    // Initialize agent
-    await agent.processRequest({}); // This initializes internal components
-    
     // Start server
     app.listen(PORT, () => {
       console.log(`✅ Claude Agent server running on port ${PORT}`);
-      console.log(`🔗 Available commands: /analyze, /research, /essay, /ethics, /story, /claude, /status, /help`);
+      console.log(
+        `🔗 Available commands: /analyze, /research, /essay, /ethics, /story, /claude, /status, /help`
+      );
       console.log(`🌐 Health check: http://localhost:${PORT}/health`);
       console.log(`📡 Webhook endpoint: http://localhost:${PORT}/webhook`);
     });
-
   } catch (error: any) {
     if (error.message?.includes('AI configuration')) {
       console.error('❌ AI Configuration Error:', error.message);
       console.error('Please set up your Anthropic configuration:');
       console.error('1. AI_PROVIDER=anthropic');
-      console.error('2. AI_MODEL=claude-3-sonnet-20240229');  
+      console.error('2. AI_MODEL=claude-3-sonnet-20240229');
       console.error('3. AI_API_KEY=sk-ant-your-anthropic-api-key');
       console.error('Or run: superagent configure');
     } else if (error.message?.includes('API_TOKEN')) {
-      console.error('❌ SuperDapp API Token missing. Please set API_TOKEN environment variable.');
+      console.error(
+        '❌ SuperDapp API Token missing. Please set API_TOKEN environment variable.'
+      );
     } else {
       console.error('❌ Agent initialization failed:', error.message);
     }

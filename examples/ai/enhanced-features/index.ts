@@ -13,14 +13,14 @@ app.use(express.text({ type: 'application/json' }));
 
 /**
  * Enhanced AI Features SuperDapp Agent
- * 
+ *
  * This example demonstrates advanced AI capabilities including:
  * - Guardrails for input/output validation
  * - Parallel agent execution for best response selection
- * - Streaming agent events for real-time updates  
+ * - Streaming agent events for real-time updates
  * - Comprehensive tracing and monitoring
  * - OpenAI Agents SDK integration
- * 
+ *
  * Prerequisites:
  * - OpenAI API key (primary provider for enhanced features)
  * - Environment variables for enhanced AI features enabled
@@ -40,45 +40,60 @@ async function main() {
         console.error('Please set up your SuperDapp API token in .env file:');
         console.error('1. Copy .env.example to .env');
         console.error('2. Add your API_TOKEN=your_actual_token');
-        console.error('3. Configure AI settings (AI_PROVIDER, AI_MODEL, AI_API_KEY)');
+        console.error(
+          '3. Configure AI settings (AI_PROVIDER, AI_MODEL, AI_API_KEY)'
+        );
         process.exit(1);
       }
       throw error;
     }
-    
+
     const agent = new SuperDappAgent(config);
 
     // Basic enhanced AI command with guardrails
     agent.addCommand('/ask', async ({ roomId, message }) => {
       const prompt = message.data?.split(' ').slice(1).join(' ');
       if (!prompt) {
-        await agent.sendConnectionMessage(roomId, '❓ Please provide a question!\n\n**Usage:** `/ask What is artificial intelligence?`');
+        await agent.sendConnectionMessage(
+          roomId,
+          '❓ Please provide a question!\n\n**Usage:** `/ask What is artificial intelligence?`'
+        );
         return;
       }
 
       try {
         console.log(`🧠 Processing enhanced AI request: "${prompt}"`);
         const aiClient = await agent.getAiClient();
-        
+
         // Standard AI generation with enhanced error handling
-        const response = await aiClient.generateText([
+        const response = await aiClient.generateText(
+          [
+            {
+              role: 'system' as const,
+              content:
+                'You are a helpful AI assistant. Provide clear, informative, and safe responses. Be concise but comprehensive.',
+            },
+            {
+              role: 'user' as const,
+              content: prompt,
+            },
+          ],
           {
-            role: "system" as const,
-            content: "You are a helpful AI assistant. Provide clear, informative, and safe responses. Be concise but comprehensive."
-          },
-          {
-            role: "user" as const,
-            content: prompt
+            temperature: 0.7,
+            maxTokens: 600,
           }
-        ], {
-          temperature: 0.7,
-          maxTokens: 600
-        });
-        
-        await agent.sendConnectionMessage(roomId, `🧠 **AI Response:**\n\n${response}`);
+        );
+
+        await agent.sendConnectionMessage(
+          roomId,
+          `🧠 **AI Response:**\n\n${response}`
+        );
       } catch (error: any) {
         console.error('Enhanced AI Error:', error);
-        await agent.sendConnectionMessage(roomId, '❌ Sorry, I encountered an error processing your request. Please try again.');
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ Sorry, I encountered an error processing your request. Please try again.'
+        );
       }
     });
 
@@ -86,77 +101,94 @@ async function main() {
     agent.addCommand('/compare', async ({ roomId, message }) => {
       const prompt = message.data?.split(' ').slice(1).join(' ');
       if (!prompt) {
-        await agent.sendConnectionMessage(roomId, '🔍 Please provide a prompt to analyze!\n\n**Usage:** `/compare Explain quantum computing`');
+        await agent.sendConnectionMessage(
+          roomId,
+          '🔍 Please provide a prompt to analyze!\n\n**Usage:** `/compare Explain quantum computing`'
+        );
         return;
       }
 
       try {
         console.log(`🔍 Running parallel AI analysis: "${prompt}"`);
-        await agent.sendConnectionMessage(roomId, '🔍 **Analyzing your request with multiple approaches...**');
+        await agent.sendConnectionMessage(
+          roomId,
+          '🔍 **Analyzing your request with multiple approaches...**'
+        );
 
         const aiClient = await agent.getAiClient();
-        
+
         // Simulate parallel processing with different approaches
         const approaches = [
           {
-            name: "Technical",
-            systemPrompt: "You are a technical expert. Provide detailed, accurate technical explanations with examples.",
-            temperature: 0.3
+            name: 'Technical',
+            systemPrompt:
+              'You are a technical expert. Provide detailed, accurate technical explanations with examples.',
+            temperature: 0.3,
           },
           {
-            name: "Simple", 
-            systemPrompt: "You are an educator. Explain complex topics in simple, easy-to-understand terms with analogies.",
-            temperature: 0.5
+            name: 'Simple',
+            systemPrompt:
+              'You are an educator. Explain complex topics in simple, easy-to-understand terms with analogies.',
+            temperature: 0.5,
           },
           {
-            name: "Creative",
-            systemPrompt: "You are a creative communicator. Use engaging storytelling and metaphors to explain concepts.",
-            temperature: 0.8
-          }
+            name: 'Creative',
+            systemPrompt:
+              'You are a creative communicator. Use engaging storytelling and metaphors to explain concepts.',
+            temperature: 0.8,
+          },
         ];
 
-        const results = await Promise.all(approaches.map(async (approach, index) => {
-          try {
-            const response = await aiClient.generateText([
-              {
-                role: "system" as const,
-                content: approach.systemPrompt
-              },
-              {
-                role: "user" as const,
-                content: prompt
-              }
-            ], {
-              temperature: approach.temperature,
-              maxTokens: 400
-            });
-            
-            return {
-              approach: approach.name,
-              response,
-              success: true
-            };
-          } catch (error) {
-            return {
-              approach: approach.name,
-              response: `Error: ${(error as Error).message}`,
-              success: false
-            };
-          }
-        }));
+        const results = await Promise.all(
+          approaches.map(async (approach, index) => {
+            try {
+              const response = await aiClient.generateText(
+                [
+                  {
+                    role: 'system' as const,
+                    content: approach.systemPrompt,
+                  },
+                  {
+                    role: 'user' as const,
+                    content: prompt,
+                  },
+                ],
+                {
+                  temperature: approach.temperature,
+                  maxTokens: 400,
+                }
+              );
+
+              return {
+                approach: approach.name,
+                response,
+                success: true,
+              };
+            } catch (error) {
+              return {
+                approach: approach.name,
+                response: `Error: ${(error as Error).message}`,
+                success: false,
+              };
+            }
+          })
+        );
 
         // Format results
         let resultText = `🔍 **Multi-Approach Analysis Results:**\n\n`;
         results.forEach((result, index) => {
           resultText += `**${index + 1}. ${result.approach} Approach:**\n${result.response}\n\n`;
         });
-        
+
         resultText += `*This demonstrates parallel AI processing with different temperature settings and system prompts.*`;
 
         await agent.sendConnectionMessage(roomId, resultText);
       } catch (error: any) {
         console.error('Parallel processing error:', error);
-        await agent.sendConnectionMessage(roomId, '❌ Sorry, I had trouble with the parallel analysis.');
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ Sorry, I had trouble with the parallel analysis.'
+        );
       }
     });
 
@@ -164,50 +196,68 @@ async function main() {
     agent.addCommand('/stream', async ({ roomId, message }) => {
       const topic = message.data?.split(' ').slice(1).join(' ');
       if (!topic) {
-        await agent.sendConnectionMessage(roomId, '📡 Please provide a topic!\n\n**Usage:** `/stream Write a story about robots`');
+        await agent.sendConnectionMessage(
+          roomId,
+          '📡 Please provide a topic!\n\n**Usage:** `/stream Write a story about robots`'
+        );
         return;
       }
 
       try {
         console.log(`📡 Simulating streaming response for: "${topic}"`);
-        
+
         // Simulate streaming by sending progressive updates
-        await agent.sendConnectionMessage(roomId, '📡 **Streaming Response:** Starting...');
-        
+        await agent.sendConnectionMessage(
+          roomId,
+          '📡 **Streaming Response:** Starting...'
+        );
+
         const aiClient = await agent.getAiClient();
-        const response = await aiClient.generateText([
+        const response = await aiClient.generateText(
+          [
+            {
+              role: 'system' as const,
+              content:
+                'You are a creative writer. Create engaging content that unfolds progressively.',
+            },
+            {
+              role: 'user' as const,
+              content: topic,
+            },
+          ],
           {
-            role: "system" as const,
-            content: "You are a creative writer. Create engaging content that unfolds progressively."
-          },
-          {
-            role: "user" as const,
-            content: topic
+            temperature: 0.8,
+            maxTokens: 800,
           }
-        ], {
-          temperature: 0.8,
-          maxTokens: 800
-        });
-        
+        );
+
         // Split response into chunks to simulate streaming
         const words = response.split(' ');
         const chunkSize = Math.max(10, Math.floor(words.length / 4));
-        
+
         for (let i = 0; i < words.length; i += chunkSize) {
           const chunk = words.slice(i, i + chunkSize).join(' ');
           const progress = Math.round(((i + chunkSize) / words.length) * 100);
-          
-          await agent.sendConnectionMessage(roomId, `📡 **Streaming Update** (${Math.min(progress, 100)}%):\n\n${chunk}...`);
-          
+
+          await agent.sendConnectionMessage(
+            roomId,
+            `📡 **Streaming Update** (${Math.min(progress, 100)}%):\n\n${chunk}...`
+          );
+
           // Simulate processing delay
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, 1000));
         }
-        
-        await agent.sendConnectionMessage(roomId, `✅ **Streaming Complete!**\n\n**Full Response:**\n${response}`);
-        
+
+        await agent.sendConnectionMessage(
+          roomId,
+          `✅ **Streaming Complete!**\n\n**Full Response:**\n${response}`
+        );
       } catch (error: any) {
         console.error('Streaming error:', error);
-        await agent.sendConnectionMessage(roomId, '❌ Sorry, I had trouble with the streaming response.');
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ Sorry, I had trouble with the streaming response.'
+        );
       }
     });
 
@@ -215,54 +265,73 @@ async function main() {
     agent.addCommand('/safe', async ({ roomId, message }) => {
       const input = message.data?.split(' ').slice(1).join(' ');
       if (!input) {
-        await agent.sendConnectionMessage(roomId, '🛡️ Please provide content to analyze!\n\n**Usage:** `/safe Tell me about cybersecurity best practices`');
+        await agent.sendConnectionMessage(
+          roomId,
+          '🛡️ Please provide content to analyze!\n\n**Usage:** `/safe Tell me about cybersecurity best practices`'
+        );
         return;
       }
 
       try {
         console.log(`🛡️ Processing with safety guardrails: "${input}"`);
-        
+
         // Simulate input validation
         const bannedWords = ['hack', 'exploit', 'illegal', 'harmful'];
-        const hasBannedWords = bannedWords.some(word => 
+        const hasBannedWords = bannedWords.some((word) =>
           input.toLowerCase().includes(word.toLowerCase())
         );
-        
+
         if (hasBannedWords) {
-          await agent.sendConnectionMessage(roomId, '🛡️ **Safety Check Failed**\n\nYour request contains content that may not be appropriate. Please rephrase your question focusing on legitimate, constructive topics.');
+          await agent.sendConnectionMessage(
+            roomId,
+            '🛡️ **Safety Check Failed**\n\nYour request contains content that may not be appropriate. Please rephrase your question focusing on legitimate, constructive topics.'
+          );
           return;
         }
-        
+
         if (input.length > 500) {
-          await agent.sendConnectionMessage(roomId, '🛡️ **Input Too Long**\n\nPlease keep your request under 500 characters for optimal processing.');
+          await agent.sendConnectionMessage(
+            roomId,
+            '🛡️ **Input Too Long**\n\nPlease keep your request under 500 characters for optimal processing.'
+          );
           return;
         }
 
         const aiClient = await agent.getAiClient();
-        const response = await aiClient.generateText([
+        const response = await aiClient.generateText(
+          [
+            {
+              role: 'system' as const,
+              content:
+                'You are a helpful and safe AI assistant. Provide constructive, educational information. Avoid any harmful, dangerous, or inappropriate content. If asked about sensitive topics, focus on safety and best practices.',
+            },
+            {
+              role: 'user' as const,
+              content: input,
+            },
+          ],
           {
-            role: "system" as const,
-            content: "You are a helpful and safe AI assistant. Provide constructive, educational information. Avoid any harmful, dangerous, or inappropriate content. If asked about sensitive topics, focus on safety and best practices."
-          },
-          {
-            role: "user" as const,
-            content: input
+            temperature: 0.5,
+            maxTokens: 600,
           }
-        ], {
-          temperature: 0.5,
-          maxTokens: 600
-        });
-        
+        );
+
         // Simulate output validation
-        const safeResponse = response.length > 1000 
-          ? response.substring(0, 997) + "..."
-          : response;
-        
-        await agent.sendConnectionMessage(roomId, `🛡️ **Safe AI Response:**\n\n${safeResponse}\n\n*This response has been validated for safety and appropriateness.*`);
-        
+        const safeResponse =
+          response.length > 1000
+            ? response.substring(0, 997) + '...'
+            : response;
+
+        await agent.sendConnectionMessage(
+          roomId,
+          `🛡️ **Safe AI Response:**\n\n${safeResponse}\n\n*This response has been validated for safety and appropriateness.*`
+        );
       } catch (error: any) {
         console.error('Guardrails error:', error);
-        await agent.sendConnectionMessage(roomId, '❌ Sorry, I encountered an error while processing your request safely.');
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ Sorry, I encountered an error while processing your request safely.'
+        );
       }
     });
 
@@ -270,44 +339,54 @@ async function main() {
     agent.addCommand('/trace', async ({ roomId, message }) => {
       const prompt = message.data?.split(' ').slice(1).join(' ');
       if (!prompt) {
-        await agent.sendConnectionMessage(roomId, '📊 Please provide a prompt to trace!\n\n**Usage:** `/trace Explain machine learning`');
+        await agent.sendConnectionMessage(
+          roomId,
+          '📊 Please provide a prompt to trace!\n\n**Usage:** `/trace Explain machine learning`'
+        );
         return;
       }
 
       try {
         const startTime = Date.now();
         console.log(`📊 Starting traced AI request: "${prompt}"`);
-        
-        await agent.sendConnectionMessage(roomId, '📊 **Tracing AI Request...**');
-        
+
+        await agent.sendConnectionMessage(
+          roomId,
+          '📊 **Tracing AI Request...**'
+        );
+
         const events = [
           'Validating input',
-          'Initializing AI client', 
+          'Initializing AI client',
           'Sending request to AI provider',
           'Processing AI response',
           'Validating output',
-          'Formatting response'
+          'Formatting response',
         ];
-        
+
         // Simulate tracing events
         for (let i = 0; i < events.length; i++) {
           const event = events[i];
           const timestamp = Date.now() - startTime;
           console.log(`[${timestamp}ms] ${event}`);
-          
-          if (i % 2 === 0) { // Update every other event
-            await agent.sendConnectionMessage(roomId, `📊 **Trace Update:** ${event}... (${timestamp}ms)`);
+
+          if (i % 2 === 0) {
+            // Update every other event
+            await agent.sendConnectionMessage(
+              roomId,
+              `📊 **Trace Update:** ${event}... (${timestamp}ms)`
+            );
           }
         }
 
         const aiClient = await agent.getAiClient();
         const response = await aiClient.generateText(prompt, {
           temperature: 0.6,
-          maxTokens: 500
+          maxTokens: 500,
         });
-        
+
         const totalTime = Date.now() - startTime;
-        
+
         const traceReport = `📊 **AI Request Completed with Tracing**
 
 **Response:**
@@ -323,10 +402,12 @@ ${response}
 *This demonstrates comprehensive request tracing and monitoring capabilities.*`;
 
         await agent.sendConnectionMessage(roomId, traceReport);
-        
       } catch (error: any) {
         console.error('Tracing error:', error);
-        await agent.sendConnectionMessage(roomId, '❌ Sorry, I encountered an error during traced processing.');
+        await agent.sendConnectionMessage(
+          roomId,
+          '❌ Sorry, I encountered an error during traced processing.'
+        );
       }
     });
 
@@ -338,7 +419,7 @@ ${response}
       const enhancedFeaturesEnabled = process.env.SUPERDAPP_AI_AGENTS === '1';
       const tracingEnabled = process.env.SUPERDAPP_AI_TRACING === 'true';
       const guardrailsEnabled = process.env.SUPERDAPP_AI_GUARDRAILS === 'true';
-      
+
       const statusText = `✅ **Enhanced AI Status**
 
 **Core Configuration:**
@@ -441,45 +522,51 @@ Type \`/status\` to check feature configuration.
 
     // Health check endpoint
     app.get('/health', (req, res) => {
-      res.json({ 
-        status: 'healthy', 
+      res.json({
+        status: 'healthy',
         service: 'Enhanced AI Features SuperDapp Agent',
         provider: process.env.AI_PROVIDER || 'not configured',
         model: process.env.AI_MODEL || 'not configured',
         enhancedFeatures: {
           agents: process.env.SUPERDAPP_AI_AGENTS === '1',
           tracing: process.env.SUPERDAPP_AI_TRACING === 'true',
-          guardrails: process.env.SUPERDAPP_AI_GUARDRAILS === 'true'
+          guardrails: process.env.SUPERDAPP_AI_GUARDRAILS === 'true',
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     });
 
-    // Initialize agent
-    await agent.processRequest({}); // This initializes internal components
-    
     // Start server
     app.listen(PORT, () => {
-      console.log(`✅ Enhanced AI Features Agent server running on port ${PORT}`);
-      console.log(`🚀 Enhanced Features Available: Guardrails, Parallel Processing, Streaming, Tracing`);
-      console.log(`🔗 Available commands: /ask, /compare, /stream, /safe, /trace, /status, /help`);
+      console.log(
+        `✅ Enhanced AI Features Agent server running on port ${PORT}`
+      );
+      console.log(
+        `🚀 Enhanced Features Available: Guardrails, Parallel Processing, Streaming, Tracing`
+      );
+      console.log(
+        `🔗 Available commands: /ask, /compare, /stream, /safe, /trace, /status, /help`
+      );
       console.log(`🌐 Health check: http://localhost:${PORT}/health`);
       console.log(`📡 Webhook endpoint: http://localhost:${PORT}/webhook`);
     });
-
   } catch (error: any) {
     if (error.message?.includes('AI configuration')) {
       console.error('❌ AI Configuration Error:', error.message);
-      console.error('Please set up your OpenAI configuration for enhanced features:');
+      console.error(
+        'Please set up your OpenAI configuration for enhanced features:'
+      );
       console.error('1. AI_PROVIDER=openai');
-      console.error('2. AI_MODEL=gpt-4o-mini'); 
+      console.error('2. AI_MODEL=gpt-4o-mini');
       console.error('3. AI_API_KEY=sk-your-openai-api-key');
       console.error('4. SUPERDAPP_AI_AGENTS=1 (optional)');
       console.error('5. SUPERDAPP_AI_TRACING=true (optional)');
       console.error('6. SUPERDAPP_AI_GUARDRAILS=true (optional)');
       console.error('Or run: superagent configure');
     } else if (error.message?.includes('API_TOKEN')) {
-      console.error('❌ SuperDapp API Token missing. Please set API_TOKEN environment variable.');
+      console.error(
+        '❌ SuperDapp API Token missing. Please set API_TOKEN environment variable.'
+      );
     } else {
       console.error('❌ Agent initialization failed:', error.message);
     }
