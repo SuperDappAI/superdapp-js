@@ -52,10 +52,17 @@ export class AIConfigError extends Error {
 }
 
 /**
+ * Helper function to convert environment variable string to boolean
+ */
+function envVarToBoolean(value: string | undefined): boolean {
+  return value === '1' || value === 'true';
+}
+
+/**
  * Load AI configuration from environment variables or BotConfig
  */
 export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
-  const agentsEnabled = process.env.SUPERDAPP_AI_AGENTS === '1' || process.env.SUPERDAPP_AI_AGENTS === 'true';
+  const agentsEnabled = envVarToBoolean(process.env.SUPERDAPP_AI_AGENTS);
   
   const rawConfig = {
     provider: config?.provider ?? process.env.AI_PROVIDER ?? undefined,
@@ -64,7 +71,7 @@ export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
     baseUrl: config?.baseUrl ?? process.env.AI_BASE_URL ?? undefined,
     agents: {
       enabled: config?.agents?.enabled ?? agentsEnabled,
-      streaming: config?.agents?.streaming ?? (process.env.SUPERDAPP_AI_AGENTS_STREAMING === '1'),
+      streaming: config?.agents?.streaming ?? envVarToBoolean(process.env.SUPERDAPP_AI_AGENTS_STREAMING),
       maxTurns: config?.agents?.maxTurns ?? (process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS ? parseInt(process.env.SUPERDAPP_AI_AGENTS_MAX_TURNS, 10) : undefined),
     },
   };

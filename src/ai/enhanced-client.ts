@@ -3,14 +3,8 @@
  * This module provides additional features like handoffs, guardrails, and streaming events
  */
 
-import type { AgentRunOptions, AiConfig } from './types';
+import type { AgentRunOptions } from './types';
 import type { AIConfig } from './config';
-import type { 
-  OpenAIAgentOptions, 
-  OpenAIAgentResult,
-  OpenAIAgentsNotAvailableError,
-  OpenAIAgentEvent 
-} from './providers/openai-agents';
 
 /**
  * Extended types for enhanced AI features
@@ -65,6 +59,9 @@ export interface TracingData {
 
 /**
  * Enhanced AI Client class with full OpenAI Agents SDK integration
+ * 
+ * Note: Use createEnhancedAIClient() factory function instead of direct instantiation
+ * to ensure proper configuration loading and validation.
  */
 export class EnhancedAIClient {
   private aiConfig: AIConfig;

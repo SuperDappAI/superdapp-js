@@ -175,7 +175,10 @@ export async function runOpenAIAgent(options: OpenAIAgentOptions): Promise<OpenA
       error instanceof Error &&
       (
         (typeof (error as any).code === 'string' && (error as any).code === 'MODULE_NOT_FOUND') ||
-        error.message.includes('Cannot find module')
+        error.message.includes('Cannot find module') ||
+        error.message.includes('Cannot resolve module') ||
+        error.message.includes('Module not found') ||
+        error.message.includes('Error loading module')
       )
     ) {
       throw new OpenAIAgentsNotAvailableError('OpenAI Agents SDK is not installed. Install it with: npm install @openai/agents');
