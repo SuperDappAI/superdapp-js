@@ -14,3 +14,9 @@ projects/
 projects/*/
 docs/sessions
 *.tgz
+
+# TypeScript build artifacts
+src/**/*.js
+src/**/*.d.ts
+src/**/*.js.map
+src/**/*.d.ts.map
