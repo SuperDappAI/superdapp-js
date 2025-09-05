@@ -259,7 +259,19 @@ export async function* streamOpenAIAgent(
     }
   } catch (error) {
     // Check if this is a module not found error
-    if (error instanceof Error && error.message.includes('Cannot resolve module')) {
+    const moduleNotFoundMessages = [
+      'Cannot resolve module',
+      'Cannot find module',
+      'Module not found',
+      'Error loading module',
+    ];
+    if (
+      error instanceof Error &&
+      (
+        (typeof (error as any).code === 'string' && (error as any).code === 'MODULE_NOT_FOUND') ||
+        moduleNotFoundMessages.some(msg => error.message.includes(msg))
+      )
+    ) {
       throw new OpenAIAgentsNotAvailableError('OpenAI Agents SDK is not installed. Install it with: npm install @openai/agents');
     }
     
