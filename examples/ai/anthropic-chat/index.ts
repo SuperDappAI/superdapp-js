@@ -30,8 +30,23 @@ async function main() {
   try {
     console.log('🚀 Starting Anthropic Claude SuperDapp Agent...');
 
-    // Initialize the agent
-    const agent = new SuperDappAgent(createBotConfig());
+    // Initialize the agent with error handling
+    let config;
+    try {
+      config = createBotConfig();
+    } catch (error: any) {
+      if (error.message?.includes('API_TOKEN is required')) {
+        console.error('❌ Configuration Error: API_TOKEN is required');
+        console.error('Please set up your SuperDapp API token in .env file:');
+        console.error('1. Copy .env.example to .env');
+        console.error('2. Add your API_TOKEN=your_actual_token');
+        console.error('3. Configure AI settings (AI_PROVIDER=anthropic, AI_MODEL, AI_API_KEY)');
+        process.exit(1);
+      }
+      throw error;
+    }
+    
+    const agent = new SuperDappAgent(config);
 
     // Intelligent Q&A with Claude's reasoning capabilities
     agent.addCommand('/analyze', async ({ roomId, message }) => {
