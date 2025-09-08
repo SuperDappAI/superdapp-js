@@ -253,25 +253,25 @@ const SAMPLE_TOKENS: Record<string, TokenInfo> = {
 // Sample payout scenarios
 const TOURNAMENT_WINNERS: WinnerRow[] = [
   { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c55', amount: '1000', rank: 1 },
-  { address: '0x8ba1f109551bD432803012645Hac136c0532925a3', amount: '500', rank: 2 },
+  { address: '0x8ba1f109551bD432803012645Dac136c0532925a3', amount: '500', rank: 2 },
   { address: '0xdF3e18d64BC6A983f673Ab319CCaE4f1a57C7097', amount: '250', rank: 3 },
   { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c56', amount: '50', rank: 4 },
-  { address: '0x8ba1f109551bD432803012645Hac136c0532925a4', amount: '50', rank: 5 }
+  { address: '0x8ba1f109551bD432803012645Dac136c0532925a4', amount: '50', rank: 5 }
 ];
 
 const CONTEST_WINNERS: WinnerRow[] = [
   { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c55', amount: '2000', rank: 1 },
-  { address: '0x8ba1f109551bD432803012645Hac136c0532925a3', amount: '800', rank: 2 },
+  { address: '0x8ba1f109551bD432803012645Dac136c0532925a3', amount: '800', rank: 2 },
   { address: '0xdF3e18d64BC6A983f673Ab319CCaE4f1a57C7097', amount: '200', rank: 3 },
   { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c56', amount: '200', rank: 4 }
 ];
 
 const AIRDROP_WINNERS: WinnerRow[] = [
   { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c55', amount: '100', rank: 1 },
-  { address: '0x8ba1f109551bD432803012645Hac136c0532925a3', amount: '100', rank: 1 },
+  { address: '0x8ba1f109551bD432803012645Dac136c0532925a3', amount: '100', rank: 1 },
   { address: '0xdF3e18d64BC6A983f673Ab319CCaE4f1a57C7097', amount: '100', rank: 1 },
   { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c56', amount: '100', rank: 1 },
-  { address: '0x8ba1f109551bD432803012645Hac136c0532925a4', amount: '100', rank: 1 }
+  { address: '0x8ba1f109551bD432803012645Dac136c0532925a4', amount: '100', rank: 1 }
 ];
 
 async function main() {
