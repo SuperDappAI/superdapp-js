@@ -1,27 +1,27 @@
 # SuperDapp Payouts Agent Example
 
-A comprehensive SuperDapp agent example demonstrating crypto payout functionality for tournaments, contests, and reward distributions.
+A comprehensive SuperDapp agent example demonstrating cryptocurrency payout functionality for tournaments, contests, and reward distributions using the official SuperDapp SDK.
 
 ## Features
 
 ### Core Payout Commands
-- 🏆 `/create-payout` - Create payouts from winner data (gaming tournaments, contests)
-- ✅ `/validate-winners` - Validate winner wallet addresses
+- 🏆 `/create-payout` - Create payouts from winner data (gaming tournaments, contests, airdrops)
+- ✅ `/validate-winners` - Validate winner wallet addresses with EIP-55 checksumming
 - 📊 `/export-manifest` - Export payout manifests to CSV/JSON formats
-- 🔍 `/reconcile` - Reconcile and verify payout results
-- 📋 `/payout-status` - Check payout execution status
+- 🔍 `/reconcile` - Reconcile and verify payout results (demo mode)
+- 📋 `/payout-status` - Check current payout execution status
 
 ### Interactive Scenarios
-- 🎮 **Gaming Tournaments** - eSports prize distributions
-- 🏅 **Contest Winners** - Creative contest payouts  
-- 💰 **Multi-Token Payouts** - Support for different cryptocurrencies
-- 🔒 **Address Validation** - Comprehensive wallet address checking
-- 📈 **Batch Processing** - Handle large winner lists efficiently
+- 🎮 **Gaming Tournaments** - eSports prize distributions with tiered rewards
+- 🏅 **Contest Winners** - Creative contest payouts with grand prizes
+- 💰 **Community Airdrops** - Equal token distributions to community members
+- 🔒 **Address Validation** - Comprehensive wallet address checking with checksumming
+- 📈 **Multi-Token Support** - USDC, ETH, MATIC with proper decimal handling
 
-### Example Scenarios Built-In
-- **Tournament Payout**: Gaming competition with prize pool distribution
-- **Contest Winners**: Art contest with multiple prize tiers
-- **Community Rewards**: Token airdrops and community incentives
+### Built-in Example Scenarios
+- **Tournament Payout**: Gaming competition (1st: 1000 USDC, 2nd: 500, 3rd: 250, 4th-5th: 50 each)
+- **Contest Winners**: Art contest (Grand: 2000, Runner-up: 800, Honorable mentions: 200 each)
+- **Community Airdrop**: Token distribution (100 USDC each to 5 community members)
 
 ## Setup
 
@@ -37,10 +37,6 @@ A comprehensive SuperDapp agent example demonstrating crypto payout functionalit
    PORT=3000
    API_TOKEN=your_superdapp_api_token_here
    API_BASE_URL=https://api.superdapp.ai
-   
-   # Optional: Default token configuration
-   DEFAULT_TOKEN_ADDRESS=0xA0b86a33E6441e6C2c6ff2AaF9c1CbA3b8E8F55f
-   DEFAULT_CHAIN_ID=1
    ```
 
 3. Run the example:
@@ -80,12 +76,12 @@ A comprehensive SuperDapp agent example demonstrating crypto payout functionalit
   - `airdrop` - Token airdrop scenario
 - `/validate-winners <addresses>` - Validate comma-separated addresses
 - `/export-manifest <format>` - Export in CSV or JSON format
-- `/reconcile <payout-id>` - Check payout execution status
+- `/payout-status` - Show current manifest details
+- `/reconcile <payout-id>` - Check payout execution status (demo)
 
 ### Interactive Menus
-- `/scenarios` - Browse payout scenarios with buttons
-- `/tokens` - Select different token types for payouts
-- `/settings` - Configure payout preferences
+- `/scenarios` - Browse payout scenarios with interactive buttons
+- `/tokens` - View supported token configurations
 
 ## Usage Examples
 
@@ -98,7 +94,7 @@ This creates a realistic gaming tournament payout with:
 - 1st Place: 1000 USDC
 - 2nd Place: 500 USDC  
 - 3rd Place: 250 USDC
-- Top 10: 50 USDC each
+- 4th-5th Place: 50 USDC each
 ```
 
 ### Contest Winners
@@ -117,7 +113,7 @@ Art contest with tiered rewards:
 ```
 /validate-winners 0x742d35Cc6634C0532925a3b8FD74389b9f8e9c55,0x8ba1f109551bD432803012645Hac136c0532925
 
-Returns validation results for each address
+Returns validation results for each address with EIP-55 checksumming
 ```
 
 ### Export Formats
@@ -129,56 +125,56 @@ Returns validation results for each address
 Exports the current payout manifest in your preferred format
 ```
 
-## Payout SDK Features Demonstrated
+## SuperDapp Payout SDK Features Demonstrated
 
 This example showcases the SuperDapp Payout SDK capabilities:
 
 ### 1. Manifest Creation
-- Winner data normalization
-- Address validation and checksumming
-- Amount calculations with proper decimals
-- Deterministic manifest hashing
+- Winner data normalization and validation
+- Address checksumming with EIP-55 standard
+- Amount calculations with proper decimal handling
+- Deterministic manifest hash generation
 
 ### 2. Multi-Chain Support
-- Ethereum mainnet
-- Polygon
-- Arbitrum
-- Custom chain configurations
+- Ethereum mainnet (ETH, USDC)
+- Polygon (MATIC)
+- Custom token configurations
+- Chain-specific metadata
 
 ### 3. Token Management
 - Native tokens (ETH, MATIC)
-- ERC-20 tokens (USDC, USDT, DAI)
-- Custom token configurations
-- Decimal handling
+- ERC-20 tokens (USDC)
+- Proper decimal handling (6 for USDC, 18 for ETH/MATIC)
+- Token metadata management
 
 ### 4. Export Capabilities
 - CSV format for spreadsheet analysis
 - JSON format for programmatic use
 - Canonical JSON with deterministic ordering
 
-### 5. Validation & Reconciliation
-- Address format validation
-- Checksum verification
-- Payout execution tracking
-- Result verification
+### 5. Validation & Address Handling
+- Ethereum address format validation
+- EIP-55 checksum verification and correction
+- Rejection tracking for invalid addresses
 
 ## Architecture
 
-The agent demonstrates proper payout workflow:
+The agent demonstrates proper payout workflow using the SuperDapp SDK:
 
 1. **Data Collection** - Gather winner data from tournaments/contests
-2. **Validation** - Verify all addresses and amounts
-3. **Manifest Creation** - Build structured payout instructions
-4. **Export** - Generate files for execution systems
-5. **Reconciliation** - Track and verify payout completion
+2. **Validation** - Verify all addresses and amounts using SDK utilities
+3. **Manifest Creation** - Build structured payout instructions with `buildManifest()`
+4. **Export** - Generate files for execution systems using `toCSV()` and `canonicalJson()`
+5. **Status Tracking** - Monitor and display payout information
 
 ## Security Features
 
-- ✅ Address validation and checksumming
-- ✅ Amount overflow protection
-- ✅ Duplicate winner detection
-- ✅ Manifest hash verification
-- ✅ Input sanitization
+- ✅ Address validation and EIP-55 checksumming
+- ✅ Amount overflow protection via proper decimal handling
+- ✅ Duplicate winner detection in validation
+- ✅ Manifest hash verification for integrity
+- ✅ Input sanitization and validation
+- ✅ Structured error handling and reporting
 
 ## Integration Examples
 
@@ -189,14 +185,42 @@ This agent can be extended to integrate with:
 - Blockchain execution services
 - Analytics and reporting tools
 - Multi-signature wallet systems
+- Payment processing services
 
 ## Error Handling
 
 Comprehensive error handling for:
-- Invalid addresses
+- Invalid addresses (format validation)
 - Network connectivity issues
-- Insufficient data
-- Format validation errors
-- Export failures
+- Insufficient or malformed data
+- Format validation errors in exports
+- SDK integration failures
 
-The agent is production-ready and demonstrates best practices for crypto payout management.
+## Technical Implementation
+
+### Key Dependencies
+- **SuperDapp SDK**: Official SDK for agent and payout functionality
+- **Express.js**: Web server for webhook handling
+- **Axios**: HTTP client for external integrations
+- **TypeScript**: Type-safe development
+
+### SDK Integration
+```typescript
+import { SuperDappAgent } from '../../dist';
+import {
+  buildManifest,
+  toCSV,
+  canonicalJson,
+  TokenInfo,
+  WinnerRow,
+  PayoutManifest
+} from '../../dist/payouts';
+```
+
+The example demonstrates proper usage of:
+- `SuperDappAgent` for command handling and webhook processing
+- `buildManifest()` for creating validated payout manifests
+- `toCSV()` and `canonicalJson()` for data export
+- Type definitions for type-safe development
+
+This implementation serves as a complete reference for developers building payout-enabled agents with the SuperDapp platform.

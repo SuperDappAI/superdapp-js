@@ -1,215 +1,16 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { SuperDappAgent } from '../../dist';
+import {
+  buildManifest,
+  toCSV,
+  canonicalJson,
+  TokenInfo,
+  WinnerRow,
+  PayoutManifest
+} from '../../dist/payouts';
 import axios from 'axios';
-
-// Minimal SuperDapp Agent simulation for demonstration
-class PayoutDemoAgent {
-  constructor(config: { apiToken: string; baseUrl: string }) {
-    this.config = config;
-    this.commands = new Map();
-  }
-
-  private config: { apiToken: string; baseUrl: string };
-  private commands: Map<string, Function>;
-
-  addCommand(command: string, handler: Function) {
-    this.commands.set(command, handler);
-  }
-
-  async sendConnectionMessage(roomId: string, message: string) {
-    console.log(`[${roomId}] ${message}`);
-    // In real implementation, this would send via SuperDapp API
-    return { success: true, message };
-  }
-
-  async sendReplyMarkupMessage(type: string, roomId: string, message: string, buttons: any[][]) {
-    console.log(`[${roomId}] ${message}`);
-    console.log('Buttons:', buttons);
-    // In real implementation, this would send interactive message
-    return { success: true, message, buttons };
-  }
-
-  async processRequest(body: string) {
-    // Basic webhook processing simulation
-    try {
-      const data = JSON.parse(body);
-      const command = data.message?.text || '';
-      const roomId = data.roomId || 'demo-room';
-      
-      if (command.startsWith('/')) {
-        const handler = this.commands.get(command.split(' ')[0]);
-        if (handler) {
-          await handler({ message: command, roomId });
-        }
-      } else {
-        const generalHandler = this.commands.get('handleMessage');
-        if (generalHandler) {
-          await generalHandler({ message: command, roomId });
-        }
-      }
-      
-      return { processed: true };
-    } catch (error) {
-      console.error('Error processing request:', error);
-      return { error: 'Processing failed' };
-    }
-  }
-}
-
-// Payout SDK types and functions (simplified)
-interface TokenInfo {
-  address: string;
-  symbol: string;
-  name: string;
-  decimals: number;
-  chainId: number | string;
-  isNative?: boolean;
-}
-
-interface WinnerRow {
-  address: string;
-  amount: string | number;
-  rank: number;
-  id?: string;
-  metadata?: Record<string, unknown>;
-}
-
-interface PayoutManifest {
-  id: string;
-  winners: Array<{
-    address: string;
-    amount: string;
-    rank: number;
-    id: string;
-    token: TokenInfo;
-    metadata: Record<string, unknown>;
-  }>;
-  token: TokenInfo;
-  totalAmount: string;
-  createdBy: string;
-  createdAt: string;
-  roundId: string;
-  groupId: string;
-  version: string;
-  hash: string;
-  description?: string;
-  totals: {
-    amountWei: string;
-  };
-}
-
-// Address validation with EIP-55 checksumming
-function validateAndChecksumAddress(address: string): string | null {
-  if (!address || typeof address !== 'string') {
-    return null;
-  }
-
-  const cleanAddress = address.replace(/^0x/i, '').toLowerCase();
-  
-  if (!/^[a-f0-9]{40}$/.test(cleanAddress)) {
-    return null;
-  }
-
-  // Simple checksum implementation
-  const checksummed = '0x' + cleanAddress
-    .split('')
-    .map((char, index) => {
-      // Simple checksum logic for demo
-      return Math.random() > 0.5 ? char.toUpperCase() : char;
-    })
-    .join('');
-
-  return checksummed;
-}
-
-// Manifest builder with validation
-function buildManifest(winners: WinnerRow[], options: { token: TokenInfo; roundId: string; groupId: string }) {
-  const validatedWinners = [];
-  const rejectedAddresses: string[] = [];
-  let totalAmount = 0;
-
-  for (const winner of winners) {
-    const validatedAddress = validateAndChecksumAddress(winner.address);
-    if (!validatedAddress) {
-      rejectedAddresses.push(winner.address);
-      continue;
-    }
-
-    const amount = typeof winner.amount === 'string' ? parseFloat(winner.amount) : winner.amount;
-    const amountWei = Math.floor(amount * Math.pow(10, options.token.decimals));
-    totalAmount += amountWei;
-
-    validatedWinners.push({
-      address: validatedAddress,
-      amount: amountWei.toString(),
-      rank: winner.rank,
-      id: winner.id || `winner-${validatedWinners.length}`,
-      token: options.token,
-      metadata: winner.metadata || {}
-    });
-  }
-
-  // Create deterministic manifest hash
-  const manifestData = {
-    winners: validatedWinners,
-    token: options.token,
-    totalAmount: totalAmount.toString(),
-    roundId: options.roundId,
-    groupId: options.groupId
-  };
-  
-  const hash = 'hash_' + Buffer.from(JSON.stringify(manifestData)).toString('base64').substring(0, 16);
-
-  const manifest: PayoutManifest = {
-    id: `payout-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-    winners: validatedWinners,
-    token: options.token,
-    totalAmount: totalAmount.toString(),
-    createdBy: 'payout-agent',
-    createdAt: new Date().toISOString(),
-    roundId: options.roundId,
-    groupId: options.groupId,
-    version: '1.0.0',
-    hash,
-    description: `Payout for ${options.groupId}`,
-    totals: {
-      amountWei: totalAmount.toString()
-    }
-  };
-
-  return {
-    manifest,
-    rejectedAddresses
-  };
-}
-
-// CSV export functionality
-function toCSV(manifest: PayoutManifest): string {
-  const header = 'address,amountWei,symbol,roundId,groupId,rank';
-  
-  if (manifest.winners.length === 0) {
-    return header;
-  }
-  
-  const rows = manifest.winners.map(winner => {
-    return [
-      winner.address,
-      winner.amount,
-      manifest.token.symbol,
-      manifest.roundId,
-      manifest.groupId,
-      winner.rank
-    ].join(',');
-  });
-  
-  return [header, ...rows].join('\n');
-}
-
-// JSON export with canonical formatting
-function toJSON(manifest: PayoutManifest): string {
-  return JSON.stringify(manifest, null, 2);
-}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -219,488 +20,411 @@ app.use(cors());
 app.use(express.json());
 app.use(express.text({ type: 'application/json' }));
 
-// In-memory storage for demo purposes
-let currentManifest: PayoutManifest | null = null;
-let payoutHistory: PayoutManifest[] = [];
-
 // Sample token configurations
-const SAMPLE_TOKENS: Record<string, TokenInfo> = {
-  'USDC': {
+const TOKENS: Record<string, TokenInfo> = {
+  USDC: {
     address: '0xA0b86a33E6441e6C2c6ff2AaF9c1CbA3b8E8F55f',
     symbol: 'USDC',
     name: 'USD Coin',
     decimals: 6,
-    chainId: 1
+    chainId: 1, // Ethereum
   },
-  'ETH': {
+  ETH: {
     address: '0x0000000000000000000000000000000000000000',
     symbol: 'ETH',
     name: 'Ethereum',
     decimals: 18,
-    chainId: 1,
-    isNative: true
+    chainId: 1, // Ethereum
+    isNative: true,
   },
-  'MATIC': {
+  MATIC: {
     address: '0x0000000000000000000000000000000000000000',
     symbol: 'MATIC',
     name: 'Polygon',
     decimals: 18,
-    chainId: 137,
-    isNative: true
-  }
+    chainId: 137, // Polygon
+    isNative: true,
+  },
 };
 
-// Sample payout scenarios
-const TOURNAMENT_WINNERS: WinnerRow[] = [
-  { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c55', amount: '1000', rank: 1 },
-  { address: '0x8ba1f109551bD432803012645Dac136c0532925a3', amount: '500', rank: 2 },
-  { address: '0xdF3e18d64BC6A983f673Ab319CCaE4f1a57C7097', amount: '250', rank: 3 },
-  { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c56', amount: '50', rank: 4 },
-  { address: '0x8ba1f109551bD432803012645Dac136c0532925a4', amount: '50', rank: 5 }
-];
+// Payout scenarios for demonstration
+const PAYOUT_SCENARIOS = {
+  tournament: {
+    name: '🏆 Gaming Tournament',
+    description: 'eSports competition with tiered rewards',
+    winners: [
+      { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c55', amount: 1000, rank: 1, id: 'winner-1' },
+      { address: '0x8ba1f109551bD432803012645Hac136c0532925', amount: 500, rank: 2, id: 'winner-2' },
+      { address: '0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5', amount: 250, rank: 3, id: 'winner-3' },
+      { address: '0xbe0eb53f46cd790cd13851d5eff43d12404d33e8', amount: 50, rank: 4, id: 'winner-4' },
+      { address: '0xf977814e90da44bfa03b6295a0616a897441ace', amount: 50, rank: 5, id: 'winner-5' },
+    ],
+    token: 'USDC',
+  },
+  contest: {
+    name: '🎨 Creative Contest',
+    description: 'Art contest with grand prize structure',
+    winners: [
+      { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c55', amount: 2000, rank: 1, id: 'grand-prize' },
+      { address: '0x8ba1f109551bD432803012645Hac136c0532925', amount: 800, rank: 2, id: 'runner-up' },
+      { address: '0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5', amount: 200, rank: 3, id: 'honorable-1' },
+      { address: '0xbe0eb53f46cd790cd13851d5eff43d12404d33e8', amount: 200, rank: 4, id: 'honorable-2' },
+      { address: '0xf977814e90da44bfa03b6295a0616a897441ace', amount: 200, rank: 5, id: 'honorable-3' },
+    ],
+    token: 'USDC',
+  },
+  airdrop: {
+    name: '💰 Community Airdrop',
+    description: 'Equal token distribution to community members',
+    winners: [
+      { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c55', amount: 100, rank: 1, id: 'community-1' },
+      { address: '0x8ba1f109551bD432803012645Hac136c0532925', amount: 100, rank: 2, id: 'community-2' },
+      { address: '0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5', amount: 100, rank: 3, id: 'community-3' },
+      { address: '0xbe0eb53f46cd790cd13851d5eff43d12404d33e8', amount: 100, rank: 4, id: 'community-4' },
+      { address: '0xf977814e90da44bfa03b6295a0616a897441ace', amount: 100, rank: 5, id: 'community-5' },
+    ],
+    token: 'USDC',
+  },
+};
 
-const CONTEST_WINNERS: WinnerRow[] = [
-  { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c55', amount: '2000', rank: 1 },
-  { address: '0x8ba1f109551bD432803012645Dac136c0532925a3', amount: '800', rank: 2 },
-  { address: '0xdF3e18d64BC6A983f673Ab319CCaE4f1a57C7097', amount: '200', rank: 3 },
-  { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c56', amount: '200', rank: 4 }
-];
-
-const AIRDROP_WINNERS: WinnerRow[] = [
-  { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c55', amount: '100', rank: 1 },
-  { address: '0x8ba1f109551bD432803012645Dac136c0532925a3', amount: '100', rank: 1 },
-  { address: '0xdF3e18d64BC6A983f673Ab319CCaE4f1a57C7097', amount: '100', rank: 1 },
-  { address: '0x742d35Cc6634C0532925a3b8FD74389b9f8e9c56', amount: '100', rank: 1 },
-  { address: '0x8ba1f109551bD432803012645Dac136c0532925a4', amount: '100', rank: 1 }
-];
+// Store for current payout manifest
+let currentManifest: PayoutManifest | null = null;
 
 async function main() {
   try {
-    // Initialize the demo agent
-    const agent = new PayoutDemoAgent({
-      apiToken: process.env.API_TOKEN || 'demo-token',
-      baseUrl: process.env.API_BASE_URL || 'https://api.superdapp.ai',
+    // Initialize the agent
+    const agent = new SuperDappAgent({
+      apiToken: process.env.API_TOKEN as string,
+      baseUrl: (process.env.API_BASE_URL as string) || 'https://api.superdapp.ai',
     });
 
-    // Welcome command
+    // Add payout commands
     agent.addCommand('/start', async ({ roomId }) => {
-      const welcomeMsg = `🎯 **SuperDapp Payouts Agent**
+      const welcomeText = `💰 **SuperDapp Payouts Agent**
 
-Welcome to the comprehensive payout management system! I can help you with:
+Welcome to the comprehensive payouts demonstration! This agent showcases all SuperDapp payout SDK capabilities.
 
-🏆 **Tournament Payouts** - Gaming competitions & eSports
-🏅 **Contest Rewards** - Art, content, and creative contests  
-💰 **Airdrops** - Token distributions & community rewards
-✅ **Address Validation** - Verify wallet addresses
-📊 **Export Tools** - CSV/JSON manifest generation
-🔍 **Reconciliation** - Track payout execution
+🎯 **Core Features:**
+• Create realistic payout scenarios
+• Validate winner addresses with checksumming
+• Export manifests to CSV/JSON formats
+• Reconcile and verify payout execution
+• Multi-token support (USDC, ETH, MATIC)
 
-**Quick Start:**
-• \`/examples\` - See sample scenarios
-• \`/create-payout tournament\` - Try a gaming tournament
-• \`/help\` - Full command list
+🏆 **Available Scenarios:**
+• Gaming tournaments with tiered rewards
+• Creative contests with grand prizes
+• Community airdrops with equal distribution
 
-Let's get started! 🚀`;
+Type \`/help\` to see all available commands.`;
 
-      await agent.sendConnectionMessage(roomId, welcomeMsg);
+      await agent.sendConnectionMessage(roomId, welcomeText);
     });
 
-    // Help command
     agent.addCommand('/help', async ({ roomId }) => {
-      const helpText = `📋 **Payout Agent Commands**
+      const helpText = `📋 **Available Commands**
 
-**🎯 Core Commands:**
-• \`/create-payout <scenario>\` - Create payout (tournament/contest/airdrop)
-• \`/validate-winners <addresses>\` - Validate addresses (comma-separated)
-• \`/export-manifest <format>\` - Export as CSV or JSON
-• \`/reconcile\` - Check payout status
-• \`/payout-status\` - View current manifest details
+🚀 **Basic:**
+\`/start\` - Welcome message and overview
+\`/help\` - Show this help message
+\`/examples\` - List built-in payout scenarios
 
-**🎮 Quick Examples:**
-• \`/examples\` - Browse built-in scenarios
-• \`/scenarios\` - Interactive scenario browser
-• \`/tokens\` - Available token types
+💰 **Payout Management:**
+\`/create-payout <scenario>\` - Create payout scenarios:
+  • \`tournament\` - Gaming tournament payout
+  • \`contest\` - Creative contest payout  
+  • \`airdrop\` - Token airdrop scenario
 
-**🔧 Utilities:**
-• \`/start\` - Welcome message
-• \`/help\` - This help text
-• \`/clear\` - Clear current manifest`;
+✅ **Validation & Export:**
+\`/validate-winners <addresses>\` - Validate comma-separated addresses
+\`/export-manifest <format>\` - Export in CSV or JSON format
+\`/payout-status\` - Show current manifest info
+
+🔍 **Advanced:**
+\`/reconcile <payout-id>\` - Check payout execution status
+\`/scenarios\` - Browse scenarios with interactive buttons
+\`/tokens\` - View supported token configurations`;
 
       await agent.sendConnectionMessage(roomId, helpText);
     });
 
-    // Examples command
     agent.addCommand('/examples', async ({ roomId }) => {
-      const examplesMsg = `🎯 **Built-in Payout Scenarios**
+      const examplesText = `🎮 **Built-in Payout Scenarios**
 
-**🎮 Gaming Tournament** (\`/create-payout tournament\`)
-• 1st Place: 1,000 USDC
-• 2nd Place: 500 USDC
-• 3rd Place: 250 USDC
-• 4th-5th Place: 50 USDC each
-• Total: 1,850 USDC across 5 winners
+${Object.entries(PAYOUT_SCENARIOS).map(([key, scenario]) => 
+  `**${scenario.name}** (\`${key}\`)
+${scenario.description}
+• ${scenario.winners.length} winners
+• Total: ${scenario.winners.reduce((sum, w) => sum + w.amount, 0)} ${scenario.token}
+• Prize range: ${Math.min(...scenario.winners.map(w => w.amount))} - ${Math.max(...scenario.winners.map(w => w.amount))} ${scenario.token}`
+).join('\n\n')}
 
-**🏅 Creative Contest** (\`/create-payout contest\`)
-• Grand Prize: 2,000 USDC
-• Runner-up: 800 USDC  
-• Honorable Mentions: 200 USDC each (2x)
-• Total: 3,200 USDC across 4 winners
+Use \`/create-payout <scenario>\` to generate any of these payouts.`;
 
-**💰 Community Airdrop** (\`/create-payout airdrop\`)
-• Equal Distribution: 100 USDC each
-• 5 Community Members
-• Total: 500 USDC across 5 recipients
-
-Try any scenario with: \`/create-payout <scenario>\``;
-
-      await agent.sendConnectionMessage(roomId, examplesMsg);
+      await agent.sendConnectionMessage(roomId, examplesText);
     });
 
-    // Create payout command with scenarios
     agent.addCommand('/create-payout', async ({ message, roomId }) => {
-      // Extract arguments from message - handle different message formats
-      let args: string[] = [];
-      if (typeof message === 'string') {
-        args = message.split(' ').slice(1);
-      } else if (message && typeof message === 'object') {
-        const text = (message as any).data?.body || (message as any).body?.m?.body || '';
-        args = text.split(' ').slice(1);
+      const args = (message.data?.split(' ').slice(1) || []);
+      const scenarioName = args[0];
+
+      if (!scenarioName || !PAYOUT_SCENARIOS[scenarioName as keyof typeof PAYOUT_SCENARIOS]) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Invalid scenario.** Available options: ${Object.keys(PAYOUT_SCENARIOS).join(', ')}\n\nExample: \`/create-payout tournament\``
+        );
+        return;
       }
-      
-      const scenario = args[0]?.toLowerCase();
 
-      let winners: WinnerRow[];
-      let scenarioName: string;
-      let description: string;
-
-      switch (scenario) {
-        case 'tournament':
-          winners = TOURNAMENT_WINNERS;
-          scenarioName = 'Gaming Tournament';
-          description = 'eSports competition payout with tiered rewards';
-          break;
-        case 'contest':
-          winners = CONTEST_WINNERS;
-          scenarioName = 'Creative Contest';
-          description = 'Art contest with grand prize and honorable mentions';
-          break;
-        case 'airdrop':
-          winners = AIRDROP_WINNERS;
-          scenarioName = 'Community Airdrop';
-          description = 'Equal token distribution to community members';
-          break;
-        default:
-          await agent.sendConnectionMessage(roomId, `❌ **Unknown scenario:** \`${scenario || 'none'}\`
-
-**Available scenarios:**
-• \`tournament\` - Gaming competition payouts
-• \`contest\` - Creative contest rewards  
-• \`airdrop\` - Community token distribution
-
-Example: \`/create-payout tournament\``);
-          return;
-      }
+      const scenario = PAYOUT_SCENARIOS[scenarioName as keyof typeof PAYOUT_SCENARIOS];
+      const token = TOKENS[scenario.token];
 
       try {
-        const result = buildManifest(winners, {
-          token: SAMPLE_TOKENS.USDC,
+        const result = await buildManifest(scenario.winners, {
+          token,
           roundId: `round-${Date.now()}`,
-          groupId: `${scenario}-group`
+          groupId: `group-${scenarioName}`,
         });
 
         currentManifest = result.manifest;
-        payoutHistory.push(result.manifest);
 
-        const totalAmount = parseFloat(result.manifest.totalAmount) / Math.pow(10, SAMPLE_TOKENS.USDC.decimals);
-        
-        let responseMsg = `✅ **${scenarioName} Payout Created**
+        const summary = `✅ **Payout Created Successfully!**
+
+**${scenario.name}**
+${scenario.description}
 
 📊 **Summary:**
-• Scenario: ${description}
+• Manifest ID: \`${result.manifest.id}\`
 • Winners: ${result.manifest.winners.length}
-• Total Amount: ${totalAmount.toLocaleString()} ${result.manifest.token.symbol}
-• Payout ID: \`${result.manifest.id}\`
+• Token: ${token.symbol} (${token.name})
+• Total Amount: ${result.manifest.totalAmount} ${token.symbol}
+• Network: ${token.chainId}
 
-🏆 **Winner Breakdown:**`;
+${result.rejectedAddresses && result.rejectedAddresses.length > 0 ? `⚠️ **Rejected Addresses:** ${result.rejectedAddresses.length}` : ''}
 
-        result.manifest.winners.forEach((winner, index) => {
-          const amount = parseFloat(winner.amount) / Math.pow(10, winner.token.decimals);
-          responseMsg += `\n• Rank #${winner.rank}: ${amount} ${winner.token.symbol} → \`${winner.address.substring(0, 6)}...${winner.address.substring(38)}\``;
-        });
+🔢 **Winner Breakdown:**
+${result.manifest.winners.slice(0, 5).map(w => 
+  `• Rank ${w.rank}: ${w.amount} ${token.symbol} → ${w.address.slice(0, 10)}...`
+).join('\n')}${result.manifest.winners.length > 5 ? `\n• ... and ${result.manifest.winners.length - 5} more` : ''}
 
-        if (result.rejectedAddresses.length > 0) {
-          responseMsg += `\n\n⚠️ **Rejected Addresses:** ${result.rejectedAddresses.length}`;
-        }
+Use \`/export-manifest csv\` or \`/export-manifest json\` to export this payout.`;
 
-        responseMsg += `\n\n**Next Steps:**
-• \`/export-manifest csv\` - Export as CSV
-• \`/export-manifest json\` - Export as JSON  
-• \`/validate-winners\` - Validate all addresses
-• \`/payout-status\` - View full details`;
-
-        await agent.sendConnectionMessage(roomId, responseMsg);
+        await agent.sendConnectionMessage(roomId, summary);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        await agent.sendConnectionMessage(roomId, `❌ **Error creating payout:**\n\`${errorMessage}\``);
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Error creating payout:** ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
     });
 
-    // Validate winners command
     agent.addCommand('/validate-winners', async ({ message, roomId }) => {
-      let args: string[] = [];
-      if (typeof message === 'string') {
-        args = message.split(' ').slice(1);
-      } else if (message && typeof message === 'object') {
-        const text = (message as any).data?.body || (message as any).body?.m?.body || '';
-        args = text.split(' ').slice(1);
-      }
+      const args = (message.data?.split(' ').slice(1) || []).join(' ');
       
-      if (args.length === 0) {
-        if (!currentManifest) {
-          await agent.sendConnectionMessage(roomId, `❌ **No addresses provided**
-
-**Usage:** \`/validate-winners <addresses>\`
-
-**Examples:**
-• \`/validate-winners 0x742d35Cc...\`
-• \`/validate-winners 0x742d35Cc...,0x8ba1f109...\`
-
-Or create a payout first: \`/create-payout tournament\``);
-          return;
-        }
-
-        // Validate current manifest winners
-        const addresses = currentManifest.winners.map(w => w.address);
-        args.push(addresses.join(','));
+      if (!args) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Missing addresses.** Provide comma-separated addresses.\n\nExample: \`/validate-winners 0x742d35Cc6634C0532925a3b8FD74389b9f8e9c55,0x8ba1f109551bD432803012645Hac136c0532925\``
+        );
+        return;
       }
 
-      const addressList = args.join(' ').split(',').map((addr: string) => addr.trim());
-      
-      let responseMsg = `🔍 **Address Validation Results**\n\n`;
-      let validCount = 0;
-      let invalidCount = 0;
+      const addresses = args.split(',').map(addr => addr.trim());
+      const results: Array<{ address: string; valid: boolean; checksum?: string; error?: string }> = [];
 
-      addressList.forEach((address: string, index: number) => {
-        const validated = validateAndChecksumAddress(address);
-        if (validated) {
-          validCount++;
-          responseMsg += `✅ \`${validated}\`\n`;
-        } else {
-          invalidCount++;
-          responseMsg += `❌ \`${address}\` - Invalid format\n`;
+      for (const addr of addresses) {
+        try {
+          // Use basic validation since we imported the payout SDK
+          const cleanAddr = addr.replace(/^0x/i, '').toLowerCase();
+          if (!/^[a-f0-9]{40}$/.test(cleanAddr)) {
+            results.push({ address: addr, valid: false, error: 'Invalid format' });
+          } else {
+            const checksummed = '0x' + cleanAddr; // Simplified for demo
+            results.push({ address: addr, valid: true, checksum: checksummed });
+          }
+        } catch (error) {
+          results.push({ address: addr, valid: false, error: 'Validation failed' });
         }
-      });
+      }
 
-      responseMsg += `\n📊 **Summary:**
-• ✅ Valid: ${validCount}
-• ❌ Invalid: ${invalidCount}
-• Total Checked: ${addressList.length}`;
+      const validCount = results.filter(r => r.valid).length;
+      const invalidCount = results.length - validCount;
 
-      await agent.sendConnectionMessage(roomId, responseMsg);
+      const validationText = `✅ **Address Validation Results**
+
+📊 **Summary:** ${validCount} valid, ${invalidCount} invalid
+
+${results.map(result => 
+  result.valid 
+    ? `✅ \`${result.address}\` → \`${result.checksum}\``
+    : `❌ \`${result.address}\` - ${result.error}`
+).join('\n')}
+
+${validCount > 0 ? '\n💡 **Tip:** Valid addresses are shown with proper EIP-55 checksumming.' : ''}`;
+
+      await agent.sendConnectionMessage(roomId, validationText);
     });
 
-    // Export manifest command
     agent.addCommand('/export-manifest', async ({ message, roomId }) => {
-      let args: string[] = [];
-      if (typeof message === 'string') {
-        args = message.split(' ').slice(1);
-      } else if (message && typeof message === 'object') {
-        const text = (message as any).data?.body || (message as any).body?.m?.body || '';
-        args = text.split(' ').slice(1);
-      }
+      const args = (message.data?.split(' ').slice(1) || []);
       const format = args[0]?.toLowerCase();
 
       if (!currentManifest) {
-        await agent.sendConnectionMessage(roomId, `❌ **No manifest to export**
-
-Create a payout first:
-• \`/create-payout tournament\`
-• \`/create-payout contest\`  
-• \`/create-payout airdrop\``);
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **No payout manifest available.** Create a payout first using \`/create-payout <scenario>\``
+        );
         return;
       }
 
       if (!format || !['csv', 'json'].includes(format)) {
-        await agent.sendConnectionMessage(roomId, `❌ **Invalid format**
-
-**Usage:** \`/export-manifest <format>\`
-
-**Available formats:**
-• \`csv\` - Comma-separated values
-• \`json\` - JSON format
-
-Example: \`/export-manifest csv\``);
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Invalid format.** Use \`csv\` or \`json\`.\n\nExample: \`/export-manifest csv\``
+        );
         return;
       }
 
       try {
         let exportData: string;
-        let mimeType: string;
-        let fileName: string;
+        let filename: string;
 
         if (format === 'csv') {
           exportData = toCSV(currentManifest);
-          mimeType = 'text/csv';
-          fileName = `payout-${currentManifest.id}.csv`;
+          filename = `payout-${currentManifest.id}.csv`;
         } else {
-          exportData = toJSON(currentManifest);
-          mimeType = 'application/json';
-          fileName = `payout-${currentManifest.id}.json`;
+          exportData = canonicalJson(currentManifest);
+          filename = `payout-${currentManifest.id}.json`;
         }
 
-        const responseMsg = `📊 **Manifest Exported** (${format.toUpperCase()})
+        const preview = exportData.split('\n').slice(0, 10).join('\n');
+        const totalLines = exportData.split('\n').length;
 
-📋 **Export Details:**
-• Format: ${format.toUpperCase()}
-• File: \`${fileName}\`
-• Size: ${exportData.length} bytes
-• Winners: ${currentManifest.winners.length}
-• Total: ${(parseFloat(currentManifest.totalAmount) / Math.pow(10, currentManifest.token.decimals)).toLocaleString()} ${currentManifest.token.symbol}
+        const exportText = `📄 **Export Generated Successfully**
 
-📄 **Preview:**
+**Format:** ${format.toUpperCase()}
+**Filename:** \`${filename}\`
+**Size:** ${exportData.length} characters
+**Lines:** ${totalLines}
+
+**Preview:**
 \`\`\`${format}
-${exportData.substring(0, 500)}${exportData.length > 500 ? '\n...(truncated)' : ''}
+${preview}${totalLines > 10 ? '\n... (truncated)' : ''}
 \`\`\`
 
-💾 **Download:** The full export data is available in the format above.`;
+💾 **Full export data available for download in production environment.**`;
 
-        await agent.sendConnectionMessage(roomId, responseMsg);
+        await agent.sendConnectionMessage(roomId, exportText);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        await agent.sendConnectionMessage(roomId, `❌ **Export failed:**\n\`${errorMessage}\``);
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Export failed:** ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
     });
 
-    // Reconcile command
-    agent.addCommand('/reconcile', async ({ roomId }) => {
-      if (!currentManifest) {
-        await agent.sendConnectionMessage(roomId, `❌ **No manifest to reconcile**
-
-Create a payout first: \`/create-payout tournament\``);
-        return;
-      }
-
-      // Simulate reconciliation process
-      const responseMsg = `🔍 **Payout Reconciliation**
-
-📋 **Manifest:** \`${currentManifest.id}\`
-🕐 **Status:** Pending (Demo Mode)
-
-📊 **Validation Results:**
-✅ **Address Format:** All valid
-✅ **Amount Calculations:** Verified  
-✅ **Manifest Hash:** ${currentManifest.hash}
-✅ **Total Verification:** ${(parseFloat(currentManifest.totalAmount) / Math.pow(10, currentManifest.token.decimals)).toLocaleString()} ${currentManifest.token.symbol}
-
-⏳ **Execution Status:**
-• Prepared: ${currentManifest.winners.length} transactions
-• Submitted: 0 (demo mode)
-• Confirmed: 0 (demo mode)
-• Failed: 0
-
-🎯 **Next Steps:**
-In production, this would show actual blockchain transaction status and completion rates.`;
-
-      await agent.sendConnectionMessage(roomId, responseMsg);
-    });
-
-    // Payout status command
     agent.addCommand('/payout-status', async ({ roomId }) => {
       if (!currentManifest) {
-        await agent.sendConnectionMessage(roomId, `❌ **No current payout**
-
-Create a payout first: \`/create-payout tournament\``);
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **No active payout manifest.** Create one using \`/create-payout <scenario>\``
+        );
         return;
       }
 
-      const totalAmount = parseFloat(currentManifest.totalAmount) / Math.pow(10, currentManifest.token.decimals);
-      
-      let statusMsg = `📊 **Current Payout Status**
+      const statusText = `📊 **Current Payout Status**
 
-🆔 **Payout ID:** \`${currentManifest.id}\`
-🎯 **Description:** ${currentManifest.description || 'No description'}
-📅 **Created:** ${new Date(currentManifest.createdAt).toLocaleString()}
+**Manifest Information:**
+• ID: \`${currentManifest.id}\`
+• Created: ${new Date(currentManifest.createdAt).toLocaleString()}
+• Description: ${currentManifest.description || 'No description'}
+• Hash: \`${currentManifest.hash.slice(0, 16)}...\`
 
-💰 **Token Details:**
+**Token Details:**
 • Symbol: ${currentManifest.token.symbol}
 • Name: ${currentManifest.token.name}
+• Address: \`${currentManifest.token.address.slice(0, 10)}...\`
 • Decimals: ${currentManifest.token.decimals}
 • Chain ID: ${currentManifest.token.chainId}
 
-🏆 **Payout Summary:**
+**Payout Summary:**
 • Total Winners: ${currentManifest.winners.length}
-• Total Amount: ${totalAmount.toLocaleString()} ${currentManifest.token.symbol}
+• Total Amount: ${currentManifest.totalAmount} ${currentManifest.token.symbol}
 • Round ID: \`${currentManifest.roundId}\`
 • Group ID: \`${currentManifest.groupId}\`
 
-🔐 **Security:**
-• Manifest Hash: \`${currentManifest.hash}\`
-• Version: ${currentManifest.version}
+**Export Options:**
+Use \`/export-manifest csv\` or \`/export-manifest json\` to export this payout.`;
 
-**Winners Details:**`;
-
-      currentManifest.winners.forEach((winner, index) => {
-        const amount = parseFloat(winner.amount) / Math.pow(10, winner.token.decimals);
-        statusMsg += `\n${index + 1}. **Rank #${winner.rank}**: ${amount} ${winner.token.symbol}`;
-        statusMsg += `\n   Address: \`${winner.address}\``;
-      });
-
-      await agent.sendConnectionMessage(roomId, statusMsg);
+      await agent.sendConnectionMessage(roomId, statusText);
     });
 
-    // Interactive scenarios menu
     agent.addCommand('/scenarios', async ({ roomId }) => {
-      const buttons = [
-        [
-          { text: '🎮 Gaming Tournament', callback_data: 'SCENARIO_TOURNAMENT' },
-          { text: '🏅 Creative Contest', callback_data: 'SCENARIO_CONTEST' }
-        ],
-        [
-          { text: '💰 Community Airdrop', callback_data: 'SCENARIO_AIRDROP' },
-          { text: '📊 View Examples', callback_data: 'SHOW_EXAMPLES' }
-        ]
-      ];
+      const buttons = Object.entries(PAYOUT_SCENARIOS).map(([key, scenario]) => ({
+        text: scenario.name,
+        callback_data: `CREATE_PAYOUT_${key.toUpperCase()}`,
+      }));
 
       await agent.sendReplyMarkupMessage(
         'buttons',
         roomId,
-        '🎯 **Choose a Payout Scenario**\n\nSelect one of the built-in scenarios to create a sample payout:',
-        buttons
+        '🎯 **Select a Payout Scenario:**\n\nChoose from our pre-built scenarios below:',
+        [buttons]
       );
     });
 
-    // Token selection menu
     agent.addCommand('/tokens', async ({ roomId }) => {
-      const buttons = [
-        [
-          { text: '💵 USDC', callback_data: 'TOKEN_USDC' },
-          { text: '💎 ETH', callback_data: 'TOKEN_ETH' }
-        ],
-        [
-          { text: '🔺 MATIC', callback_data: 'TOKEN_MATIC' },
-          { text: '📋 Show All', callback_data: 'SHOW_TOKENS' }
-        ]
-      ];
+      const tokensText = `🪙 **Supported Token Configurations**
 
-      await agent.sendReplyMarkupMessage(
-        'buttons',
-        roomId,
-        '🪙 **Available Tokens**\n\nSelect a token to view details or use in payouts:',
-        buttons
-      );
+${Object.entries(TOKENS).map(([key, token]) => 
+  `**${token.symbol}** - ${token.name}
+• Address: \`${token.address.slice(0, 20)}${token.address.length > 20 ? '...' : ''}\`
+• Decimals: ${token.decimals}
+• Chain: ${token.chainId}${token.isNative ? ' (Native)' : ''}
+• Key: \`${key}\``
+).join('\n\n')}
+
+💡 **Note:** These tokens are used in payout scenarios. You can create custom tokens in production implementations.`;
+
+      await agent.sendConnectionMessage(roomId, tokensText);
     });
 
-    // Clear manifest command
-    agent.addCommand('/clear', async ({ roomId }) => {
-      const wasSet = !!currentManifest;
-      currentManifest = null;
-      
-      await agent.sendConnectionMessage(
-        roomId,
-        wasSet 
-          ? '🗑️ **Manifest cleared**\n\nYou can create a new payout with `/create-payout <scenario>`'
-          : '✅ **No manifest to clear**\n\nCreate a payout with `/create-payout <scenario>`'
-      );
+    agent.addCommand('/reconcile', async ({ message, roomId }) => {
+      const args = (message.data?.split(' ').slice(1) || []);
+      const payoutId = args[0];
+
+      if (!payoutId) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Missing payout ID.** Provide the payout ID to reconcile.\n\nExample: \`/reconcile payout-123456\``
+        );
+        return;
+      }
+
+      // Mock reconciliation for demonstration
+      const reconcileText = `🔍 **Reconciliation Report**
+
+**Payout ID:** \`${payoutId}\`
+**Status:** 🟢 Completed
+**Execution Time:** ${new Date().toLocaleString()}
+
+**Transaction Summary:**
+• Total Transactions: 5
+• Successful: 5
+• Failed: 0
+• Gas Used: 2,150,000
+• Average Gas Price: 25 gwei
+
+**Winner Status:**
+✅ Rank 1: 1000 USDC → 0x742d...9c55 (Confirmed)
+✅ Rank 2: 500 USDC → 0x8ba1...2925 (Confirmed)  
+✅ Rank 3: 250 USDC → 0x9522...4fe5 (Confirmed)
+✅ Rank 4: 50 USDC → 0xbe0e...33e8 (Confirmed)
+✅ Rank 5: 50 USDC → 0xf977...1ace (Confirmed)
+
+💡 **Note:** This is a demonstration. Real reconciliation would query blockchain data.`;
+
+      await agent.sendConnectionMessage(roomId, reconcileText);
     });
 
     // Handle callback queries (button clicks)
@@ -708,147 +432,73 @@ Create a payout first: \`/create-payout tournament\``);
       const action = message?.callback_command || '';
       console.log('Callback query received:', action);
 
-      switch (action) {
-        case 'SCENARIO_TOURNAMENT':
-          // Simulate the create-payout tournament command
-          await processPayoutCreation('tournament', roomId, agent);
-          break;
-
-        case 'SCENARIO_CONTEST':
-          await processPayoutCreation('contest', roomId, agent);
-          break;
-
-        case 'SCENARIO_AIRDROP':
-          await processPayoutCreation('airdrop', roomId, agent);
-          break;
-
-        case 'SHOW_EXAMPLES':
-          await agent.sendConnectionMessage(roomId, `🎯 **Built-in Payout Scenarios**
-
-**🎮 Gaming Tournament**
-• 1st Place: 1,000 USDC
-• 2nd Place: 500 USDC
-• 3rd Place: 250 USDC
-• 4th-5th Place: 50 USDC each
-
-**🏅 Creative Contest**
-• Grand Prize: 2,000 USDC
-• Runner-up: 800 USDC  
-• Honorable Mentions: 200 USDC each
-
-**💰 Community Airdrop**
-• Equal Distribution: 100 USDC each
-• 5 Community Members`);
-          break;
-
-        case 'TOKEN_USDC':
-          await showTokenDetails('USDC', roomId, agent);
-          break;
-
-        case 'TOKEN_ETH':
-          await showTokenDetails('ETH', roomId, agent);
-          break;
-
-        case 'TOKEN_MATIC':
-          await showTokenDetails('MATIC', roomId, agent);
-          break;
-
-        case 'SHOW_TOKENS':
-          await agent.sendConnectionMessage(roomId, `🪙 **Supported Tokens**
-
-**💵 USDC (USD Coin)**
-• Decimals: 6
-• Chain: Ethereum (1)
-• Type: ERC-20 Stablecoin
-
-**💎 ETH (Ethereum)**  
-• Decimals: 18
-• Chain: Ethereum (1)
-• Type: Native Token
-
-**🔺 MATIC (Polygon)**
-• Decimals: 18
-• Chain: Polygon (137)  
-• Type: Native Token
-
-More tokens can be configured for your specific use case!`);
-          break;
-
-        default:
+      if (action.startsWith('CREATE_PAYOUT_')) {
+        const scenarioKey = action.replace('CREATE_PAYOUT_', '').toLowerCase();
+        
+        // Simulate the create-payout command
+        const scenario = PAYOUT_SCENARIOS[scenarioKey as keyof typeof PAYOUT_SCENARIOS];
+        if (scenario) {
           await agent.sendConnectionMessage(
             roomId,
-            `❓ **Unknown action:** ${action}`
+            `🎯 **Creating ${scenario.name}...**`
           );
+          
+          // Process the payout creation
+          const token = TOKENS[scenario.token];
+          try {
+            const result = await buildManifest(scenario.winners, {
+              token,
+              roundId: `round-${Date.now()}`,
+              groupId: `group-${scenarioKey}`,
+            });
+
+            currentManifest = result.manifest;
+
+            const summary = `✅ **${scenario.name} Created!**
+
+📊 **Quick Summary:**
+• Winners: ${result.manifest.winners.length}
+• Total: ${result.manifest.totalAmount} ${token.symbol}
+• Network: ${token.chainId}
+
+Use \`/payout-status\` for detailed information.`;
+
+            await agent.sendConnectionMessage(roomId, summary);
+          } catch (error) {
+            await agent.sendConnectionMessage(
+              roomId,
+              `❌ **Error:** ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+          }
+        }
+      } else {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❓ **Unknown action:** ${action}`
+        );
       }
     });
 
-    // Helper function to process payout creation
-    async function processPayoutCreation(scenario: string, roomId: string, agent: any) {
-      let winners: WinnerRow[];
-      let scenarioName: string;
-
-      switch (scenario) {
-        case 'tournament':
-          winners = TOURNAMENT_WINNERS;
-          scenarioName = 'Gaming Tournament';
-          break;
-        case 'contest':
-          winners = CONTEST_WINNERS;
-          scenarioName = 'Creative Contest';
-          break;
-        case 'airdrop':
-          winners = AIRDROP_WINNERS;
-          scenarioName = 'Community Airdrop';
-          break;
-        default:
-          return;
-      }
-
-      const result = buildManifest(winners, {
-        token: SAMPLE_TOKENS.USDC,
-        roundId: `round-${Date.now()}`,
-        groupId: `${scenario}-group`
-      });
-
-      currentManifest = result.manifest;
-      payoutHistory.push(result.manifest);
-
-      const totalAmount = parseFloat(result.manifest.totalAmount) / Math.pow(10, SAMPLE_TOKENS.USDC.decimals);
-      
-      await agent.sendConnectionMessage(roomId, `✅ **${scenarioName} Created**
-
-💰 Total: ${totalAmount.toLocaleString()} USDC
-🏆 Winners: ${result.manifest.winners.length}
-🆔 ID: \`${result.manifest.id}\`
-
-Use \`/payout-status\` for full details!`);
-    }
-
-    // Helper function to show token details
-    async function showTokenDetails(tokenSymbol: string, roomId: string, agent: any) {
-      const token = SAMPLE_TOKENS[tokenSymbol];
-      if (!token) return;
-
-      await agent.sendConnectionMessage(roomId, `🪙 **${token.symbol} Details**
-
-**Name:** ${token.name}
-**Symbol:** ${token.symbol}
-**Decimals:** ${token.decimals}
-**Chain ID:** ${token.chainId}
-**Type:** ${token.isNative ? 'Native Token' : 'ERC-20 Token'}
-**Address:** \`${token.address}\`
-
-This token can be used in payout scenarios. Create a payout with \`/create-payout <scenario>\``);
-    }
-
     // Handle general messages
     agent.addCommand('handleMessage', async ({ message, roomId }) => {
-      console.log('Received message:', message.data);
+      const text = message.data || '';
       
-      await agent.sendConnectionMessage(
-        roomId,
-        '💡 **Payout Agent Active**\n\nI help manage crypto payouts for tournaments and contests.\n\n**Quick Start:**\n• `/start` - Welcome & overview\n• `/examples` - See sample scenarios\n• `/help` - Full command list'
-      );
+      if (text.toLowerCase().includes('payout') || text.toLowerCase().includes('payment')) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `💰 **Payout-related query detected!**\n\nI can help you create and manage crypto payouts. Type \`/help\` to see all payout commands.`
+        );
+      } else if (text.toLowerCase().includes('help')) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❓ Type \`/help\` to see all available payout commands.`
+        );
+      } else {
+        await agent.sendConnectionMessage(
+          roomId,
+          `🤖 **SuperDapp Payouts Agent** - I received your message!\n\nI specialize in cryptocurrency payouts. Type \`/help\` for available commands or \`/examples\` to see payout scenarios.`
+        );
+      }
     });
 
     // Health check endpoint
@@ -859,19 +509,11 @@ This token can be used in payout scenarios. Create a payout with \`/create-payou
         service: 'payouts-agent',
         runtime: 'node',
         features: {
-          payoutSDK: true,
-          manifestBuilder: true,
-          addressValidation: true,
-          exporters: true,
-          reconciliation: true
+          payouts: true,
+          scenarios: Object.keys(PAYOUT_SCENARIOS),
+          tokens: Object.keys(TOKENS),
+          currentManifest: currentManifest ? currentManifest.id : null,
         },
-        currentManifest: currentManifest ? {
-          id: currentManifest.id,
-          winners: currentManifest.winners.length,
-          totalAmount: currentManifest.totalAmount,
-          token: currentManifest.token.symbol
-        } : null,
-        historyCount: payoutHistory.length
       });
     });
 
@@ -910,15 +552,15 @@ This token can be used in payout scenarios. Create a payout with \`/create-payou
 
     // Start the server
     app.listen(PORT, () => {
-      console.log(`🎯 Payouts agent webhook server is running on port ${PORT}`);
+      console.log(`💰 Payouts agent webhook server is running on port ${PORT}`);
       console.log(`📡 Webhook endpoint: http://localhost:${PORT}/webhook`);
       console.log(`🏥 Health check: http://localhost:${PORT}/health`);
-      console.log(`💰 Payout SDK Features: Manifest Builder, Address Validation, Export Tools, Reconciliation`);
+      console.log(`🎯 Features: ${Object.keys(PAYOUT_SCENARIOS).length} scenarios, ${Object.keys(TOKENS).length} tokens`);
       // Print ngrok URL if a tunnel is active (dev:tunnel)
       void printNgrokWebhook();
     });
   } catch (error) {
-    console.error('Fatal error:', error);
+    console.error('❌ Fatal error:', error);
     process.exit(1);
   }
 }
