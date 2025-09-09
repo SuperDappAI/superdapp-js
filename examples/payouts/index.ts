@@ -8,8 +8,15 @@ import {
   canonicalJson,
   TokenInfo,
   WinnerRow,
-  PayoutManifest
+  PayoutManifest,
+  preparePushTxs,
+  executeTxPlanWithRpc,
+  getSuprTokenConfig,
+  getRolluxNativeTokenConfig,
+  RolluxChains,
+  setCustomRpcUrl,
 } from '../../dist/payouts';
+import { SuperDappWalletBridge } from '../../dist/wallet';
 import axios from 'axios';
 
 const app = express();
@@ -20,8 +27,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.text({ type: 'application/json' }));
 
-// Sample token configurations
+// Sample token configurations with Rollux support
 const TOKENS: Record<string, TokenInfo> = {
+  SUPR: getSuprTokenConfig(570), // Rollux mainnet SUPR token
+  SYS: getRolluxNativeTokenConfig(570), // Rollux mainnet native SYS
+  tSUPR: getSuprTokenConfig(57000), // Rollux testnet SUPR token 
+  tSYS: getRolluxNativeTokenConfig(57000), // Rollux testnet native SYS
   USDC: {
     address: '0xA0b86a33E6441e6C2c6ff2AaF9c1CbA3b8E8F55f',
     symbol: 'USDC',
@@ -59,7 +70,7 @@ const PAYOUT_SCENARIOS = {
       { address: '0xbe0eb53f46cd790cd13851d5eff43d12404d33e8', amount: 50, rank: 4, id: 'winner-4' },
       { address: '0xf977814e90da44bfa03b6295a0616a897441ace', amount: 50, rank: 5, id: 'winner-5' },
     ],
-    token: 'USDC',
+    token: 'SUPR', // Use real SUPR token
   },
   contest: {
     name: '🎨 Creative Contest',
@@ -71,7 +82,7 @@ const PAYOUT_SCENARIOS = {
       { address: '0xbe0eb53f46cd790cd13851d5eff43d12404d33e8', amount: 200, rank: 4, id: 'honorable-2' },
       { address: '0xf977814e90da44bfa03b6295a0616a897441ace', amount: 200, rank: 5, id: 'honorable-3' },
     ],
-    token: 'USDC',
+    token: 'SYS', // Use real SYS native token
   },
   airdrop: {
     name: '💰 Community Airdrop',
@@ -83,15 +94,42 @@ const PAYOUT_SCENARIOS = {
       { address: '0xbe0eb53f46cd790cd13851d5eff43d12404d33e8', amount: 100, rank: 4, id: 'community-4' },
       { address: '0xf977814e90da44bfa03b6295a0616a897441ace', amount: 100, rank: 5, id: 'community-5' },
     ],
-    token: 'USDC',
+    token: 'SUPR', // Use real SUPR token
   },
 };
 
 // Store for current payout manifest
 let currentManifest: PayoutManifest | null = null;
 
+// Wallet bridge for SuperDapp wallet integration
+let walletBridge: SuperDappWalletBridge | null = null;
+
 async function main() {
   try {
+    // Initialize RPC endpoints
+    setCustomRpcUrl(RolluxChains.MAINNET, process.env.ROLLUX_MAINNET_RPC || 'https://api.superdapp.ai/rpc/rollux/mainnet');
+    setCustomRpcUrl(RolluxChains.TESTNET, process.env.ROLLUX_TESTNET_RPC || 'https://api.superdapp.ai/rpc/rollux/testnet');
+
+    // Initialize wallet bridge
+    if (process.env.API_TOKEN) {
+      walletBridge = new SuperDappWalletBridge({
+        apiToken: process.env.API_TOKEN,
+        apiBaseUrl: process.env.API_BASE_URL || 'https://api.superdapp.ai',
+      });
+      
+      // Setup wallet bridge event listeners
+      walletBridge.on('requestSubmitted', (request) => {
+        console.log(`🔐 Wallet request submitted: ${request.requestId}`);
+      });
+      
+      walletBridge.on('responseReceived', (response) => {
+        console.log(`🔐 Wallet response received: ${response.requestId} - ${response.approved ? 'APPROVED' : 'REJECTED'}`);
+      });
+      
+      walletBridge.on('error', (error) => {
+        console.error(`🔐 Wallet bridge error:`, error);
+      });
+    }
     // Initialize the agent
     const agent = new SuperDappAgent({
       apiToken: process.env.API_TOKEN as string,
@@ -143,7 +181,16 @@ Type \`/help\` to see all available commands.`;
 🔍 **Advanced:**
 \`/reconcile <payout-id>\` - Check payout execution status
 \`/scenarios\` - Browse scenarios with interactive buttons
-\`/tokens\` - View supported token configurations`;
+\`/tokens\` - View supported token configurations
+
+🚀 **Real Blockchain Transactions:**
+\`/local-payout <scenario> <network>\` - Execute payout with private key signing
+\`/web-payout <scenario> <network>\` - Execute payout via SuperDapp wallet
+\`/demo-both <scenario> <network>\` - Show both signing methods
+\`/network-status <network>\` - Check network connection status
+
+**Networks:** \`mainnet\` (Rollux 570) or \`testnet\` (Rollux 57000)
+**Example:** \`/local-payout tournament mainnet\``;
 
       await agent.sendConnectionMessage(roomId, helpText);
     });
@@ -425,6 +472,274 @@ ${Object.entries(TOKENS).map(([key, token]) =>
 💡 **Note:** This is a demonstration. Real reconciliation would query blockchain data.`;
 
       await agent.sendConnectionMessage(roomId, reconcileText);
+    });
+
+    // Real blockchain transaction commands
+    agent.addCommand('/local-payout', async ({ message, roomId }) => {
+      const args = (message.data?.split(' ').slice(1) || []);
+      const scenarioName = args[0];
+      const network = args[1] || 'testnet'; // Default to testnet for safety
+
+      if (!scenarioName || !PAYOUT_SCENARIOS[scenarioName as keyof typeof PAYOUT_SCENARIOS]) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Invalid scenario.** Available: ${Object.keys(PAYOUT_SCENARIOS).join(', ')}\n\n**Usage:** \`/local-payout <scenario> <network>\`\n**Example:** \`/local-payout tournament testnet\``
+        );
+        return;
+      }
+
+      if (!['mainnet', 'testnet'].includes(network)) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Invalid network.** Use \`mainnet\` or \`testnet\`.\n\n**Example:** \`/local-payout tournament testnet\``
+        );
+        return;
+      }
+
+      // Check for private key configuration
+      if (!process.env.PRIVATE_KEY && !process.env.MNEMONIC) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **No signing key configured.** Set \`PRIVATE_KEY\` or \`MNEMONIC\` in your .env file.\n\n⚠️ **Security Warning:** Never commit private keys to version control!`
+        );
+        return;
+      }
+
+      const chainId = network === 'mainnet' ? RolluxChains.MAINNET : RolluxChains.TESTNET;
+      const scenario = PAYOUT_SCENARIOS[scenarioName as keyof typeof PAYOUT_SCENARIOS];
+
+      try {
+        await agent.sendConnectionMessage(roomId, `🔄 **Starting Local Payout Execution**\n\nScenario: ${scenario.name}\nNetwork: ${network} (${chainId})\nSigning: Private Key\n\nPreparing transactions...`);
+
+        // Get token configuration for the network
+        const tokenSymbol = scenario.token;
+        let token: TokenInfo;
+        
+        if (tokenSymbol === 'SUPR') {
+          token = network === 'mainnet' ? TOKENS.SUPR : TOKENS.tSUPR;
+        } else if (tokenSymbol === 'SYS') {
+          token = network === 'mainnet' ? TOKENS.SYS : TOKENS.tSYS;
+        } else {
+          token = TOKENS[tokenSymbol];
+          // Update chain ID to match network
+          token = { ...token, chainId };
+        }
+
+        // Build manifest
+        const manifestResult = await buildManifest(scenario.winners, {
+          token,
+          roundId: `round-${Date.now()}`,
+          groupId: `group-${scenarioName}-${network}`,
+        });
+
+        await agent.sendConnectionMessage(roomId, `✅ **Manifest Created**\n\nWinners: ${manifestResult.manifest.winners.length}\nTotal Amount: ${manifestResult.manifest.totalAmount} ${token.symbol}\n\nPreparing transactions...`);
+
+        // Prepare transactions
+        const prepared = await preparePushTxs(manifestResult.manifest, {
+          token,
+          airdrop: chainId === 570 
+            ? process.env.AIRDROP_MAINNET_ADDRESS || '0x2aACce8B9522F81F14834883198645BB6894Bfc0'
+            : process.env.AIRDROP_TESTNET_ADDRESS || '0x0000000000000000000000000000000000000000'
+        });
+
+        await agent.sendConnectionMessage(roomId, `📋 **Transactions Prepared**\n\nTransaction Count: ${prepared.transactions.length}\nEstimated Gas: ${prepared.estimatedGasCost}\n\nExecuting transactions...`);
+
+        // Execute with progress reporting
+        const executionResults: string[] = [];
+        const rpcUrl = network === 'mainnet' 
+          ? process.env.ROLLUX_MAINNET_RPC || 'https://api.superdapp.ai/rpc/rollux/mainnet'
+          : process.env.ROLLUX_TESTNET_RPC || 'https://api.superdapp.ai/rpc/rollux/testnet';
+
+        const hashes = await executeTxPlanWithRpc(prepared, {
+          rpcUrl,
+          chainId,
+          privateKey: process.env.PRIVATE_KEY,
+          mnemonic: process.env.MNEMONIC,
+          onProgress: (i, tx, hash) => {
+            if (hash) {
+              executionResults.push(`✅ TX ${i + 1}: ${hash.slice(0, 10)}...`);
+            }
+          },
+          stopOnFail: false,
+        });
+
+        const successText = `🎉 **Local Payout Complete!**\n\n**Results:**\n• Successful Transactions: ${hashes.length}/${prepared.transactions.length}\n• Network: ${network} (${chainId})\n• Token: ${token.symbol}\n\n**Transaction Hashes:**\n${hashes.slice(0, 5).map(h => `• ${h.slice(0, 20)}...`).join('\n')}${hashes.length > 5 ? `\n• ... and ${hashes.length - 5} more` : ''}\n\n🔍 **View on Explorer:** https://explorer.rollux.com/tx/${hashes[0] || 'N/A'}`;
+
+        await agent.sendConnectionMessage(roomId, successText);
+        
+      } catch (error) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Local Payout Failed**\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}\n\n💡 **Common Issues:**\n• Insufficient balance for gas\n• Invalid RPC endpoint\n• Network connectivity\n• Invalid private key format`
+        );
+      }
+    });
+
+    agent.addCommand('/web-payout', async ({ message, roomId }) => {
+      const args = (message.data?.split(' ').slice(1) || []);
+      const scenarioName = args[0];
+      const network = args[1] || 'testnet';
+
+      if (!walletBridge) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Wallet bridge not initialized.** Ensure API_TOKEN is configured in .env file.`
+        );
+        return;
+      }
+
+      if (!scenarioName || !PAYOUT_SCENARIOS[scenarioName as keyof typeof PAYOUT_SCENARIOS]) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Invalid scenario.** Available: ${Object.keys(PAYOUT_SCENARIOS).join(', ')}\n\n**Usage:** \`/web-payout <scenario> <network>\`\n**Example:** \`/web-payout tournament testnet\``
+        );
+        return;
+      }
+
+      if (!['mainnet', 'testnet'].includes(network)) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Invalid network.** Use \`mainnet\` or \`testnet\`.\n\n**Example:** \`/web-payout tournament testnet\``
+        );
+        return;
+      }
+
+      const chainId = network === 'mainnet' ? RolluxChains.MAINNET : RolluxChains.TESTNET;
+      const scenario = PAYOUT_SCENARIOS[scenarioName as keyof typeof PAYOUT_SCENARIOS];
+
+      try {
+        await agent.sendConnectionMessage(roomId, `🔐 **Starting SuperDapp Wallet Payout**\n\nScenario: ${scenario.name}\nNetwork: ${network} (${chainId})\nSigning: SuperDapp Wallet\n\nPreparing transactions...`);
+
+        // Get token configuration
+        const tokenSymbol = scenario.token;
+        let token: TokenInfo;
+        
+        if (tokenSymbol === 'SUPR') {
+          token = network === 'mainnet' ? TOKENS.SUPR : TOKENS.tSUPR;
+        } else if (tokenSymbol === 'SYS') {
+          token = network === 'mainnet' ? TOKENS.SYS : TOKENS.tSYS;
+        } else {
+          token = TOKENS[tokenSymbol];
+          token = { ...token, chainId };
+        }
+
+        // Build manifest
+        const manifestResult = await buildManifest(scenario.winners, {
+          token,
+          roundId: `round-${Date.now()}`,
+          groupId: `group-${scenarioName}-${network}`,
+        });
+
+        // Prepare transactions
+        const prepared = await preparePushTxs(manifestResult.manifest, {
+          token,
+          airdrop: chainId === 570 
+            ? process.env.AIRDROP_MAINNET_ADDRESS || '0x2aACce8B9522F81F14834883198645BB6894Bfc0'
+            : process.env.AIRDROP_TESTNET_ADDRESS || '0x0000000000000000000000000000000000000000'
+        });
+
+        await agent.sendConnectionMessage(roomId, `📱 **Requesting Wallet Approval**\n\nTransactions prepared. Sending to SuperDapp wallet for user approval...\n\nPlease check your SuperDapp wallet for the transaction request.`);
+
+        // Push to wallet bridge
+        const walletResponse = await walletBridge.pushTransactionRequest({
+          transactions: prepared.transactions,
+          metadata: {
+            title: `${scenario.name} Payout`,
+            description: `Distribute ${token.symbol} tokens to ${manifestResult.manifest.winners.length} winners on ${network}`,
+            estimatedGasCost: prepared.estimatedGasCost,
+            recipientCount: manifestResult.manifest.winners.length,
+          },
+          chainId,
+        });
+
+        if (walletResponse.approved && walletResponse.transactionHashes) {
+          const successText = `🎉 **SuperDapp Wallet Payout Complete!**\n\n**Results:**\n• User Approved: ✅\n• Transactions: ${walletResponse.transactionHashes.length}\n• Network: ${network} (${chainId})\n• Token: ${token.symbol}\n\n**Transaction Hashes:**\n${walletResponse.transactionHashes.slice(0, 5).map(h => `• ${h.slice(0, 20)}...`).join('\n')}${walletResponse.transactionHashes.length > 5 ? `\n• ... and ${walletResponse.transactionHashes.length - 5} more` : ''}\n\n🔍 **View on Explorer:** https://explorer.rollux.com/tx/${walletResponse.transactionHashes[0]}`;
+
+          await agent.sendConnectionMessage(roomId, successText);
+        } else {
+          await agent.sendConnectionMessage(
+            roomId,
+            `❌ **SuperDapp Wallet Payout Cancelled**\n\nReason: ${walletResponse.error || 'User rejected the transaction'}\n\n💡 The payout can be retried if needed.`
+          );
+        }
+
+      } catch (error) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **SuperDapp Wallet Payout Failed**\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}\n\n💡 **Common Issues:**\n• Wallet service unavailable\n• Network connectivity\n• Invalid transaction format`
+        );
+      }
+    });
+
+    agent.addCommand('/demo-both', async ({ message, roomId }) => {
+      const args = (message.data?.split(' ').slice(1) || []);
+      const scenarioName = args[0];
+      const network = args[1] || 'testnet';
+
+      if (!scenarioName || !PAYOUT_SCENARIOS[scenarioName as keyof typeof PAYOUT_SCENARIOS]) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Invalid scenario.** Available: ${Object.keys(PAYOUT_SCENARIOS).join(', ')}\n\n**Usage:** \`/demo-both <scenario> <network>\`\n**Example:** \`/demo-both tournament testnet\``
+        );
+        return;
+      }
+
+      const scenario = PAYOUT_SCENARIOS[scenarioName as keyof typeof PAYOUT_SCENARIOS];
+      const chainId = network === 'mainnet' ? RolluxChains.MAINNET : RolluxChains.TESTNET;
+
+      const demoText = `🚀 **Dual Signing Method Demo**\n\n**Scenario:** ${scenario.name}\n**Network:** ${network} (Chain ${chainId})\n**Token:** ${scenario.token}\n\n**Method 1: Local Private Key Signing** 🔑\n• Agent signs transactions directly\n• Requires private key/mnemonic in environment\n• Immediate execution, no user interaction\n• Command: \`/local-payout ${scenarioName} ${network}\`\n\n**Method 2: SuperDapp Wallet Signing** 🔐\n• Transactions sent to SuperDapp wallet\n• User approves via web interface\n• Secure - private keys stay with user\n• Command: \`/web-payout ${scenarioName} ${network}\`\n\n**Security Comparison:**\n• Local: Fast, requires key management\n• Wallet: Secure, requires user interaction\n\n**Choose your preferred method and execute!**`;
+
+      await agent.sendConnectionMessage(roomId, demoText);
+    });
+
+    agent.addCommand('/network-status', async ({ message, roomId }) => {
+      const args = (message.data?.split(' ').slice(1) || []);
+      const network = args[0] || 'both';
+
+      if (!['mainnet', 'testnet', 'both'].includes(network)) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Invalid network.** Use \`mainnet\`, \`testnet\`, or \`both\`.\n\n**Example:** \`/network-status mainnet\``
+        );
+        return;
+      }
+
+      try {
+        const networks = network === 'both' ? ['mainnet', 'testnet'] : [network];
+        const statusResults: string[] = [];
+
+        for (const net of networks) {
+          const chainId = net === 'mainnet' ? RolluxChains.MAINNET : RolluxChains.TESTNET;
+          const rpcUrl = net === 'mainnet' 
+            ? process.env.ROLLUX_MAINNET_RPC || 'https://api.superdapp.ai/rpc/rollux/mainnet'
+            : process.env.ROLLUX_TESTNET_RPC || 'https://api.superdapp.ai/rpc/rollux/testnet';
+
+          const { validateRpcConnection } = await import('../../dist/payouts/web3-client');
+          const result = await validateRpcConnection(rpcUrl, chainId);
+
+          const status = result.isValid ? '🟢 Connected' : '🔴 Failed';
+          const details = result.error ? `Error: ${result.error}` : `Chain ID: ${result.actualChainId}`;
+          
+          statusResults.push(`**${net.charAt(0).toUpperCase() + net.slice(1)} (${chainId})**\n• Status: ${status}\n• RPC: ${rpcUrl}\n• ${details}`);
+        }
+
+        // Check wallet bridge if available
+        let walletStatus = 'Not initialized';
+        if (walletBridge) {
+          const bridgeTest = await walletBridge.testConnection();
+          walletStatus = bridgeTest.connected ? '🟢 Connected' : `🔴 Failed (${bridgeTest.error})`;
+        }
+
+        const statusText = `🌐 **Network Status Report**\n\n${statusResults.join('\n\n')}\n\n**SuperDapp Wallet Bridge**\n• Status: ${walletStatus}\n\n**Environment:**\n• Private Key: ${process.env.PRIVATE_KEY ? '🟢 Configured' : '🔴 Not Set'}\n• Mnemonic: ${process.env.MNEMONIC ? '🟢 Configured' : '🔴 Not Set'}\n• API Token: ${process.env.API_TOKEN ? '🟢 Configured' : '🔴 Not Set'}`;
+
+        await agent.sendConnectionMessage(roomId, statusText);
+        
+      } catch (error) {
+        await agent.sendConnectionMessage(
+          roomId,
+          `❌ **Network status check failed:** ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
     });
 
     // Handle callback queries (button clicks)

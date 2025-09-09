@@ -7,6 +7,11 @@
 import type { WalletClient, PublicClient } from 'viem';
 import { PreparedPayout, PreparedTx } from './types';
 import { handleError, logError } from '../utils/errors';
+import { 
+  createPublicClient, 
+  createWalletClientFromPrivateKey, 
+  createWalletClientFromMnemonic 
+} from './web3-client';
 
 /**
  * Options for executing a payout plan
@@ -22,6 +27,26 @@ export interface ExecuteOptions {
   onReceipt?: (i: number, hash: `0x${string}`) => void;
   /** Whether to stop execution on first failure (default: false) */
   stopOnFail?: boolean;
+}
+
+/**
+ * Enhanced options for executing with RPC configuration
+ */
+export interface ExecuteOptionsWithRpc extends Omit<ExecuteOptions, 'wallet' | 'publicClient'> {
+  /** RPC endpoint URL (required if wallet/publicClient not provided) */
+  rpcUrl?: string;
+  /** Chain ID (required if using RPC configuration) */
+  chainId?: number;
+  /** Private key for signing (alternative to wallet) */
+  privateKey?: string;
+  /** Mnemonic phrase for signing (alternative to privateKey) */
+  mnemonic?: string;
+  /** Account index when using mnemonic (default: 0) */
+  accountIndex?: number;
+  /** Pre-configured wallet client (takes precedence over privateKey/mnemonic) */
+  wallet?: WalletClient;
+  /** Pre-configured public client (takes precedence over rpcUrl) */
+  publicClient?: PublicClient;
 }
 
 /**
@@ -119,4 +144,62 @@ export async function executeTxPlan(
   }
 
   return successfulHashes;
+}
+
+/**
+ * Execute a prepared payout plan with RPC configuration
+ * 
+ * This is a convenience function that creates viem clients from RPC configuration
+ * and then executes the payout using the standard executeTxPlan function.
+ * 
+ * @param plan - The prepared payout containing transactions to execute
+ * @param opts - Enhanced execution options with RPC and signing configuration
+ * @returns Array of transaction hashes for successful transactions
+ */
+export async function executeTxPlanWithRpc(
+  plan: PreparedPayout,
+  opts: ExecuteOptionsWithRpc
+): Promise<`0x${string}`[]> {
+  const { 
+    rpcUrl, 
+    chainId, 
+    privateKey, 
+    mnemonic, 
+    accountIndex = 0,
+    wallet: providedWallet,
+    publicClient: providedPublicClient,
+    ...executeOptions 
+  } = opts;
+
+  // Use provided clients or create from RPC configuration
+  let wallet: WalletClient;
+  let publicClient: PublicClient;
+
+  if (providedWallet && providedPublicClient) {
+    // Use provided clients
+    wallet = providedWallet;
+    publicClient = providedPublicClient;
+  } else if (rpcUrl && chainId) {
+    // Create clients from RPC configuration
+    publicClient = createPublicClient(rpcUrl, chainId);
+    
+    if (providedWallet) {
+      wallet = providedWallet;
+    } else if (privateKey) {
+      wallet = createWalletClientFromPrivateKey(rpcUrl, chainId, privateKey);
+    } else if (mnemonic) {
+      wallet = createWalletClientFromMnemonic(rpcUrl, chainId, mnemonic, accountIndex);
+    } else {
+      throw new Error('Either wallet, privateKey, or mnemonic must be provided for signing');
+    }
+  } else {
+    throw new Error('Either provide wallet+publicClient or rpcUrl+chainId for execution');
+  }
+
+  // Execute using the standard function
+  return executeTxPlan(plan, {
+    wallet,
+    publicClient,
+    ...executeOptions
+  });
 }
