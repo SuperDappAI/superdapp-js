@@ -27,6 +27,9 @@ export * from './webhook/registry';
 // Payouts exports
 export * from './payouts';
 
+// Wallet exports
+export * from './wallet';
+
 // AI types only (no implementation to avoid loading AI dependencies)
 export type { AiConfig, AiProvider, GenerateTextOptions, StreamTextOptions, AgentRunOptions } from './ai/types';
 

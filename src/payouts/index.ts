@@ -13,6 +13,7 @@ export * from './reconcile';
 export * from './tx-preparer';
 export * from './chain-config';
 export * from './exporters';
+export * from './web3-client';
 
 // Re-export specific TYPES for convenience (types only to avoid duplicate value exports)
 export type {
@@ -30,7 +31,7 @@ export type {
   BuildManifestResult,
 } from './builder';
 
-export type { ExecuteOptions } from './execute';
+export type { ExecuteOptions, ExecuteOptionsWithRpc } from './execute';
 
 export type { ReconcileResult } from './reconcile';
 

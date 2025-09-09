@@ -1,6 +1,6 @@
-# SuperDapp Payouts Agent Example
+# SuperDapp Payouts Example - Real Blockchain Transactions
 
-A comprehensive SuperDapp agent example demonstrating cryptocurrency payout functionality for tournaments, contests, and reward distributions using the official SuperDapp SDK.
+A comprehensive SuperDapp agent that demonstrates **real blockchain transaction execution** for cryptocurrency payouts on the Rollux network, supporting both local private key signing and SuperDapp wallet integration.
 
 ## Features
 
