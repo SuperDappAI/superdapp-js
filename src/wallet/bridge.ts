@@ -171,7 +171,7 @@ export class SuperDappWalletBridge extends EventEmitter {
   // Private methods
 
   private generateRequestId(): string {
-    return `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `req-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
   }
 
   private async submitTransactionRequest(request: WalletTransactionRequest): Promise<{
