@@ -163,7 +163,7 @@ export function loadAIConfig(config?: Partial<AIConfig>): AIConfig {
 /**
  * Create a model instance based on the provider
  */
-async function createModel(config: AIConfig) {
+async function createModel(config: AIConfig): Promise<unknown> {
   const { provider, model, apiKey, baseUrl } = config;
 
   switch (provider) {
@@ -242,7 +242,7 @@ async function createModel(config: AIConfig) {
  * });
  * ```
  */
-export async function loadModel(config?: Partial<AIConfig>) {
+export async function loadModel(config?: Partial<AIConfig>): Promise<unknown> {
   try {
     const aiConfig = loadAIConfig(config);
     const model = await createModel(aiConfig);

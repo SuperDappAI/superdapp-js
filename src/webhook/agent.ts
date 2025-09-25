@@ -63,8 +63,8 @@ export class WebhookAgent {
     }
 
     // Extract message text from the webhook body
-  const messagePayload = message?.body?.m as unknown;
-  const messageText = extractMessageText(messagePayload);
+    const messagePayload = message?.body?.m as unknown;
+    const messageText = extractMessageText(messagePayload);
 
     // Check if this is a command
     const commandHandler = this.registry.getHandlerForMessage(messageText);
