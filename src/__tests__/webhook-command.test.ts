@@ -30,6 +30,37 @@ describe('WebhookAgent command dispatch', () => {
     expect(called).toBe(true);
   });
 
+  it('should dispatch command with arguments', async () => {
+    agent = new WebhookAgent();
+    let called = false;
+
+    agent.addCommand('/test', async (event) => {
+      called = true;
+      if (typeof event.body.m === 'string') {
+        expect(event.body.m).toBe('/test foo bar');
+      } else {
+        expect(event.body.m?.body).toBe('/test foo bar');
+      }
+    });
+
+    const testBody = {
+      id: 'test-message-id-args',
+      senderId: 'test-sender-id-args',
+      body: {
+        t: 'chat' as const,
+        m: {
+          text: '/test foo bar',
+          body: '/test foo bar',
+        },
+      },
+      timestamp: new Date().toISOString(),
+      isBot: false,
+    };
+
+    await agent.processRequest(testBody);
+    expect(called).toBe(true);
+  });
+
   it('should handle callback queries', async () => {
     agent = new WebhookAgent();
     let callbackHandled = false;

@@ -39,10 +39,11 @@ export class WebhookAgent {
     }
 
     // Extract message text from the webhook body
-    const messageText = message?.body?.m?.text || message?.body?.m?.body || '';
+    const rawText = message?.body?.m?.text ?? message?.body?.m?.body ?? '';
+    const messageText = typeof rawText === 'string' ? rawText : '';
 
     // Check if this is a command
-    const commandHandler = this.registry.getHandler(messageText);
+    const commandHandler = this.registry.getHandlerForMessage(messageText);
     if (commandHandler) {
       await commandHandler(message);
       return;

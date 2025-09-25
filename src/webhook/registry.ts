@@ -16,6 +16,30 @@ export class CommandRegistry {
     return this.commandHandlers[command];
   }
 
+  getHandlerForMessage(messageText: string | undefined): RequestHandler | undefined {
+    if (!messageText) return undefined;
+
+    // Exact match first (no trimming)
+    const exact = this.commandHandlers[messageText];
+    if (exact) return exact;
+
+    const trimmed = messageText.trimStart();
+    if (!trimmed) return undefined;
+
+    const trimmedExact = this.commandHandlers[trimmed];
+    if (trimmedExact) return trimmedExact;
+
+    for (const [command, handler] of Object.entries(this.commandHandlers)) {
+      if (!trimmed.startsWith(command)) continue;
+      const nextChar = trimmed.charAt(command.length);
+      if (!nextChar || /\s/.test(nextChar)) {
+        return handler;
+      }
+    }
+
+    return undefined;
+  }
+
   getMessageHandler(): RequestHandler | undefined {
     return this.messageHandler;
   }
