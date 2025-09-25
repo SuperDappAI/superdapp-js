@@ -1,4 +1,5 @@
 import { WebhookAgent } from '../webhook/agent';
+import { Message } from '../types';
 
 describe('WebhookAgent command dispatch', () => {
   let agent: WebhookAgent;
@@ -56,6 +57,33 @@ describe('WebhookAgent command dispatch', () => {
       timestamp: new Date().toISOString(),
       isBot: false,
     };
+
+    await agent.processRequest(testBody);
+    expect(called).toBe(true);
+  });
+
+  it('should dispatch command when message body is nested object', async () => {
+    agent = new WebhookAgent();
+    let called = false;
+
+    agent.addCommand('/test', async () => {
+      called = true;
+    });
+
+    const testBody = {
+      id: 'test-message-id-nested',
+      senderId: 'test-sender-id-nested',
+      body: {
+        t: 'chat' as const,
+        m: {
+          body: {
+            body: '/test with extra',
+          },
+        },
+      },
+      timestamp: new Date().toISOString(),
+      isBot: false,
+    } as unknown as Message;
 
     await agent.processRequest(testBody);
     expect(called).toBe(true);
