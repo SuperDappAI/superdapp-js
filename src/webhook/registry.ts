@@ -16,7 +16,9 @@ export class CommandRegistry {
     return this.commandHandlers[command];
   }
 
-  getHandlerForMessage(messageText: string | undefined): RequestHandler | undefined {
+  getHandlerForMessage(
+    messageText: string | undefined
+  ): RequestHandler | undefined {
     if (!messageText) return undefined;
 
     // Exact match first (no trimming)
