@@ -1,6 +1,6 @@
 {
   "name": "@superdapp/agents",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "SuperDapp AI Agents SDK and CLI for Node.js/TypeScript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -51,35 +51,13 @@
     "node-schedule": "^2.1.1",
     "ora": "^8.0.1",
     "viem": "^2.37.1",
-    "zod": "^3.25.76"
-  },
-  "peerDependencies": {
+    "zod": "^3.25.76",
+    "ai": "^5.0.33",
+    "@ai-sdk/openai": "^2.0.24",
     "@ai-sdk/anthropic": "^2.0.12",
     "@ai-sdk/google": "^2.0.12",
-    "@ai-sdk/openai": "^2.0.24",
     "@openai/agents": "^0.1.0",
-    "@openai/agents-extensions": "^0.1.0",
-    "ai": "^5.0.33"
-  },
-  "peerDependenciesMeta": {
-    "@ai-sdk/anthropic": {
-      "optional": true
-    },
-    "@ai-sdk/google": {
-      "optional": true
-    },
-    "@ai-sdk/openai": {
-      "optional": true
-    },
-    "@openai/agents": {
-      "optional": true
-    },
-    "@openai/agents-extensions": {
-      "optional": true
-    },
-    "ai": {
-      "optional": true
-    }
+    "@openai/agents-extensions": "^0.1.0"
   },
   "devDependencies": {
     "@ai-sdk/anthropic": "^2.0.11",
@@ -111,5 +89,6 @@
   "bugs": {
     "url": "https://github.com/SuperDappAI/superdapp-js/issues"
   },
-  "homepage": "https://github.com/SuperDappAI/superdapp-js#readme"
+  "homepage": "https://github.com/SuperDappAI/superdapp-js#readme",
+  "packageManager": "pnpm@10.17.1+sha512.17c560fca4867ae9473a3899ad84a88334914f379be46d455cbf92e5cf4b39d34985d452d2583baf19967fa76cb5c17bc9e245529d0b98745721aa7200ecaf7a"
 }
