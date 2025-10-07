@@ -1,0 +1,450 @@
+Super Group Starter running on :3002
+[dev] POST webhook: http://localhost:3002/webhook
+^C[ngrok] npm run tunnel:static exited with code SIGINT
+--> Sending SIGTERM to other processes..
+[dev] npm run dev exited with code SIGINT
+ ELIFECYCLE  Command failed.
+
+mickey@minux-x1:~/Dev/SuperDapp/superdapp-js/examples/super-group-starter$ pnpm build && pnpm dev:tunnel:static --config wrangler.dev.toml
+
+> superdapp-super-group-starter@1.0.0 build /home/mickey/Dev/SuperDapp/superdapp-js/examples/super-group-starter
+> tsc
+
+
+> superdapp-super-group-starter@1.0.0 dev:tunnel:static /home/mickey/Dev/SuperDapp/superdapp-js/examples/super-group-starter
+> PORT=${PORT:-3002} npx -y concurrently -k -n 'dev,ngrok' -c blue,magenta "npm:dev" "npm:tunnel:static" --config wrangler.dev.toml
+
+npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm.
+npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm.
+[dev] npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm.
+[dev] npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm.
+[ngrok] npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm.
+[ngrok] npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm.
+[dev] 
+[dev] > superdapp-super-group-starter@1.0.0 dev
+[dev] > tsx watch index.ts
+[dev] 
+[ngrok] 
+[ngrok] > superdapp-super-group-starter@1.0.0 tunnel:static
+[ngrok] > bash ./scripts/start-ngrok-static.sh
+[ngrok] 
+[ngrok] Starting ngrok tunnel using domain giana-undefinable-unremittingly.ngrok-free.dev
+[ngrok] npm warn Unknown env config "verify-deps-before-run". This will stop working in the next major version of npm.
+[ngrok] npm warn Unknown env config "_jsr-registry". This will stop working in the next major version of npm.
+[dev] Super Group Starter running on :3002
+[dev] POST webhook: http://localhost:3002/webhook
+[dev] Making POST request to: v1/agent-bots/connections/35e1510e-753d-40e1-9de0-5fb354a2e19b/messages
+[dev] Response error: {
+[dev]   "errors": {
+[dev]     "message": "{\"ServiceData\":{\"data\":\"{\\\"code\\\":\\\"1110\\\",\\\"message\\\":\\\"Chat not found.\\\"}\"}}"
+[dev]   }
+[dev] }
+[dev] Message handler error: AxiosError: Request failed with status code 400
+[dev]     at settle (/home/mickey/Dev/SuperDapp/superdapp-js/node_modules/.pnpm/axios@1.11.0/node_modules/axios/lib/core/settle.js:19:12)
+[dev]     at IncomingMessage.handleStreamEnd (/home/mickey/Dev/SuperDapp/superdapp-js/node_modules/.pnpm/axios@1.11.0/node_modules/axios/lib/adapters/http.js:599:11)
+[dev]     at IncomingMessage.emit (node:events:519:35)
+[dev]     at endReadableNT (node:internal/streams/readable:1701:12)
+[dev]     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+[dev]     at Axios.request (/home/mickey/Dev/SuperDapp/superdapp-js/node_modules/.pnpm/axios@1.11.0/node_modules/axios/lib/core/Axios.js:45:41)
+[dev]     at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[dev]     at async SuperDappClient.sendConnectionMessage (/home/mickey/Dev/SuperDapp/superdapp-js/src/core/client.ts:97:22)
+[dev]     at async <anonymous> (/home/mickey/Dev/SuperDapp/superdapp-js/examples/super-group-starter/index.ts:93:5)
+[dev]     at async SuperDappAgent.handleMessage (/home/mickey/Dev/SuperDapp/superdapp-js/src/core/agent.ts:213:11)
+[dev]     at async WebhookAgent.processRequest (/home/mickey/Dev/SuperDapp/superdapp-js/src/webhook/agent.ts:79:7)
+[dev]     at async SuperDappAgent.processRequest (/home/mickey/Dev/SuperDapp/superdapp-js/src/core/agent.ts:80:5)
+[dev]     at async <anonymous> (/home/mickey/Dev/SuperDapp/superdapp-js/examples/super-group-starter/index.ts:353:7) {
+[dev]   code: 'ERR_BAD_REQUEST',
+[dev]   config: {
+[dev]     transitional: {
+[dev]       silentJSONParsing: true,
+[dev]       forcedJSONParsing: true,
+[dev]       clarifyTimeoutError: false
+[dev]     },
+[dev]     adapter: [ 'xhr', 'http', 'fetch' ],
+[dev]     transformRequest: [ [Function: transformRequest] ],
+[dev]     transformResponse: [ [Function: transformResponse] ],
+[dev]     timeout: 30000,
+[dev]     xsrfCookieName: 'XSRF-TOKEN',
+[dev]     xsrfHeaderName: 'X-XSRF-TOKEN',
+[dev]     maxContentLength: -1,
+[dev]     maxBodyLength: -1,
+[dev]     env: { FormData: [Function [FormData]], Blob: [class Blob] },
+[dev]     validateStatus: [Function: validateStatus],
+[dev]     headers: Object [AxiosHeaders] {
+[dev]       Accept: 'application/json, text/plain, */*',
+[dev]       'Content-Type': 'application/json',
+[dev]       Authorization: 'Bearer b-1ohKl2xoYI8cHNnGAVCGIEjFUKzs113W',
+[dev]       'User-Agent': 'SuperDapp-Agent/1.0',
+[dev]       'Content-Length': '636',
+[dev]       'Accept-Encoding': 'gzip, compress, deflate, br'
+[dev]     },
+[dev]     baseURL: 'https://api.superdapp.dev',
+[dev]     httpsAgent: Agent {
+[dev]       _events: [Object: null prototype],
+[dev]       _eventsCount: 2,
+[dev]       _maxListeners: undefined,
+[dev]       defaultPort: 443,
+[dev]       protocol: 'https:',
+[dev]       options: [Object: null prototype],
+[dev]       requests: [Object: null prototype] {},
+[dev]       sockets: [Object: null prototype],
+[dev]       freeSockets: [Object: null prototype] {},
+[dev]       keepAliveMsecs: 1000,
+[dev]       keepAlive: false,
+[dev]       maxSockets: Infinity,
+[dev]       maxFreeSockets: 256,
+[dev]       scheduling: 'lifo',
+[dev]       maxTotalSockets: Infinity,
+[dev]       totalSocketCount: 1,
+[dev]       maxCachedSessions: 100,
+[dev]       _sessionCache: [Object],
+[dev]       Symbol(shapeMode): false,
+[dev]       Symbol(kCapture): false
+[dev]     },
+[dev]     method: 'post',
+[dev]     url: 'v1/agent-bots/connections/35e1510e-753d-40e1-9de0-5fb354a2e19b/messages',
+[dev]     data: '{"message":{"body":"{\\"m\\":\\"%7B%22body%22%3A%22%F0%9F%A7%AD%20Help%20Menu%5Cn%5CnAdmin%20(DM)%3A%5Cn%E2%80%A2%20%2Fsetup%20%E2%80%94%20connect%20a%20group%5Cn%E2%80%A2%20%2Fgroups%20%E2%80%94%20list%20your%20groups%5Cn%E2%80%A2%20%2Fannounce%20%3Ctext%3E%20%E2%80%94%20post%20an%20announcement%5Cn%5CnPublic%20(Group)%3A%5Cn%E2%80%A2%20%2Fhello%20%E2%80%94%20say%20hi%5Cn%E2%80%A2%20%2Ffaq%20%E2%80%94%20share%20FAQs%5Cn%E2%80%A2%20%2Fask%20%3Cq%3E%20%E2%80%94%20ask%20a%20question%5Cn%E2%80%A2%20%2Fimage%20%E2%80%94%20fun%20yes%2Fno%20GIF%5Cn%E2%80%A2%20%2Fjoke%20%E2%80%94%20random%20joke%22%7D\\",\\"t\\":\\"chat\\"}"},"isSilent":false}',
+[dev]     allowAbsoluteUrls: true
+[dev]   },
+[dev]   request: <ref *1> ClientRequest {
+[dev]     _events: [Object: null prototype] {
+[dev]       abort: [Function (anonymous)],
+[dev]       aborted: [Function (anonymous)],
+[dev]       connect: [Function (anonymous)],
+[dev]       error: [Function (anonymous)],
+[dev]       socket: [Function (anonymous)],
+[dev]       timeout: [Function (anonymous)],
+[dev]       finish: [Function: requestOnFinish]
+[dev]     },
+[dev]     _eventsCount: 7,
+[dev]     _maxListeners: undefined,
+[dev]     outputData: [],
+[dev]     outputSize: 0,
+[dev]     writable: true,
+[dev]     destroyed: false,
+[dev]     _last: true,
+[dev]     chunkedEncoding: false,
+[dev]     shouldKeepAlive: false,
+[dev]     maxRequestsOnConnectionReached: false,
+[dev]     _defaultKeepAlive: true,
+[dev]     useChunkedEncodingByDefault: true,
+[dev]     sendDate: false,
+[dev]     _removedConnection: false,
+[dev]     _removedContLen: false,
+[dev]     _removedTE: false,
+[dev]     strictContentLength: false,
+[dev]     _contentLength: 636,
+[dev]     _hasBody: true,
+[dev]     _trailer: '',
+[dev]     finished: true,
+[dev]     _headerSent: true,
+[dev]     _closed: false,
+[dev]     _header: 'POST /v1/agent-bots/connections/35e1510e-753d-40e1-9de0-5fb354a2e19b/messages HTTP/1.1\r\n' +
+[dev]       'Accept: application/json, text/plain, */*\r\n' +
+[dev]       'Content-Type: application/json\r\n' +
+[dev]       'Authorization: Bearer b-1ohKl2xoYI8cHNnGAVCGIEjFUKzs113W\r\n' +
+[dev]       'User-Agent: SuperDapp-Agent/1.0\r\n' +
+[dev]       'Content-Length: 636\r\n' +
+[dev]       'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+[dev]       'Host: api.superdapp.dev\r\n' +
+[dev]       'Connection: close\r\n' +
+[dev]       '\r\n',
+[dev]     _keepAliveTimeout: 0,
+[dev]     _onPendingData: [Function: nop],
+[dev]     agent: Agent {
+[dev]       _events: [Object: null prototype],
+[dev]       _eventsCount: 2,
+[dev]       _maxListeners: undefined,
+[dev]       defaultPort: 443,
+[dev]       protocol: 'https:',
+[dev]       options: [Object: null prototype],
+[dev]       requests: [Object: null prototype] {},
+[dev]       sockets: [Object: null prototype],
+[dev]       freeSockets: [Object: null prototype] {},
+[dev]       keepAliveMsecs: 1000,
+[dev]       keepAlive: false,
+[dev]       maxSockets: Infinity,
+[dev]       maxFreeSockets: 256,
+[dev]       scheduling: 'lifo',
+[dev]       maxTotalSockets: Infinity,
+[dev]       totalSocketCount: 1,
+[dev]       maxCachedSessions: 100,
+[dev]       _sessionCache: [Object],
+[dev]       Symbol(shapeMode): false,
+[dev]       Symbol(kCapture): false
+[dev]     },
+[dev]     socketPath: undefined,
+[dev]     method: 'POST',
+[dev]     maxHeaderSize: undefined,
+[dev]     insecureHTTPParser: undefined,
+[dev]     joinDuplicateHeaders: undefined,
+[dev]     path: '/v1/agent-bots/connections/35e1510e-753d-40e1-9de0-5fb354a2e19b/messages',
+[dev]     _ended: true,
+[dev]     res: IncomingMessage {
+[dev]       _events: [Object],
+[dev]       _readableState: [ReadableState],
+[dev]       _maxListeners: undefined,
+[dev]       socket: [TLSSocket],
+[dev]       httpVersionMajor: 1,
+[dev]       httpVersionMinor: 1,
+[dev]       httpVersion: '1.1',
+[dev]       complete: true,
+[dev]       rawHeaders: [Array],
+[dev]       rawTrailers: [],
+[dev]       joinDuplicateHeaders: undefined,
+[dev]       aborted: false,
+[dev]       upgrade: false,
+[dev]       url: '',
+[dev]       method: null,
+[dev]       statusCode: 400,
+[dev]       statusMessage: 'Bad Request',
+[dev]       client: [TLSSocket],
+[dev]       _consuming: true,
+[dev]       _dumped: false,
+[dev]       req: [Circular *1],
+[dev]       _eventsCount: 4,
+[dev]       responseUrl: 'https://api.superdapp.dev/v1/agent-bots/connections/35e1510e-753d-40e1-9de0-5fb354a2e19b/messages',
+[dev]       redirects: [],
+[dev]       Symbol(shapeMode): true,
+[dev]       Symbol(kCapture): false,
+[dev]       Symbol(kHeaders): [Object],
+[dev]       Symbol(kHeadersCount): 40,
+[dev]       Symbol(kTrailers): null,
+[dev]       Symbol(kTrailersCount): 0
+[dev]     },
+[dev]     aborted: false,
+[dev]     timeoutCb: null,
+[dev]     upgradeOrConnect: false,
+[dev]     parser: null,
+[dev]     maxHeadersCount: null,
+[dev]     reusedSocket: false,
+[dev]     host: 'api.superdapp.dev',
+[dev]     protocol: 'https:',
+[dev]     _redirectable: Writable {
+[dev]       _events: [Object],
+[dev]       _writableState: [WritableState],
+[dev]       _maxListeners: undefined,
+[dev]       _options: [Object],
+[dev]       _ended: true,
+[dev]       _ending: true,
+[dev]       _redirectCount: 0,
+[dev]       _redirects: [],
+[dev]       _requestBodyLength: 636,
+[dev]       _requestBodyBuffers: [],
+[dev]       _eventsCount: 3,
+[dev]       _onNativeResponse: [Function (anonymous)],
+[dev]       _currentRequest: [Circular *1],
+[dev]       _currentUrl: 'https://api.superdapp.dev/v1/agent-bots/connections/35e1510e-753d-40e1-9de0-5fb354a2e19b/messages',
+[dev]       _timeout: null,
+[dev]       Symbol(shapeMode): true,
+[dev]       Symbol(kCapture): false
+[dev]     },
+[dev]     Symbol(shapeMode): false,
+[dev]     Symbol(kCapture): false,
+[dev]     Symbol(kBytesWritten): 0,
+[dev]     Symbol(kNeedDrain): false,
+[dev]     Symbol(corked): 0,
+[dev]     Symbol(kChunkedBuffer): [],
+[dev]     Symbol(kChunkedLength): 0,
+[dev]     Symbol(kSocket): TLSSocket {
+[dev]       _tlsOptions: [Object],
+[dev]       _secureEstablished: true,
+[dev]       _securePending: false,
+[dev]       _newSessionPending: false,
+[dev]       _controlReleased: true,
+[dev]       secureConnecting: false,
+[dev]       _SNICallback: null,
+[dev]       servername: 'api.superdapp.dev',
+[dev]       alpnProtocol: false,
+[dev]       authorized: true,
+[dev]       authorizationError: null,
+[dev]       encrypted: true,
+[dev]       _events: [Object: null prototype],
+[dev]       _eventsCount: 10,
+[dev]       connecting: false,
+[dev]       _hadError: false,
+[dev]       _parent: null,
+[dev]       _host: 'api.superdapp.dev',
+[dev]       _closeAfterHandlingError: false,
+[dev]       _readableState: [ReadableState],
+[dev]       _writableState: [WritableState],
+[dev]       allowHalfOpen: false,
+[dev]       _maxListeners: undefined,
+[dev]       _sockname: null,
+[dev]       _pendingData: null,
+[dev]       _pendingEncoding: '',
+[dev]       server: undefined,
+[dev]       _server: null,
+[dev]       ssl: [TLSWrap],
+[dev]       _requestCert: true,
+[dev]       _rejectUnauthorized: false,
+[dev]       parser: null,
+[dev]       _httpMessage: [Circular *1],
+[dev]       timeout: 30000,
+[dev]       autoSelectFamilyAttemptedAddresses: [Array],
+[dev]       Symbol(alpncallback): null,
+[dev]       Symbol(res): [TLSWrap],
+[dev]       Symbol(verified): true,
+[dev]       Symbol(pendingSession): null,
+[dev]       Symbol(async_id_symbol): 128,
+[dev]       Symbol(kHandle): [TLSWrap],
+[dev]       Symbol(lastWriteQueueSize): 0,
+[dev]       Symbol(timeout): Timeout {
+[dev]         _idleTimeout: 30000,
+[dev]         _idlePrev: [TimersList],
+[dev]         _idleNext: [Timeout],
+[dev]         _idleStart: 157890,
+[dev]         _onTimeout: [Function: bound ],
+[dev]         _timerArgs: undefined,
+[dev]         _repeat: null,
+[dev]         _destroyed: false,
+[dev]         Symbol(refed): false,
+[dev]         Symbol(kHasPrimitive): false,
+[dev]         Symbol(asyncId): 137,
+[dev]         Symbol(triggerId): 132,
+[dev]         Symbol(kAsyncContextFrame): undefined
+[dev]       },
+[dev]       Symbol(kBuffer): null,
+[dev]       Symbol(kBufferCb): null,
+[dev]       Symbol(kBufferGen): null,
+[dev]       Symbol(shapeMode): true,
+[dev]       Symbol(kCapture): false,
+[dev]       Symbol(kSetNoDelay): false,
+[dev]       Symbol(kSetKeepAlive): true,
+[dev]       Symbol(kSetKeepAliveInitialDelay): 60,
+[dev]       Symbol(kBytesRead): 0,
+[dev]       Symbol(kBytesWritten): 0,
+[dev]       Symbol(connect-options): [Object]
+[dev]     },
+[dev]     Symbol(kOutHeaders): [Object: null prototype] {
+[dev]       accept: [Array],
+[dev]       'content-type': [Array],
+[dev]       authorization: [Array],
+[dev]       'user-agent': [Array],
+[dev]       'content-length': [Array],
+[dev]       'accept-encoding': [Array],
+[dev]       host: [Array]
+[dev]     },
+[dev]     Symbol(errored): null,
+[dev]     Symbol(kHighWaterMark): 65536,
+[dev]     Symbol(kRejectNonStandardBodyWrites): false,
+[dev]     Symbol(kUniqueHeaders): null
+[dev]   },
+[dev]   response: {
+[dev]     status: 400,
+[dev]     statusText: 'Bad Request',
+[dev]     headers: Object [AxiosHeaders] {
+[dev]       'content-type': 'application/json',
+[dev]       'transfer-encoding': 'chunked',
+[dev]       connection: 'close',
+[dev]       date: 'Tue, 07 Oct 2025 22:09:41 GMT',
+[dev]       server: 'nginx/1.18.0 (Ubuntu)',
+[dev]       'cache-control': 'no-cache, private',
+[dev]       'x-ratelimit-limit': '600',
+[dev]       'x-ratelimit-remaining': '599',
+[dev]       vary: 'Origin, Origin',
+[dev]       'x-cache': 'Error from cloudfront',
+[dev]       via: '1.1 ff7e4bc79f29564ad90446b18cac34b2.cloudfront.net (CloudFront)',
+[dev]       'x-amz-cf-pop': 'MAD53-P6',
+[dev]       'alt-svc': 'h3=":443"; ma=86400',
+[dev]       'x-amz-cf-id': '4XX7qpY3GyIwO-QnOSMIAJoHVSeD5m3v069RBSeJF_HbPjDklqs1TQ==',
+[dev]       'x-xss-protection': '1; mode=block',
+[dev]       'x-frame-options': 'SAMEORIGIN',
+[dev]       'referrer-policy': 'strict-origin-when-cross-origin',
+[dev]       'x-content-type-options': 'nosniff',
+[dev]       'strict-transport-security': 'max-age=31536000'
+[dev]     },
+[dev]     config: {
+[dev]       transitional: [Object],
+[dev]       adapter: [Array],
+[dev]       transformRequest: [Array],
+[dev]       transformResponse: [Array],
+[dev]       timeout: 30000,
+[dev]       xsrfCookieName: 'XSRF-TOKEN',
+[dev]       xsrfHeaderName: 'X-XSRF-TOKEN',
+[dev]       maxContentLength: -1,
+[dev]       maxBodyLength: -1,
+[dev]       env: [Object],
+[dev]       validateStatus: [Function: validateStatus],
+[dev]       headers: [Object [AxiosHeaders]],
+[dev]       baseURL: 'https://api.superdapp.dev',
+[dev]       httpsAgent: [Agent],
+[dev]       method: 'post',
+[dev]       url: 'v1/agent-bots/connections/35e1510e-753d-40e1-9de0-5fb354a2e19b/messages',
+[dev]       data: '{"message":{"body":"{\\"m\\":\\"%7B%22body%22%3A%22%F0%9F%A7%AD%20Help%20Menu%5Cn%5CnAdmin%20(DM)%3A%5Cn%E2%80%A2%20%2Fsetup%20%E2%80%94%20connect%20a%20group%5Cn%E2%80%A2%20%2Fgroups%20%E2%80%94%20list%20your%20groups%5Cn%E2%80%A2%20%2Fannounce%20%3Ctext%3E%20%E2%80%94%20post%20an%20announcement%5Cn%5CnPublic%20(Group)%3A%5Cn%E2%80%A2%20%2Fhello%20%E2%80%94%20say%20hi%5Cn%E2%80%A2%20%2Ffaq%20%E2%80%94%20share%20FAQs%5Cn%E2%80%A2%20%2Fask%20%3Cq%3E%20%E2%80%94%20ask%20a%20question%5Cn%E2%80%A2%20%2Fimage%20%E2%80%94%20fun%20yes%2Fno%20GIF%5Cn%E2%80%A2%20%2Fjoke%20%E2%80%94%20random%20joke%22%7D\\",\\"t\\":\\"chat\\"}"},"isSilent":false}',
+[dev]       allowAbsoluteUrls: true
+[dev]     },
+[dev]     request: <ref *1> ClientRequest {
+[dev]       _events: [Object: null prototype],
+[dev]       _eventsCount: 7,
+[dev]       _maxListeners: undefined,
+[dev]       outputData: [],
+[dev]       outputSize: 0,
+[dev]       writable: true,
+[dev]       destroyed: false,
+[dev]       _last: true,
+[dev]       chunkedEncoding: false,
+[dev]       shouldKeepAlive: false,
+[dev]       maxRequestsOnConnectionReached: false,
+[dev]       _defaultKeepAlive: true,
+[dev]       useChunkedEncodingByDefault: true,
+[dev]       sendDate: false,
+[dev]       _removedConnection: false,
+[dev]       _removedContLen: false,
+[dev]       _removedTE: false,
+[dev]       strictContentLength: false,
+[dev]       _contentLength: 636,
+[dev]       _hasBody: true,
+[dev]       _trailer: '',
+[dev]       finished: true,
+[dev]       _headerSent: true,
+[dev]       _closed: false,
+[dev]       _header: 'POST /v1/agent-bots/connections/35e1510e-753d-40e1-9de0-5fb354a2e19b/messages HTTP/1.1\r\n' +
+[dev]         'Accept: application/json, text/plain, */*\r\n' +
+[dev]         'Content-Type: application/json\r\n' +
+[dev]         'Authorization: Bearer b-1ohKl2xoYI8cHNnGAVCGIEjFUKzs113W\r\n' +
+[dev]         'User-Agent: SuperDapp-Agent/1.0\r\n' +
+[dev]         'Content-Length: 636\r\n' +
+[dev]         'Accept-Encoding: gzip, compress, deflate, br\r\n' +
+[dev]         'Host: api.superdapp.dev\r\n' +
+[dev]         'Connection: close\r\n' +
+[dev]         '\r\n',
+[dev]       _keepAliveTimeout: 0,
+[dev]       _onPendingData: [Function: nop],
+[dev]       agent: [Agent],
+[dev]       socketPath: undefined,
+[dev]       method: 'POST',
+[dev]       maxHeaderSize: undefined,
+[dev]       insecureHTTPParser: undefined,
+[dev]       joinDuplicateHeaders: undefined,
+[dev]       path: '/v1/agent-bots/connections/35e1510e-753d-40e1-9de0-5fb354a2e19b/messages',
+[dev]       _ended: true,
+[dev]       res: [IncomingMessage],
+[dev]       aborted: false,
+[dev]       timeoutCb: null,
+[dev]       upgradeOrConnect: false,
+[dev]       parser: null,
+[dev]       maxHeadersCount: null,
+[dev]       reusedSocket: false,
+[dev]       host: 'api.superdapp.dev',
+[dev]       protocol: 'https:',
+[dev]       _redirectable: [Writable],
+[dev]       Symbol(shapeMode): false,
+[dev]       Symbol(kCapture): false,
+[dev]       Symbol(kBytesWritten): 0,
+[dev]       Symbol(kNeedDrain): false,
+[dev]       Symbol(corked): 0,
+[dev]       Symbol(kChunkedBuffer): [],
+[dev]       Symbol(kChunkedLength): 0,
+[dev]       Symbol(kSocket): [TLSSocket],
+[dev]       Symbol(kOutHeaders): [Object: null prototype],
+[dev]       Symbol(errored): null,
+[dev]       Symbol(kHighWaterMark): 65536,
+[dev]       Symbol(kRejectNonStandardBodyWrites): false,
+[dev]       Symbol(kUniqueHeaders): null
+[dev]     },
+[dev]     data: { errors: [Object] }
+[dev]   },
+[dev]   status: 400
+[dev] }
+
