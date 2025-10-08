@@ -1,6 +1,6 @@
-# Super Group Starter Agent (Cloudflare + D1)
+# Super Group Starter Agent (Cloudflare ready)
 
-We just shipped a brand‑new “Super Group Starter” agent example in `superdapp-js/examples/super-group-starter` — a vibrant, Cloudflare‑ready template that lets builders go from zero to a social, group‑aware agent in minutes.
+We just shipped a brand‑new “Super Group Starter” agent example in `[superdapp-js/examples](https://github.com/SuperDappAI/superdapp-js/tree/releases/v1.1.0/examples/super-group-starter)` — a vibrant, Cloudflare‑ready template that lets builders go from zero to a social, group‑aware agent in minutes.
 
 ## What it does
 
