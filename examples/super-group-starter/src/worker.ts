@@ -45,11 +45,8 @@ function parseText(msg: any): string {
   return '';
 }
 
-function getRoomId(raw: any) {
-  const mid = raw?.memberId || raw?.owner || '';
-  const sid = raw?.senderId || '';
-  return mid && sid ? `${mid}-${sid}` : `${raw?.owner || ''}-${sid}`;
-}
+// Use the SDK-provided roomId from command context for 1-2-1 messages.
+// The previous composite builder could produce invalid connection IDs leading to 403s.
 
 async function runMigrations(env: Env) {
   await env.DB.exec(`
@@ -121,16 +118,14 @@ export default {
       };
 
       // Fun and vibrant text/styles
-      agent.addCommand('/start', async ({ message }) => {
-        const roomId = getRoomId(message.rawMessage);
+      agent.addCommand('/start', async ({ roomId }) => {
         await agent.sendConnectionMessage(
           roomId,
           '🎉 Hello, Captain! I can connect to your super group and entertain your community. Use /setup to get rolling! \n\nPublic goodies: /hello /faq /ask <q> /image /joke'
         );
       });
 
-      agent.addCommand('/help', async ({ message }) => {
-        const roomId = getRoomId(message.rawMessage);
+      agent.addCommand('/help', async ({ roomId }) => {
         await agent.sendConnectionMessage(
           roomId,
           '🧭 Help Menu\n\nAdmin (DM):\n• /setup — connect a group\n• /groups — list your groups\n• /announce <text> — post an announcement\n\nPublic (Group):\n• /hello — say hi\n• /faq — share FAQs\n• /ask <q> — ask a question\n• /image — fun yes/no GIF\n• /joke — random joke'
@@ -150,8 +145,7 @@ export default {
         return [] as any[];
       };
 
-      agent.addCommand('/groups', async ({ message }) => {
-        const roomId = getRoomId(message.rawMessage);
+      agent.addCommand('/groups', async ({ message, roomId }) => {
         if (!isAdminContext(message.rawMessage)) return;
         try {
           const list = await fetchUserGroups(message.rawMessage);
@@ -167,8 +161,7 @@ export default {
       });
 
       // Admin: /setup
-      agent.addCommand('/setup', async ({ message }) => {
-        const roomId = getRoomId(message.rawMessage);
+      agent.addCommand('/setup', async ({ message, roomId }) => {
         if (!isAdminContext(message.rawMessage)) return;
         try {
           const groups = await fetchUserGroups(message.rawMessage);
@@ -184,9 +177,8 @@ export default {
       });
 
       // Callback for /setup
-      agent.addCommand('callback_query', async ({ message }) => {
+      agent.addCommand('callback_query', async ({ message, roomId }) => {
         const raw = message.rawMessage;
-        const roomId = getRoomId(raw);
         const cb = message.callback_command || '';
         const data = message.data || '';
         if (cb === 'SETUP') {
@@ -205,8 +197,7 @@ export default {
       });
 
       // Admin: /announce
-      agent.addCommand('/announce', async ({ message }) => {
-        const roomId = getRoomId(message.rawMessage);
+      agent.addCommand('/announce', async ({ message, roomId }) => {
         if (!isAdminContext(message.rawMessage)) return;
         const text = (message.data || '').replace('/announce', '').trim();
         if (!text) {
