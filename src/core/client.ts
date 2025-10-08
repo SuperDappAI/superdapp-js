@@ -95,7 +95,7 @@ export class SuperDappClient {
     options: SendMessageOptions
   ): Promise<ApiResponse> {
     const response = await this.axios.post(
-      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${roomId}/messages`,
+      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(roomId)}/messages`,
       options
     );
     return response.data;
@@ -116,7 +116,7 @@ export class SuperDappClient {
     };
 
     const response = await this.axios.post(
-      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${roomId}/messages`,
+      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(roomId)}/messages`,
       {
         message: messageBody,
         isSilent: options?.isSilent || false,
