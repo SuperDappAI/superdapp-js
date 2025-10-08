@@ -69,12 +69,12 @@ async function main() {
 
   // Helper: safe room id for DM replies
   const getRoomId = (raw: any) => {
+    if (raw?.roomId) return String(raw.roomId);
     const memberId = raw?.memberId || raw?.owner || '';
     const senderId = raw?.senderId || '';
-    if (memberId && senderId && memberId !== senderId) return `${memberId}-${senderId}`;
-    if (memberId && senderId) return `${memberId}-${senderId}`;
-    if (memberId) return String(memberId);
+    if (senderId && memberId) return `${senderId}-${memberId}`;
     if (senderId) return String(senderId);
+    if (memberId) return String(memberId);
     return '';
   };
 
