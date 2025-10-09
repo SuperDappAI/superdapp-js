@@ -168,17 +168,20 @@ async function main() {
       }
       const lines = list.map((g: any, i: number) => {
         const name = g.name || g.title || g.id;
-        const avatar =
+        const avatarUrl =
+          g.photoUrl ||
           g.avatar ||
           g.avatarUrl ||
           g.image ||
           g.imageUrl ||
           g.iconUrl ||
           g.photo ||
-          g.picture;
+          g.picture ||
+          g.profile_picture ||
+          g.profilePicture;
         const parts = [
           `#${i + 1} ${name}`,
-          avatar ? `   🖼️ ${avatar}` : '',
+          avatarUrl ? `   ![avatar](${avatarUrl})` : '',
           `   id: ${g.id}`,
         ].filter(Boolean);
         return parts.join('\n');
