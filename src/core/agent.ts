@@ -96,7 +96,7 @@ export class SuperDappAgent {
     message: string,
     options?: { isSilent?: boolean }
   ) {
-    const messageBody = { body: formatBody(message) };
+    const messageBody = { body: formatBody({ body: message, type: 'chat' }) };
     return this.client.sendConnectionMessage(roomId, {
       message: messageBody,
       isSilent: options?.isSilent || false,
@@ -113,7 +113,7 @@ export class SuperDappAgent {
     message: string,
     options?: { isSilent?: boolean }
   ) {
-    const messageBody = { body: formatBody(message) };
+    const messageBody = { body: formatBody({ body: message, type: 'chat' }) };
     return this.client.sendConnectionMessageByUsers(senderId, receiverId, {
       message: messageBody,
       isSilent: options?.isSilent || false,
@@ -128,7 +128,9 @@ export class SuperDappAgent {
     message: string,
     options?: { isSilent?: boolean }
   ) {
-    const messageBody = { body: formatBody(message) };
+    const messageBody = {
+      body: formatBody({ body: message, type: 'channel' }),
+    };
     return this.client.sendChannelMessage(channelId, {
       message: messageBody,
       isSilent: options?.isSilent || false,
@@ -143,14 +145,19 @@ export class SuperDappAgent {
     roomId: string,
     message: string,
     replyMarkup: ReplyMarkupAction[][],
-    options?: { isSilent?: boolean }
+    options?: { isSilent?: boolean },
+    chatType?: 'chat' | 'channel'
   ) {
     const markup = {
       ...(type === 'multiselect' ? { type } : {}),
       actions: replyMarkup,
     };
 
-    const formattedMessage = formatBody(message, markup);
+    const formattedMessage = formatBody({
+      body: message,
+      reply_markup: markup,
+      type: chatType || 'chat',
+    });
     const messageBody = { body: formattedMessage };
     return this.client.sendConnectionMessage(roomId, {
       message: messageBody,
@@ -354,7 +361,7 @@ export class SuperDappAgent {
   }
 
   private getRoomId(message: MessageData): string {
-    const rm = message.rawMessage as any;
+    const rm = message.rawMessage;
     if (rm?.roomId) return String(rm.roomId);
     if (rm?.senderId && rm?.memberId) return `${rm.senderId}-${rm.memberId}`;
     if (rm?.senderId && rm?.owner) return `${rm.owner}-${rm.senderId}`;
