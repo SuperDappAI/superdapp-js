@@ -1,4 +1,5 @@
 import { SuperDappAgent } from '../../../src';
+import { getRoomId } from '../utils/room';
 /// <reference types="@cloudflare/workers-types" />
 import type {
   ExecutionContext,
@@ -46,8 +47,7 @@ function parseText(msg: any): string {
   return '';
 }
 
-// Use the SDK-provided roomId from command context for 1-2-1 messages.
-// The previous composite builder could produce invalid connection IDs leading to 403s.
+// getRoomId is imported from shared utils
 
 async function runMigrations(env: Env) {
   await env.DB.exec(`
@@ -138,57 +138,69 @@ export default {
       };
 
       // Fun and vibrant text/styles
-      agent.addCommand('/start', async ({ roomId }) => {
+      agent.addCommand('/start', async ({ message, roomId }) => {
+        const rid = roomId || getRoomId(message.rawMessage);
         await agent.sendConnectionMessage(
-          roomId,
+          rid,
           '🎉 Hello, Captain! I can connect to your super group and entertain your community. Use /setup to get rolling! \n\nPublic goodies: /hello /faq /ask <q> /image /joke'
         );
       });
 
-      agent.addCommand('/help', async ({ roomId }) => {
+      agent.addCommand('/help', async ({ message, roomId }) => {
+        const rid = roomId || getRoomId(message.rawMessage);
         await agent.sendConnectionMessage(
-          roomId,
+          rid,
           '🧭 Help Menu\n\nAdmin (DM):\n• /setup — connect a group\n• /groups — list your groups\n• /announce <text> — post an announcement\n\nPublic (Group):\n• /hello — say hi\n• /faq — share FAQs\n• /ask <q> — ask a question\n• /image — fun yes/no GIF\n• /joke — random joke'
         );
       });
 
       // Admin: list groups
       const fetchUserGroups = async (raw: any) => {
-        const candidates = [raw?.senderId, raw?.memberId, raw?.owner].filter(
-          Boolean
-        );
-        for (const userId of candidates) {
-          try {
-            const res: any = await client.getChannels(String(userId));
-            const list: any[] = Array.isArray(res?.data) ? res.data : [];
-            if (list.length) return list;
-          } catch (_) {}
-        }
+        const userId = raw?.senderId || raw?.owner;
+        if (!userId) return [] as any[];
+        try {
+          const res: any = await client.getChannels(String(userId));
+          if (Array.isArray(res)) return res;
+          if (Array.isArray(res?.data)) return res.data;
+          if (Array.isArray(res?.result)) return res.result;
+        } catch (_) {}
         return [] as any[];
       };
 
       agent.addCommand('/groups', async ({ message, roomId }) => {
+        const rid = roomId || getRoomId(message.rawMessage);
         if (!isAdminContext(message.rawMessage)) return;
         try {
           const list = await fetchUserGroups(message.rawMessage);
           if (!list.length) {
             await agent.sendConnectionMessage(
-              roomId,
+              rid,
               '🫤 You do not own/admin any groups.'
             );
             return;
           }
-          const lines = list.map(
-            (g: any, i: number) =>
-              `#${i + 1} ${g.name || g.title || g.id} (id: ${g.id})`
-          );
-          await agent.sendConnectionMessage(
-            roomId,
-            `✨ Your groups:\n${lines.join('\n')}`
-          );
+          const lines = list.map((g: any, i: number) => {
+            const name = g.name || g.title || g.id;
+            const avatar =
+              g.avatar ||
+              g.avatarUrl ||
+              g.image ||
+              g.imageUrl ||
+              g.iconUrl ||
+              g.photo ||
+              g.picture;
+            const parts = [
+              `#${i + 1} ${name}`,
+              avatar ? `   🖼️ ${avatar}` : '',
+              `   id: ${g.id}`,
+            ].filter(Boolean);
+            return parts.join('\n');
+          });
+          const text = ['✨ Your groups:', '', lines.join('\n\n')].join('\n');
+          await agent.sendConnectionMessage(rid, text);
         } catch (e) {
           await agent.sendConnectionMessage(
-            roomId,
+            rid,
             '⚠️ Failed to load your groups.'
           );
         }
@@ -196,41 +208,42 @@ export default {
 
       // Admin: /setup
       agent.addCommand('/setup', async ({ message, roomId }) => {
+        const rid = roomId || getRoomId(message.rawMessage);
+        console.log('rid', rid);
         if (!isAdminContext(message.rawMessage)) return;
+        console.log('B');
         try {
+          console.log('BEFORE fetchUserGroups', message);
           const groups = await fetchUserGroups(message.rawMessage);
+          console.log('AFTER fetchUserGroups', groups);
           if (!groups.length) {
             await agent.sendConnectionMessage(
-              roomId,
+              rid,
               '😕 No groups found. Create a super group first.'
             );
             return;
           }
-          const buttons = groups
-            .slice(0, 8)
-            .map((g: any) => [
-              {
-                text: `➕ ${g.name || g.title || g.id}`,
-                callback_data: `SETUP:${g.id}`,
-              },
-            ]);
+          const buttons = groups.slice(0, 8).map((g: any) => [
+            {
+              text: `➕ ${g.name || g.title || g.id}`,
+              callback_data: `SETUP:${g.id}`,
+            },
+          ]);
           await agent.sendReplyMarkupMessage(
             'buttons',
-            roomId,
+            rid,
             '🎛️ Select a group to connect:',
             buttons
           );
         } catch (e) {
-          await agent.sendConnectionMessage(
-            roomId,
-            '⚠️ Error fetching groups.'
-          );
+          await agent.sendConnectionMessage(rid, '⚠️ Error fetching groups.');
         }
       });
 
       // Callback for /setup
       agent.addCommand('callback_query', async ({ message, roomId }) => {
         const raw = message.rawMessage;
+        const rid = roomId || getRoomId(raw);
         const cb = message.callback_command || '';
         const data = message.data || '';
         if (cb === 'SETUP') {
@@ -241,12 +254,12 @@ export default {
             // Save to D1
             await saveOwnerGroup(env, ownerId!, channelId);
             await agent.sendConnectionMessage(
-              roomId,
+              rid,
               `✅ Connected to group ${channelId}. You can now use /announce <text>.`
             );
           } catch (e) {
             await agent.sendConnectionMessage(
-              roomId,
+              rid,
               '❌ Failed to join that group. Make sure you are the owner/admin.'
             );
           }
@@ -256,23 +269,24 @@ export default {
 
       // Admin: /announce
       agent.addCommand('/announce', async ({ message, roomId }) => {
+        const rid = roomId || getRoomId(message.rawMessage);
         if (!isAdminContext(message.rawMessage)) return;
         const text = (message.data || '').replace('/announce', '').trim();
         if (!text) {
-          await agent.sendConnectionMessage(roomId, 'Usage: /announce <text>');
+          await agent.sendConnectionMessage(rid, 'Usage: /announce <text>');
           return;
         }
         const ownerId = message.rawMessage.memberId || message.rawMessage.owner;
         const channelId = await getOwnerGroup(env, ownerId!);
         if (!channelId) {
           await agent.sendConnectionMessage(
-            roomId,
+            rid,
             'No group configured. Run /setup first.'
           );
           return;
         }
         await sendToChannel(channelId, `📣 Announcement: ${text}`);
-        await agent.sendConnectionMessage(roomId, '✅ Announcement sent.');
+        await agent.sendConnectionMessage(rid, '✅ Announcement sent.');
       });
 
       // Public group commands

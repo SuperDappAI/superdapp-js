@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { SuperDappAgent } from '../../src';
 import axios from 'axios';
+import { getRoomId as computeRoomId } from './utils/room';
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -21,8 +22,7 @@ const joinedChannels = new Set<string>();
 const fancy = {
   welcome:
     '🎉 Welcome! I can post to your Super Group and delight your community. Use /setup to connect a group.\n\nPublic: /hello /faq /ask <q> /image /joke',
-  help:
-    '🧭 Help Menu\n\nAdmin (DM):\n• /setup — connect a group\n• /groups — list your groups\n• /announce <text> — post an announcement\n\nPublic (Group):\n• /hello — say hi\n• /faq — share FAQs\n• /ask <q> — ask a question\n• /image — fun yes/no GIF\n• /joke — random joke',
+  help: '🧭 Help Menu\n\nAdmin (DM):\n• /setup — connect a group\n• /groups — list your groups\n• /announce <text> — post an announcement\n\nPublic (Group):\n• /hello — say hi\n• /faq — share FAQs\n• /ask <q> — ask a question\n• /image — fun yes/no GIF\n• /joke — random joke',
 };
 
 function isChannelMessage(msg: any): boolean {
@@ -67,15 +67,41 @@ async function main() {
     baseUrl: (process.env.API_BASE_URL as string) || 'https://api.superdapp.ai',
   });
 
-  // Helper: safe room id for DM replies
-  const getRoomId = (raw: any) => {
-    if (raw?.roomId) return String(raw.roomId);
-    const memberId = raw?.memberId || raw?.owner || '';
-    const senderId = raw?.senderId || '';
-    if (senderId && memberId) return `${senderId}-${memberId}`;
-    if (senderId) return String(senderId);
-    if (memberId) return String(memberId);
-    return '';
+  // Cache bot id for DM fallback construction
+  let BOT_ID: string | null = null;
+  const ensureBotId = async (): Promise<string | null> => {
+    if (BOT_ID) return BOT_ID;
+    try {
+      const info: any = await agent.getClient().getBotInfo();
+      BOT_ID = info?.data?.bot_info?.id || info?.bot_info?.id || null;
+    } catch {}
+    return BOT_ID;
+  };
+
+  const getPeerUserId = (raw: any, botId: string): string => {
+    const sender = String(raw?.senderId || '');
+    const member = raw?.memberId ? String(raw.memberId) : '';
+    const owner = raw?.owner ? String(raw.owner) : '';
+    if (sender === botId) return member || owner || '';
+    return sender || member || owner || '';
+  };
+
+  // Send a DM: prefer provided roomId; fallback to computed deterministic room id
+  const sendDM = async (raw: any, text: string) => {
+    // 1) Prefer platform-provided roomId
+    const rid = computeRoomId(raw);
+    if (!rid) return;
+    await agent.sendConnectionMessage(rid, text);
+  };
+
+  const sendDMButtons = async (
+    raw: any,
+    text: string,
+    buttons: Array<Array<{ text: string; callback_data: string }>>
+  ) => {
+    const rid = computeRoomId(raw);
+    if (!rid) return;
+    await agent.sendReplyMarkupMessage('buttons', rid, text, buttons);
   };
 
   // Admin-only guard: true only for DM/connection messages
@@ -86,12 +112,14 @@ async function main() {
     const raw = message.rawMessage;
     if (raw?.channelId) {
       if (joinedChannels.has(String(raw.channelId))) {
-        await sendToChannel(String(raw.channelId), '👋 I\'m alive! Public commands: /hello /faq /ask <q> /image /joke');
+        await sendToChannel(
+          String(raw.channelId),
+          "👋 I'm alive! Public commands: /hello /faq /ask <q> /image /joke"
+        );
       }
       return;
     }
-    const roomId = getRoomId(raw);
-    if (roomId) await agent.sendConnectionMessage(roomId, fancy.welcome);
+    await sendDM(raw, fancy.welcome);
   });
 
   // /help: DM shows full help; in channel show public help only
@@ -99,18 +127,22 @@ async function main() {
     const raw = message.rawMessage;
     if (raw?.channelId) {
       if (joinedChannels.has(String(raw.channelId))) {
-        await sendToChannel(String(raw.channelId), '🧭 Public Help:\n• /hello\n• /faq\n• /ask <q>\n• /image\n• /joke');
+        await sendToChannel(
+          String(raw.channelId),
+          '🧭 Public Help:\n• /hello\n• /faq\n• /ask <q>\n• /image\n• /joke'
+        );
       }
       return;
     }
-    const roomId = getRoomId(raw);
-    if (roomId) await agent.sendConnectionMessage(roomId, fancy.help);
+    await sendDM(raw, fancy.help);
   });
 
   // Helper to retrieve groups robustly like TreasureHunt: try senderId, memberId, owner
   const fetchUserGroups = async (raw: any) => {
     const client = agent.getClient();
-    const candidates = [raw?.senderId, raw?.memberId, raw?.owner].filter(Boolean);
+    const candidates = [raw?.senderId, raw?.memberId, raw?.owner].filter(
+      Boolean
+    );
     for (const userId of candidates) {
       try {
         const res: any = await client.getChannels(String(userId));
@@ -123,59 +155,72 @@ async function main() {
 
   // /groups in DM: list owner/admin groups
   agent.addCommand('/groups', async ({ message }) => {
-    const roomId = getRoomId(message.rawMessage);
     if (!isAdminContext(message.rawMessage)) return;
 
     try {
       const list = await fetchUserGroups(message.rawMessage);
       if (!list.length) {
-        await agent.sendConnectionMessage(roomId, '🫤 You do not own/admin any groups. Create one first!');
+        await sendDM(
+          message.rawMessage,
+          '🫤 You do not own/admin any groups. Create one first!'
+        );
         return;
       }
-      const lines = list.map((g: any, i: number) => `#${i + 1} ${g.name || g.title || g.id} (id: ${g.id})`);
-      await agent.sendConnectionMessage(roomId, `✨ Your groups:\n${lines.join('\n')}`);
+      const lines = list.map((g: any, i: number) => {
+        const name = g.name || g.title || g.id;
+        const avatar =
+          g.avatar ||
+          g.avatarUrl ||
+          g.image ||
+          g.imageUrl ||
+          g.iconUrl ||
+          g.photo ||
+          g.picture;
+        const parts = [
+          `#${i + 1} ${name}`,
+          avatar ? `   🖼️ ${avatar}` : '',
+          `   id: ${g.id}`,
+        ].filter(Boolean);
+        return parts.join('\n');
+      });
+      const text = ['✨ Your groups:', '', lines.join('\n\n')].join('\n');
+      await sendDM(message.rawMessage, text);
     } catch (e) {
-      await agent.sendConnectionMessage(roomId, '⚠️ Failed to load your groups.');
+      await sendDM(message.rawMessage, '⚠️ Failed to load your groups.');
     }
   });
 
   // /setup in DM: join a selected group
   agent.addCommand('/setup', async ({ message }) => {
-    const roomId = getRoomId(message.rawMessage);
     if (!isAdminContext(message.rawMessage)) return;
-
     try {
       const groups = await fetchUserGroups(message.rawMessage);
       if (!groups.length) {
-        await agent.sendConnectionMessage(roomId, '😕 No groups found for your account. Create a super group first.');
+        await sendDM(
+          message.rawMessage,
+          '😕 No groups found for your account. Create a super group first.'
+        );
         return;
       }
-      const buttons = groups.slice(0, 8).map((g: any) => [{ text: `➕ ${g.name || g.title || g.id}`, callback_data: `SETUP:${g.id}` }]);
-      await agent.sendReplyMarkupMessage('buttons', roomId, '🎛️ Select a group to connect:', buttons);
+      const buttons = groups.slice(0, 8).map((g: any) => [
+        {
+          text: `➕ ${g.name || g.title || g.id}`,
+          callback_data: `SETUP:${g.id}`,
+        },
+      ]);
+      await sendDMButtons(
+        message.rawMessage,
+        '🎛️ Select a group to connect:',
+        buttons
+      );
     } catch (e) {
-      await agent.sendConnectionMessage(roomId, '⚠️ Error fetching groups.');
+      await sendDM(message.rawMessage, '⚠️ Error fetching groups.');
     }
   });
 
-  // Handle setup selection buttons
-  agent.addCommand('callback_query', async ({ message }) => {
-    const raw = message.rawMessage;
-    const roomId = getRoomId(raw);
-    const cb = message.callback_command || '';
-    const data = message.data || '';
-
-    if (cb === 'SETUP') {
-      const channelId = data;
-      try {
-        await agent.getClient().joinChannel(channelId, message.rawMessage.id);
-        joinedChannels.add(String(channelId));
-        // store ephemeral mapping locally for announce
-        const ownerId = message.rawMessage.senderId || message.rawMessage.memberId || message.rawMessage.owner;
-        if (ownerId) {
   // Handle selection buttons (setup and announce targets)
   agent.addCommand('callback_query', async ({ message }) => {
     const raw = message.rawMessage;
-    const roomId = getRoomId(raw);
     const cb = message.callback_command || '';
     const data = message.data || '';
 
@@ -186,9 +231,9 @@ async function main() {
       if (text) {
         await sendToChannel(channelId, `📣 Announcement: ${text}`);
         pendingAnnounce.delete(ownerId);
-        await agent.sendConnectionMessage(roomId, 'Announcement sent.');
+        await sendDM(raw, 'Announcement sent.');
       } else {
-        await agent.sendConnectionMessage(roomId, 'No pending announcement found.');
+        await sendDM(raw, 'No pending announcement found.');
       }
       return;
     }
@@ -197,30 +242,26 @@ async function main() {
       const channelId = data;
       try {
         await agent.getClient().joinChannel(channelId, message.rawMessage.id);
+        joinedChannels.add(String(channelId));
         const ownerId = raw.senderId || raw.memberId || raw.owner;
         if (ownerId) {
           const key = String(ownerId);
           if (!ownerGroups.has(key)) ownerGroups.set(key, new Set());
           ownerGroups.get(key)!.add(channelId);
         }
-        await agent.sendConnectionMessage(roomId, `✅ Connected to group ${channelId}. You can now use /announce <text>.`);
-        await sendToChannel(channelId, '👋 Hello everyone! I just joined this super group. I\'ll help with fun commands and announcements. Try /image or /joke!');
+        await sendDM(
+          raw,
+          `✅ Connected to group ${channelId}. You can now use /announce <text>.`
+        );
+        await sendToChannel(
+          channelId,
+          "👋 Hello everyone! I just joined this super group. I'll help with fun commands and announcements. Try /image or /joke!"
+        );
       } catch (e) {
-        await agent.sendConnectionMessage(roomId, '❌ Failed to join that group. Make sure you are the owner/admin.');
-      }
-      return;
-    }
-  });
-
-          const key = String(ownerId);
-          if (!ownerGroups.has(key)) ownerGroups.set(key, new Set());
-          ownerGroups.get(key)!.add(channelId);
-        }
-        await agent.sendConnectionMessage(roomId, `✅ Connected to group ${channelId}. You can now use /announce <text>.`);
-        // Auto welcome announcement in the group
-        await sendToChannel(channelId, '👋 Hello everyone! I just joined this super group. I\'ll help with fun commands and announcements. Try /image or /joke!');
-      } catch (e) {
-        await agent.sendConnectionMessage(roomId, '❌ Failed to join that group. Make sure you are the owner/admin.');
+        await sendDM(
+          raw,
+          '❌ Failed to join that group. Make sure you are the owner/admin.'
+        );
       }
       return;
     }
@@ -228,77 +269,111 @@ async function main() {
 
   // /announce <text> in DM: send to selected group
   agent.addCommand('/announce', async ({ message }) => {
-    const roomId = getRoomId(message.rawMessage);
     if (!isAdminContext(message.rawMessage)) return;
 
     const text = (message.data || '').replace('/announce', '').trim();
     if (!text) {
-      await agent.sendConnectionMessage(roomId, 'Usage: /announce <text>');
+      await sendDM(message.rawMessage, 'Usage: /announce <text>');
       return;
     }
 
-    const ownerId = String(message.rawMessage.senderId || message.rawMessage.memberId || message.rawMessage.owner || '');
+    const ownerId = String(
+      message.rawMessage.senderId ||
+        message.rawMessage.memberId ||
+        message.rawMessage.owner ||
+        ''
+    );
     const groups = ownerGroups.get(ownerId) || new Set<string>();
 
     if (!groups.size) {
-      await agent.sendConnectionMessage(roomId, 'No group configured. Run /setup first.');
+      await sendDM(
+        message.rawMessage,
+        'No group configured. Run /setup first.'
+      );
       return;
     }
 
     // If multiple groups configured, ask which one to announce to
     if (groups.size > 1) {
       pendingAnnounce.set(ownerId, text);
-      const buttons = Array.from(groups).slice(0, 8).map((id) => [{ text: `📢 ${id}`, callback_data: `ANNOUNCE:${id}` }]);
-      await agent.sendReplyMarkupMessage('buttons', roomId, 'Select a group to send the announcement:', buttons);
+      const buttons = Array.from(groups)
+        .slice(0, 8)
+        .map((id) => [{ text: `📢 ${id}`, callback_data: `ANNOUNCE:${id}` }]);
+      await sendDMButtons(
+        message.rawMessage,
+        'Select a group to send the announcement:',
+        buttons
+      );
       return;
     }
 
     const onlyId = Array.from(groups)[0];
     await sendToChannel(onlyId, `📣 Announcement: ${text}`);
-    await agent.sendConnectionMessage(roomId, 'Announcement sent.');
+    await sendDM(message.rawMessage, 'Announcement sent.');
   });
 
   // Helper for channel posting with explicit channel formatting
   const sendToChannel = async (channelId: string, text: string) => {
     const encoded = encodeURIComponent(JSON.stringify({ body: text }));
     const body = { body: JSON.stringify({ m: encoded, t: 'channel' }) } as any;
-    return agent.getClient().sendChannelMessage(channelId, { message: body, isSilent: false });
+    return agent
+      .getClient()
+      .sendChannelMessage(channelId, { message: body, isSilent: false });
   };
 
   // Public commands: can be sent in group
   agent.addCommand('/hello', async ({ message }) => {
     const raw = message.rawMessage;
-    const roomId = getRoomId(raw);
     if (isChannelMessage(raw)) {
       // reply to channel
-      if (raw.channelId) { await sendToChannel(String(raw.channelId), '👋 Hello group! I am your community bot.'); }
+      if (raw.channelId) {
+        await sendToChannel(
+          String(raw.channelId),
+          '👋 Hello group! I am your community bot.'
+        );
+      }
     } else {
-      await agent.sendConnectionMessage(roomId, 'Use /hello inside the group.');
+      await sendDM(raw, 'Use /hello inside the group.');
     }
   });
 
   agent.addCommand('/faq', async ({ message }) => {
     const raw = message.rawMessage;
-    const roomId = getRoomId(raw);
-    const faq = 'FAQ:\n- How to ask? Use /ask <question>\n- Who can post? Members can use /ask';
+    const faq =
+      'FAQ:\n- How to ask? Use /ask <question>\n- Who can post? Members can use /ask';
     if (isChannelMessage(raw)) {
-      if (raw.channelId) { await sendToChannel(String(raw.channelId), faq); }
+      if (raw.channelId) {
+        await sendToChannel(String(raw.channelId), faq);
+      }
     } else {
-      await agent.sendConnectionMessage(roomId, 'Use /faq inside the group to share with everyone.');
+      await sendDM(raw, 'Use /faq inside the group to share with everyone.');
     }
   });
 
   // Public fun endpoints (local demo only echoes instructions)
   agent.addCommand('/image', async ({ message }) => {
     const raw = message.rawMessage;
-    const roomId = getRoomId(raw);
-    if (isChannelMessage(raw) && raw.channelId && joinedChannels.has(String(raw.channelId))) {
+    if (
+      isChannelMessage(raw) &&
+      raw.channelId &&
+      joinedChannels.has(String(raw.channelId))
+    ) {
       try {
         const resp = await axios.get('https://yesno.wtf/api');
         const data = resp.data as any;
-        if (raw.channelId) { await sendToChannel(String(raw.channelId), `🎲 Answer: ${data.answer}\n🖼️ ${data.image}`); }
+        if (raw.channelId) {
+          await sendToChannel(
+            String(raw.channelId),
+            `🎲 Answer: ${data.answer}\n🖼️ ${data.image}`
+          );
+        }
       } catch {
-        if (raw.channelId) { await sendToChannel(String(raw.channelId), '⚠️ Failed to fetch image.'); }
+        if (raw.channelId) {
+          await sendToChannel(
+            String(raw.channelId),
+            '⚠️ Failed to fetch image.'
+          );
+        }
       }
     } else {
       // Not a channel message; do not send a DM from a group command to avoid 400s on invalid connections
@@ -308,31 +383,44 @@ async function main() {
 
   agent.addCommand('/joke', async ({ message }) => {
     const raw = message.rawMessage;
-    const roomId = getRoomId(raw);
-    if (isChannelMessage(raw) && raw.channelId && joinedChannels.has(String(raw.channelId))) {
+    if (
+      isChannelMessage(raw) &&
+      raw.channelId &&
+      joinedChannels.has(String(raw.channelId))
+    ) {
       try {
-        const resp = await axios.get('https://official-joke-api.appspot.com/random_joke');
+        const resp = await axios.get(
+          'https://official-joke-api.appspot.com/random_joke'
+        );
         const data = resp.data as any;
-        if (raw.channelId) { await sendToChannel(String(raw.channelId), `😂 ${data.setup}\n👉 ${data.punchline}`); }
+        if (raw.channelId) {
+          await sendToChannel(
+            String(raw.channelId),
+            `😂 ${data.setup}\n👉 ${data.punchline}`
+          );
+        }
       } catch {
-        if (raw.channelId) { await sendToChannel(String(raw.channelId), '⚠️ Failed to fetch a joke.'); }
+        if (raw.channelId) {
+          await sendToChannel(
+            String(raw.channelId),
+            '⚠️ Failed to fetch a joke.'
+          );
+        }
       }
     } else {
       // Not a channel message; do not send a DM from a group command to avoid 400s on invalid connections
       return;
     }
-
   });
 
   agent.addCommand('/ask', async ({ message }) => {
     const raw = message.rawMessage;
-    const roomId = getRoomId(raw);
     const q = (message.data || '').replace('/ask', '').trim();
     if (!q) {
       if (isChannelMessage(raw) && raw.channelId) {
         await sendToChannel(String(raw.channelId), 'Usage: /ask <question>');
       } else {
-        await agent.sendConnectionMessage(roomId, 'Usage: /ask <question>');
+        await sendDM(raw, 'Usage: /ask <question>');
       }
       return;
     }
@@ -340,30 +428,32 @@ async function main() {
     if (isChannelMessage(raw) && raw.channelId) {
       await sendToChannel(String(raw.channelId), answer);
     } else {
-      await agent.sendConnectionMessage(roomId, 'Ask inside the group so everyone can see the answer.');
+      await sendDM(raw, 'Ask inside the group so everyone can see the answer.');
     }
   });
 
   // Fallback message handler
   agent.addCommand('handleMessage', async ({ message }) => {
     const raw = message.rawMessage;
-    const roomId = getRoomId(raw);
     const text = parseText(raw);
 
     if (isChannelMessage(raw)) {
       // Basic echo for non-command group messages
       if (text && !text.startsWith('/')) {
-        if (raw.channelId) { await sendToChannel(String(raw.channelId), `You said: ${text}`); }
+        if (raw.channelId) {
+          await sendToChannel(String(raw.channelId), `You said: ${text}`);
+        }
       }
     } else {
-      await agent.sendConnectionMessage(roomId, 'Type /help to see commands.');
+      await sendDM(raw, 'Type /help to see commands.');
     }
   });
 
   // Webhook endpoint
   app.post('/webhook', async (req, res) => {
     try {
-      const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+      const body =
+        typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
       await agent.processRequest(body);
       res.status(200).json({ ok: true });
     } catch (e) {
@@ -373,7 +463,11 @@ async function main() {
   });
 
   app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'super-group-starter', time: new Date().toISOString() });
+    res.json({
+      status: 'ok',
+      service: 'super-group-starter',
+      time: new Date().toISOString(),
+    });
   });
 
   app.listen(PORT, () => {
