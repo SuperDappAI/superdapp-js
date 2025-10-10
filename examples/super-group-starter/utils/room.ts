@@ -5,7 +5,6 @@ export function getRoomId(msg: any): string {
   const senderId = msg?.senderId || '';
   if (memberId && senderId && memberId !== senderId)
     return `${memberId}-${senderId}`;
-  if (memberId && senderId) return `${memberId}-${senderId}`;
   if (memberId) return String(memberId);
   if (senderId) return String(senderId);
   return '';
