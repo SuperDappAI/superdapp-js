@@ -320,13 +320,9 @@ export default {
       // Admin: /setup
       agent.addCommand('/setup', async ({ message, roomId }) => {
         const rid = getRoomId(message.rawMessage);
-        console.log('rid', rid);
         if (!isAdminContext(message.rawMessage)) return;
-        console.log('B');
         try {
-          console.log('BEFORE fetchUserGroups', message);
           const groups = await fetchUserGroups(message.rawMessage);
-          console.log('AFTER fetchUserGroups', groups);
           if (!groups.length) {
             await agent.sendConnectionMessage(
               rid,
