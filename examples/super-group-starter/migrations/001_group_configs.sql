@@ -2,8 +2,8 @@
 CREATE TABLE IF NOT EXISTS group_configs (
   owner_id TEXT PRIMARY KEY,
   channel_id TEXT NOT NULL,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Helpful index if scanning by channel

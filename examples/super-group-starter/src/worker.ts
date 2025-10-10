@@ -18,7 +18,7 @@ export interface Env {
 
 function isChannelMessage(msg: any): boolean {
   const t = msg?.body?.t;
-  return t === 'channel';
+  return t === 'channel' || msg?.__typename === 'ChannelMessage';
 }
 
 function parseText(msg: any): string {
@@ -49,18 +49,40 @@ function parseText(msg: any): string {
 
 // getRoomId is imported from shared utils
 
-async function runMigrations(env: Env) {
-  await env.DB.exec(`
-CREATE TABLE IF NOT EXISTS group_configs (
-  owner_id TEXT PRIMARY KEY,
-  channel_id TEXT NOT NULL,
-  created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
-);
-`);
-  await env.DB.exec(
-    `CREATE INDEX IF NOT EXISTS idx_group_configs_channel_id ON group_configs(channel_id);`
+// Resolve the correct target for channel posts. Prefer roomId from webhook payload,
+// then channelId. Never fall back to owner/user id for channel messages.
+function resolveChannelTarget(raw: any): string | null {
+  return (
+    (raw?.roomId as string | undefined) ||
+    (raw?.channelId as string | undefined) ||
+    null
   );
+}
+
+// Debug helper: safely extract id/roomId/channelId without typing errors
+function debugIds(raw: any) {
+  const r = raw as any;
+  return {
+    id: r?.id,
+    roomId: r?.roomId,
+    channelId: r?.channelId,
+  };
+}
+
+async function runMigrations(env: Env) {
+  // Use prepared statements and CURRENT_TIMESTAMP for broader D1 compatibility
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS group_configs (
+      owner_id TEXT PRIMARY KEY,
+      channel_id TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )`
+  ).run();
+
+  await env.DB.prepare(
+    `CREATE INDEX IF NOT EXISTS idx_group_configs_channel_id ON group_configs(channel_id)`
+  ).run();
 }
 
 async function saveOwnerGroup(env: Env, ownerId: string, channelId: string) {
@@ -115,8 +137,78 @@ export default {
     }
 
     if (route === '/webhook' && request.method === 'POST') {
+      // Basic debug logging for incoming webhook requests
+      const reqId =
+        (globalThis as any).crypto?.randomUUID?.() ||
+        `${Date.now()}-${Math.random()}`;
+      const contentType = request.headers.get('content-type') || '';
+      console.log('[webhook] received', {
+        reqId,
+        method: request.method,
+        path: url.pathname,
+        contentType,
+      });
       await runMigrations(env);
       const body = await request.text();
+      const preview = body.length > 300 ? `${body.slice(0, 300)}…` : body;
+      console.log('[webhook] body preview', {
+        reqId,
+        length: body.length,
+        preview,
+      });
+
+      // Try to parse and log a succinct payload summary
+      try {
+        const parsed = JSON.parse(body);
+        const raw = (parsed && (parsed.message || parsed)) || {};
+        const payloadSummary = {
+          id: raw.id,
+          roomId: raw.roomId || raw.channelId,
+          channelId: raw.channelId,
+          memberId: raw.memberId,
+          owner: raw.owner,
+          typename: raw.__typename,
+          t: raw.t,
+          isBot: raw.isBot,
+        };
+        console.log('[webhook] payload summary', { reqId, payloadSummary });
+      } catch (_) {
+        // If not JSON, we already logged a preview; continue
+      }
+
+      // Simple debug log for incoming webhook requests
+      try {
+        const preview = body.slice(0, 300);
+        let parsed: any = null;
+        let t: string | undefined = undefined;
+        let inner: any = null;
+        try {
+          parsed = JSON.parse(body);
+          try {
+            inner =
+              parsed && typeof parsed.body === 'string'
+                ? JSON.parse(parsed.body)
+                : null;
+            t = inner?.t;
+          } catch (_) {
+            // ignore
+          }
+        } catch (_) {
+          // body not JSON
+        }
+        console.log('[super-group-starter] webhook received', {
+          time: new Date().toISOString(),
+          length: body.length,
+          preview,
+          id: parsed?.id,
+          roomId: parsed?.roomId || parsed?.channelId,
+          typename: parsed?.__typename,
+          t,
+          isBot: parsed?.isBot,
+        });
+      } catch (_) {
+        // never block on logging
+      }
 
       const agent = new SuperDappAgent({
         apiToken: env.API_TOKEN,
@@ -127,6 +219,15 @@ export default {
 
       const isAdminContext = (raw: any) => !isChannelMessage(raw);
       const sendToChannel = async (channelId: string, text: string) => {
+        if (!channelId) {
+          console.log(
+            '[super-group-starter] abort sendToChannel: missing channelId',
+            {
+              textPreview: (text || '').slice(0, 60),
+            }
+          );
+          return;
+        }
         const encoded = encodeURIComponent(JSON.stringify({ body: text }));
         const out = {
           body: JSON.stringify({ m: encoded, t: 'channel' }),
@@ -139,7 +240,17 @@ export default {
 
       // Fun and vibrant text/styles
       agent.addCommand('/start', async ({ message, roomId }) => {
-        const rid = roomId || getRoomId(message.rawMessage);
+        const raw = message.rawMessage;
+        if (isChannelMessage(raw)) {
+          const target = resolveChannelTarget(raw);
+          if (!target) return;
+          await sendToChannel(
+            target,
+            "👋 I'm alive! Public commands: /hello /faq /ask <q> /image /joke"
+          );
+          return;
+        }
+        const rid = getRoomId(raw);
         await agent.sendConnectionMessage(
           rid,
           '🎉 Hello, Captain! I can connect to your super group and entertain your community. Use /setup to get rolling! \n\nPublic goodies: /hello /faq /ask <q> /image /joke'
@@ -147,7 +258,17 @@ export default {
       });
 
       agent.addCommand('/help', async ({ message, roomId }) => {
-        const rid = roomId || getRoomId(message.rawMessage);
+        const raw = message.rawMessage;
+        if (isChannelMessage(raw)) {
+          const target = resolveChannelTarget(raw);
+          if (!target) return;
+          await sendToChannel(
+            target,
+            '🧭 Public Help\n• /hello\n• /faq\n• /ask <q>\n• /image\n• /joke\n\nTip: DM me /help for admin setup commands.'
+          );
+          return;
+        }
+        const rid = getRoomId(raw);
         await agent.sendConnectionMessage(
           rid,
           '🧭 Help Menu\n\nAdmin (DM):\n• /setup — connect a group\n• /groups — list your groups\n• /announce <text> — post an announcement\n\nPublic (Group):\n• /hello — say hi\n• /faq — share FAQs\n• /ask <q> — ask a question\n• /image — fun yes/no GIF\n• /joke — random joke'
@@ -168,7 +289,7 @@ export default {
       };
 
       agent.addCommand('/groups', async ({ message, roomId }) => {
-        const rid = roomId || getRoomId(message.rawMessage);
+        const rid = getRoomId(message.rawMessage);
         if (!isAdminContext(message.rawMessage)) return;
         try {
           const list = await fetchUserGroups(message.rawMessage);
@@ -181,17 +302,7 @@ export default {
           }
           const lines = list.map((g: any, i: number) => {
             const name = g.name || g.title || g.id;
-            const avatarUrl =
-              g.photoUrl ||
-              g.avatar ||
-              g.avatarUrl ||
-              g.image ||
-              g.imageUrl ||
-              g.iconUrl ||
-              g.photo ||
-              g.picture ||
-              g.profile_picture ||
-              g.profilePicture;
+            const avatarUrl = g.photoUrl;
             const parts = [
               `#${i + 1} ${name}`,
               avatarUrl ? `   ![avatar](${avatarUrl})` : '',
@@ -211,7 +322,7 @@ export default {
 
       // Admin: /setup
       agent.addCommand('/setup', async ({ message, roomId }) => {
-        const rid = roomId || getRoomId(message.rawMessage);
+        const rid = getRoomId(message.rawMessage);
         console.log('rid', rid);
         if (!isAdminContext(message.rawMessage)) return;
         console.log('B');
@@ -246,11 +357,11 @@ export default {
       // Callback for /setup
       agent.addCommand('callback_query', async ({ message, roomId }) => {
         const raw = message.rawMessage;
-        const rid = roomId || getRoomId(raw);
+        const rid = getRoomId(raw);
         const cb = message.callback_command || '';
         const data = message.data || '';
         if (cb === 'SETUP') {
-          const ownerId = raw.memberId || raw.owner;
+          const ownerId = raw.senderId || raw.memberId || raw.owner;
           const channelId = data;
           try {
             await client.joinChannel(channelId, message.rawMessage.id);
@@ -272,14 +383,17 @@ export default {
 
       // Admin: /announce
       agent.addCommand('/announce', async ({ message, roomId }) => {
-        const rid = roomId || getRoomId(message.rawMessage);
+        const rid = getRoomId(message.rawMessage);
         if (!isAdminContext(message.rawMessage)) return;
         const text = (message.data || '').replace('/announce', '').trim();
         if (!text) {
           await agent.sendConnectionMessage(rid, 'Usage: /announce <text>');
           return;
         }
-        const ownerId = message.rawMessage.memberId || message.rawMessage.owner;
+        const ownerId =
+          message.rawMessage.senderId ||
+          message.rawMessage.memberId ||
+          message.rawMessage.owner;
         const channelId = await getOwnerGroup(env, ownerId!);
         if (!channelId) {
           await agent.sendConnectionMessage(
@@ -296,8 +410,16 @@ export default {
       agent.addCommand('/hello', async ({ message }) => {
         const raw = message.rawMessage;
         if (isChannelMessage(raw)) {
+          const target = resolveChannelTarget(raw);
+          if (!target) {
+            console.log(
+              '[super-group-starter] warn no target for /hello',
+              debugIds(raw)
+            );
+            return;
+          }
           await sendToChannel(
-            raw.channelId || raw.owner || '',
+            target,
             "👋 Hello everyone! I'm your friendly community bot."
           );
         }
@@ -306,9 +428,17 @@ export default {
       agent.addCommand('/faq', async ({ message }) => {
         const raw = message.rawMessage;
         const faq =
-          '📘 FAQ\n• Use /ask <question> to ask the bot\n• Try /image for a random yes/no GIF\n• Try /joke for a random joke';
+          '📘 FAQ\n• Use /ask <question> to ask the bot\n• Try /image for a random GIF\n• Try /joke for a random joke';
         if (isChannelMessage(raw)) {
-          await sendToChannel(raw.channelId || raw.owner || '', faq);
+          const target = resolveChannelTarget(raw);
+          if (!target) {
+            console.log(
+              '[super-group-starter] warn no target for /faq',
+              debugIds(raw)
+            );
+            return;
+          }
+          await sendToChannel(target, faq);
         }
       });
 
@@ -316,15 +446,29 @@ export default {
         const raw = message.rawMessage;
         const q = (message.data || '').replace('/ask', '').trim();
         if (!q) {
-          if (isChannelMessage(raw))
-            await sendToChannel(
-              raw.channelId || raw.owner || '',
-              'Usage: /ask <question>'
-            );
+          if (isChannelMessage(raw)) {
+            const target = resolveChannelTarget(raw);
+            if (!target) {
+              console.log(
+                '[super-group-starter] warn no target for /ask',
+                debugIds(raw)
+              );
+              return;
+            }
+            await sendToChannel(target, 'Usage: /ask <question>');
+          }
+          return;
+        }
+        const target = resolveChannelTarget(raw);
+        if (!target) {
+          console.log(
+            '[super-group-starter] warn no target for /ask payload',
+            debugIds(raw)
+          );
           return;
         }
         await sendToChannel(
-          raw.channelId || raw.owner || '',
+          target,
           `❓ Q: ${q}\n💡 A: Great question! (demo answer)`
         );
       });
@@ -333,16 +477,22 @@ export default {
       agent.addCommand('/image', async ({ message }) => {
         const raw = message.rawMessage;
         if (!isChannelMessage(raw)) return;
+        const target = resolveChannelTarget(raw);
+        if (!target) {
+          console.log(
+            '[super-group-starter] warn no target for /image',
+            debugIds(raw)
+          );
+          return;
+        }
         try {
           const resp = await fetch('https://yesno.wtf/api');
           const data = (await resp.json()) as any;
-          const text = `🎲 Answer: ${data.answer}\n🖼️ ${data.image}`;
-          await sendToChannel(raw.channelId || raw.owner || '', text);
+          // Send only the image URL so the client renders a preview
+          // Use Markdown image syntax so the client renders the GIF inline
+          await sendToChannel(target, `![yesno](${data.image})`);
         } catch (_) {
-          await sendToChannel(
-            raw.channelId || raw.owner || '',
-            '⚠️ Failed to fetch image.'
-          );
+          await sendToChannel(target, '⚠️ Failed to fetch image.');
         }
       });
 
@@ -350,18 +500,23 @@ export default {
       agent.addCommand('/joke', async ({ message }) => {
         const raw = message.rawMessage;
         if (!isChannelMessage(raw)) return;
+        const target = resolveChannelTarget(raw);
+        if (!target) {
+          console.log(
+            '[super-group-starter] warn no target for /joke',
+            debugIds(raw)
+          );
+          return;
+        }
         try {
           const resp = await fetch(
             'https://official-joke-api.appspot.com/random_joke'
           );
           const data = (await resp.json()) as any;
           const text = `😂 ${data.setup}\n👉 ${data.punchline}`;
-          await sendToChannel(raw.channelId || raw.owner || '', text);
+          await sendToChannel(target, text);
         } catch (_) {
-          await sendToChannel(
-            raw.channelId || raw.owner || '',
-            '⚠️ Failed to fetch a joke.'
-          );
+          await sendToChannel(target, '⚠️ Failed to fetch a joke.');
         }
       });
 
@@ -369,15 +524,27 @@ export default {
       agent.addCommand('handleMessage', async ({ message }) => {
         const raw = message.rawMessage;
         const text = parseText(raw);
-        if (isChannelMessage(raw) && text && !text.startsWith('/')) {
+        if (!isChannelMessage(raw)) return;
+
+        const target = resolveChannelTarget(raw);
+        if (!target) return;
+
+        if (text && text.startsWith('/')) {
+          // Unknown slash command in channel: provide a friendly hint, not a DM
           await sendToChannel(
-            raw.channelId || raw.owner || '',
-            `🗣️ You said: ${text}`
+            target,
+            '🤖 Unknown command. Try /help for a list of commands.'
           );
+          return;
+        }
+
+        if (text) {
+          await sendToChannel(target, `🗣️ You said: ${text}`);
         }
       });
 
       await agent.processRequest(body);
+      console.log('[webhook] processed', { reqId, status: 'ok' });
       return new Response(JSON.stringify({ ok: true }), {
         headers: { 'Content-Type': 'application/json' },
       });
@@ -427,7 +594,7 @@ export async function scheduled(
     ]);
 
     const imageText = yesno
-      ? `🕒 Scheduled Fun — Image\n🎲 Answer: ${yesno.answer}\n🖼️ ${yesno.image}`
+      ? `🕒 Scheduled Fun — Image\n![yesno](${yesno.image})`
       : '🕒 Scheduled Fun — Image\n⚠️ Failed to fetch image.';
     const jokeText = joke
       ? `🕒 Scheduled Fun — Joke\n😂 ${joke.setup}\n👉 ${joke.punchline}`

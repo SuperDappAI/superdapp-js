@@ -15,8 +15,16 @@ import { formatBody } from '../utils/messageFormatter';
 
 // AI Client interface for minimal coupling
 interface AIClient {
-  generateText(input: string | Array<{ role: 'system' | 'user' | 'assistant'; content: string }>, options?: any): Promise<string>;
-  streamText(input: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>, options?: any): Promise<AsyncIterable<string>>;
+  generateText(
+    input:
+      | string
+      | Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    options?: any
+  ): Promise<string>;
+  streamText(
+    input: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    options?: any
+  ): Promise<AsyncIterable<string>>;
   runAgent(options?: any): Promise<{ outputText: string }>;
 }
 
@@ -96,6 +104,23 @@ export class SuperDappAgent {
   }
 
   /**
+   * Convenience: Send a DM using sender and receiver IDs. Internally builds the connection id
+   * as `${senderId}-${receiverId}` and delegates to the client.
+   */
+  async sendConnectionMessageByUsers(
+    senderId: string,
+    receiverId: string,
+    message: string,
+    options?: { isSilent?: boolean }
+  ) {
+    const messageBody = { body: formatBody(message) };
+    return this.client.sendConnectionMessageByUsers(senderId, receiverId, {
+      message: messageBody,
+      isSilent: options?.isSilent || false,
+    });
+  }
+
+  /**
    * Send a message to a channel
    */
   async sendChannelMessage(
@@ -146,21 +171,23 @@ export class SuperDappAgent {
    */
   async getAiClient(): Promise<AIClient> {
     if (!this.aiConfig) {
-      throw new Error('AI is not configured for this agent. Please provide ai configuration in BotConfig to use AI features.');
+      throw new Error(
+        'AI is not configured for this agent. Please provide ai configuration in BotConfig to use AI features.'
+      );
     }
-    
+
     if (!this.aiClient) {
       // Lazy load the AI client to avoid import issues when AI is not used
       this.aiClient = await this.createAiClient();
     }
-    
+
     return this.aiClient;
   }
 
   private async createAiClient(): Promise<AIClient> {
     // Dynamic import to avoid loading AI dependencies when not needed
     const { generateText, streamText, runAgent } = await import('../ai/client');
-    
+
     return {
       generateText: (input: any, options: any = {}) => {
         return generateText(input, { ...options, config: this.aiConfig });

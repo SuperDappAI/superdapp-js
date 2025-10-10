@@ -2,18 +2,17 @@
   "name": "superdapp-super-group-starter",
   "version": "1.0.0",
   "description": "Starter example showing admin DM setup and public super-group commands, Cloudflare-ready",
-  "main": "index.ts",
+  "main": "src/worker.ts",
   "scripts": {
-    "start": "node dist/index.js",
-    "dev": "tsx watch index.ts",
     "build": "tsc",
-    "tunnel": "npx -y ngrok http ${PORT:-3002}",
-    "tunnel:static": "bash ./scripts/start-ngrok-static.sh",
-    "dev:tunnel": "PORT=${PORT:-3002} npx -y concurrently -k -n 'dev,ngrok' -c blue,magenta \"npm:dev\" \"npm:tunnel\"",
-    "dev:tunnel:static": "PORT=${PORT:-3002} npx -y concurrently -k -n 'dev,ngrok' -c blue,magenta \"npm:dev\" \"npm:tunnel:static\"",
+    "dev": "wrangler dev --port 8788",
+    "tunnel": "npx -y ngrok http ${PORT:-8788}",
+    "tunnel:static": "PORT=8788 ./scripts/start-ngrok-static.sh",
+    "dev:tunnel": "npx -y concurrently -k -n 'dev,ngrok' -c blue,magenta \"npm:dev\" \"npm:tunnel\"",
+    "dev:tunnel:static": "npx -y concurrently -k -n 'dev,ngrok' -c blue,magenta \"npm:dev\" \"npm:tunnel:static\"",
     "dev:wrangler": "wrangler dev --port 8788",
-    "dev:wrangler:tunnel": "npx -y concurrently -k -n 'dev,ngrok' -c blue,magenta \"wrangler dev ${npm_config_config:+--config $npm_config_config}\" \"npx -y ngrok http ${PORT:-8788}\"",
-    "dev:wrangler:tunnel:static": "npx -y concurrently -k -n 'dev,ngrok' -c blue,magenta \"wrangler dev ${npm_config_config:+--config $npm_config_config}\" \"./scripts/start-ngrok-static.sh\"",
+    "dev:wrangler:tunnel": "npx -y concurrently -k -n 'dev,ngrok' -c blue,magenta \"wrangler dev ${npm_config_config:+--config $npm_config_config} --port 8788\" \"npx -y ngrok http ${PORT:-8788}\"",
+    "dev:wrangler:tunnel:static": "npx -y concurrently -k -n 'dev,ngrok' -c blue,magenta \"wrangler dev ${npm_config_config:+--config $npm_config_config} --port 8788\" \"PORT=8788 ./scripts/start-ngrok-static.sh\"",
     "deploy": "wrangler deploy"
   },
   "keywords": [
@@ -26,19 +25,11 @@
   ],
   "author": "SuperDapp Team",
   "license": "MIT",
-  "dependencies": {
-    "axios": "^1.7.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.21.2"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240208.0",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
     "@types/node": "^20.12.12",
     "concurrently": "^9.0.1",
-    "tsx": "^4.10.5",
     "typescript": "^5.4.5",
     "wrangler": "^4.19.2"
   },
