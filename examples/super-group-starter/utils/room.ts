@@ -12,5 +12,10 @@ export function getRoomId(msg: any): string {
 
 export function isChannelMessage(msg: any): boolean {
   const t = msg?.body?.t;
-  return t === 'channel' || msg?.isChannel === true || !!msg?.channelId;
+  return (
+    t === 'channel' ||
+    msg?.isChannel === true ||
+    !!msg?.channelId ||
+    msg?.__typename === 'ChannelMessage'
+  );
 }

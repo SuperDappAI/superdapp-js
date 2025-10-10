@@ -1,5 +1,5 @@
 import { SuperDappAgent } from '../../../src';
-import { getRoomId } from '../utils/room';
+import { getRoomId, isChannelMessage } from '../utils/room';
 /// <reference types="@cloudflare/workers-types" />
 import type {
   ExecutionContext,
@@ -16,10 +16,7 @@ export interface Env {
   DB: any; // Cloudflare D1 binding
 }
 
-function isChannelMessage(msg: any): boolean {
-  const t = msg?.body?.t;
-  return t === 'channel' || msg?.__typename === 'ChannelMessage';
-}
+// isChannelMessage provided by shared utils
 
 function parseText(msg: any): string {
   const m = msg?.body?.m;
