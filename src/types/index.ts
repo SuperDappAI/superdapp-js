@@ -59,6 +59,7 @@ export interface Message {
   timestamp: string;
   isBot: boolean;
   channelId?: string;
+  roomId?: string;
 }
 
 export interface MessageData {

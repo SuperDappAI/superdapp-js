@@ -54,7 +54,6 @@ export class WebhookAgent {
     // Check for callback queries first
     const callbackQuery = message?.body?.m?.body?.callback_query;
     if (callbackQuery) {
-      console.log('callbackQuery', callbackQuery);
       const callbackHandler = this.registry.getHandler('callback_query');
       if (callbackHandler) {
         await callbackHandler(message);
