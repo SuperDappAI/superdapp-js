@@ -95,10 +95,30 @@ export class SuperDappClient {
     options: SendMessageOptions
   ): Promise<ApiResponse> {
     const response = await this.axios.post(
-      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${roomId}/messages`,
+      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(roomId)}/messages`,
       options
     );
     return response.data;
+  }
+
+  /**
+   * Utility: Build a connection id from sender and receiver ids.
+   * According to platform convention: connectionId = `${senderId}-${receiverId}`
+   */
+  buildConnectionId(senderId: string, receiverId: string): string {
+    return `${String(senderId)}-${String(receiverId)}`;
+  }
+
+  /**
+   * Send a DM by specifying sender and receiver IDs (constructs the connection id)
+   */
+  async sendConnectionMessageByUsers(
+    senderId: string,
+    receiverId: string,
+    options: SendMessageOptions
+  ): Promise<ApiResponse> {
+    const connectionId = this.buildConnectionId(senderId, receiverId);
+    return this.sendConnectionMessage(connectionId, options);
   }
 
   /**
@@ -116,7 +136,7 @@ export class SuperDappClient {
     };
 
     const response = await this.axios.post(
-      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${roomId}/messages`,
+      `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(roomId)}/messages`,
       {
         message: messageBody,
         isSilent: options?.isSilent || false,
