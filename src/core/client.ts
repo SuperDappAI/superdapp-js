@@ -7,7 +7,15 @@ import {
   BotInfoResponse,
 } from '../types';
 import { DEFAULT_CONFIG } from '../types/constants';
-import { createHttpsAgent, log } from '../utils/adapters';
+import { createHttpsAgent, log, isCloudflareWorkers } from '../utils/adapters';
+
+// Minimal ambient types for environments where DOM lib isn't present
+type FetchRequestInit = {
+  method?: 'GET' | 'POST';
+  headers?: Record<string, string>;
+  body?: string;
+  signal?: unknown;
+};
 
 // Define constants for repeated endpoint resources
 const AGENT_BOTS_ENDPOINT = 'v1/agent-bots/';
@@ -22,12 +30,16 @@ const httpsAgent = createHttpsAgent();
 export class SuperDappClient {
   private axios: AxiosInstance;
   private config: BotConfig;
+  private useFetch: boolean;
 
   constructor(config: BotConfig) {
     this.config = {
       baseUrl: config.baseUrl || DEFAULT_CONFIG.BASE_URL,
       apiToken: config.apiToken,
     };
+
+    // In Cloudflare Workers, prefer native fetch (axios XHR adapter can be unstable)
+    this.useFetch = isCloudflareWorkers;
 
     this.axios = axios.create({
       baseURL: `${this.config.baseUrl}`,
@@ -41,7 +53,9 @@ export class SuperDappClient {
       ...(httpsAgent && { httpsAgent }),
     });
 
-    this.setupInterceptors();
+    if (!this.useFetch) {
+      this.setupInterceptors();
+    }
   }
 
   private setupInterceptors(): void {
@@ -73,6 +87,50 @@ export class SuperDappClient {
     );
   }
 
+  private buildUrl(path: string): string {
+    const base = String(this.config.baseUrl || '').replace(/\/$/, '');
+    const p = path.replace(/^\//, '');
+    return `${base}/${p}`;
+  }
+
+  private async fetchJson<T = unknown>(
+    method: 'GET' | 'POST',
+    path: string,
+    body?: unknown,
+  ): Promise<T> {
+    const url = this.buildUrl(path);
+    const init: FetchRequestInit = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.config.apiToken}`,
+        'User-Agent': 'SuperDapp-Agent/1.0',
+      },
+    } as const;
+    const req: FetchRequestInit = { ...init };
+    if (method === 'POST') {
+      req.body = JSON.stringify(body ?? {});
+    }
+    log(`(fetch) ${method} ${url}`);
+    const fetchUnknown: unknown = (globalThis as unknown as { fetch?: unknown }).fetch;
+    if (typeof fetchUnknown !== 'function') {
+      throw new Error('fetch is not available in this environment');
+    }
+    const fetchFn = fetchUnknown as (input: string, init?: FetchRequestInit) => Promise<{
+      ok: boolean;
+      status: number;
+      text(): Promise<string>;
+      json(): Promise<unknown>;
+    }>;
+    const res = await fetchFn(url, req);
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status}: ${text}`);
+    }
+    const json = (await res.json()) as T;
+    return json;
+  }
+
   /**
    * Send a message to a channel
    */
@@ -80,9 +138,16 @@ export class SuperDappClient {
     channelId: string,
     options: SendMessageOptions
   ): Promise<ApiResponse> {
+    if (this.useFetch) {
+      return this.fetchJson(
+        'POST',
+        `${AGENT_BOTS_CHANNELS_ENDPOINT}/${encodeURIComponent(channelId)}/messages`,
+        options,
+      );
+    }
     const response = await this.axios.post(
       `${AGENT_BOTS_CHANNELS_ENDPOINT}/${encodeURIComponent(channelId)}/messages`,
-      options
+      options,
     );
     return response.data;
   }
@@ -94,9 +159,16 @@ export class SuperDappClient {
     roomId: string,
     options: SendMessageOptions
   ): Promise<ApiResponse> {
+    if (this.useFetch) {
+      return this.fetchJson(
+        'POST',
+        `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(roomId)}/messages`,
+        options,
+      );
+    }
     const response = await this.axios.post(
       `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(roomId)}/messages`,
-      options
+      options,
     );
     return response.data;
   }
@@ -135,12 +207,20 @@ export class SuperDappClient {
       reply_markup: replyMarkup,
     };
 
+    const payload = {
+      message: messageBody,
+      isSilent: options?.isSilent || false,
+    };
+    if (this.useFetch) {
+      return this.fetchJson(
+        'POST',
+        `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(roomId)}/messages`,
+        payload,
+      );
+    }
     const response = await this.axios.post(
       `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(roomId)}/messages`,
-      {
-        message: messageBody,
-        isSilent: options?.isSilent || false,
-      }
+      payload,
     );
     return response.data;
   }
@@ -173,10 +253,11 @@ export class SuperDappClient {
     channelNameOrId: string,
     messageId?: string
   ): Promise<ApiResponse> {
-    const response = await this.axios.post(SOCIAL_GROUPS_JOIN_ENDPOINT, {
-      channelNameOrId,
-      messageId,
-    });
+    const body = { channelNameOrId, messageId };
+    if (this.useFetch) {
+      return this.fetchJson('POST', SOCIAL_GROUPS_JOIN_ENDPOINT, body);
+    }
+    const response = await this.axios.post(SOCIAL_GROUPS_JOIN_ENDPOINT, body);
     return response.data;
   }
 
@@ -187,18 +268,21 @@ export class SuperDappClient {
     channelNameOrId: string,
     messageId?: string
   ): Promise<ApiResponse> {
-    const response = await this.axios.post(SOCIAL_GROUPS_LEAVE_ENDPOINT, {
-      channelNameOrId,
-      messageId,
-    });
+    const body = { channelNameOrId, messageId };
+    if (this.useFetch) {
+      return this.fetchJson('POST', SOCIAL_GROUPS_LEAVE_ENDPOINT, body);
+    }
+    const response = await this.axios.post(SOCIAL_GROUPS_LEAVE_ENDPOINT, body);
     return response.data;
   }
 
   /** Get user channels list */
   async getChannels(userId: string): Promise<ApiResponse> {
-    const response = await this.axios.get(
-      `${AGENT_BOTS_ENDPOINT}channels?userId=${userId}`
-    );
+    const path = `${AGENT_BOTS_ENDPOINT}channels?userId=${userId}`;
+    if (this.useFetch) {
+      return this.fetchJson('GET', path);
+    }
+    const response = await this.axios.get(path);
     return response.data;
   }
 
@@ -206,7 +290,11 @@ export class SuperDappClient {
    * Get bot channels list
    */
   async getBotChannels(): Promise<ApiResponse> {
-    const response = await this.axios.get(`${AGENT_BOTS_ENDPOINT}my-channels`);
+    const path = `${AGENT_BOTS_ENDPOINT}my-channels`;
+    if (this.useFetch) {
+      return this.fetchJson('GET', path);
+    }
+    const response = await this.axios.get(path);
     return response.data;
   }
 
@@ -214,7 +302,11 @@ export class SuperDappClient {
    * Get info about the authenticated bot
    */
   async getBotInfo(): Promise<ApiResponse<BotInfoResponse>> {
-    const response = await this.axios.get(`${AGENT_BOTS_ENDPOINT}bot-info`);
+    const path = `${AGENT_BOTS_ENDPOINT}bot-info`;
+    if (this.useFetch) {
+      return this.fetchJson('GET', path);
+    }
+    const response = await this.axios.get(path);
     return response.data;
   }
 

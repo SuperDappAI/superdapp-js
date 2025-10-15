@@ -7,7 +7,7 @@ export const isNodeJS =
   typeof process !== 'undefined' && process.versions && process.versions.node;
 
 // HTTPS Agent adapter
-export function createHttpsAgent(): HttpsAgent {
+export function createHttpsAgent(): HttpsAgent | null {
   if (isNodeJS) {
     try {
       const https = require('node:https');
@@ -16,10 +16,11 @@ export function createHttpsAgent(): HttpsAgent {
       });
     } catch (error) {
       console.warn('HTTPS module not available');
-      return { rejectUnauthorized: false };
+      return null;
     }
   }
-  return { rejectUnauthorized: false };
+  // In non-Node environments (e.g., Cloudflare Workers), do not supply an httpsAgent
+  return null;
 }
 
 // Environment-specific console logging
