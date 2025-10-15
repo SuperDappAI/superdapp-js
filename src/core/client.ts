@@ -96,7 +96,7 @@ export class SuperDappClient {
   private async fetchJson<T = unknown>(
     method: 'GET' | 'POST',
     path: string,
-    body?: unknown,
+    body?: unknown
   ): Promise<T> {
     const url = this.buildUrl(path);
     const init: FetchRequestInit = {
@@ -112,11 +112,15 @@ export class SuperDappClient {
       req.body = JSON.stringify(body ?? {});
     }
     log(`(fetch) ${method} ${url}`);
-    const fetchUnknown: unknown = (globalThis as unknown as { fetch?: unknown }).fetch;
+    const fetchUnknown: unknown = (globalThis as unknown as { fetch?: unknown })
+      .fetch;
     if (typeof fetchUnknown !== 'function') {
       throw new Error('fetch is not available in this environment');
     }
-    const fetchFn = fetchUnknown as (input: string, init?: FetchRequestInit) => Promise<{
+    const fetchFn = fetchUnknown as (
+      input: string,
+      init?: FetchRequestInit
+    ) => Promise<{
       ok: boolean;
       status: number;
       text(): Promise<string>;
@@ -142,12 +146,12 @@ export class SuperDappClient {
       return this.fetchJson(
         'POST',
         `${AGENT_BOTS_CHANNELS_ENDPOINT}/${encodeURIComponent(channelId)}/messages`,
-        options,
+        options
       );
     }
     const response = await this.axios.post(
       `${AGENT_BOTS_CHANNELS_ENDPOINT}/${encodeURIComponent(channelId)}/messages`,
-      options,
+      options
     );
     return response.data;
   }
@@ -163,12 +167,12 @@ export class SuperDappClient {
       return this.fetchJson(
         'POST',
         `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(roomId)}/messages`,
-        options,
+        options
       );
     }
     const response = await this.axios.post(
       `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(roomId)}/messages`,
-      options,
+      options
     );
     return response.data;
   }
@@ -215,12 +219,12 @@ export class SuperDappClient {
       return this.fetchJson(
         'POST',
         `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(roomId)}/messages`,
-        payload,
+        payload
       );
     }
     const response = await this.axios.post(
       `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(roomId)}/messages`,
-      payload,
+      payload
     );
     return response.data;
   }
