@@ -362,10 +362,9 @@ export class SuperDappAgent {
 
   private getRoomId(message: MessageData): string {
     const rm = message.rawMessage;
-    if (rm?.roomId) return String(rm.roomId);
-    if (rm?.senderId && rm?.memberId) return `${rm.senderId}-${rm.memberId}`;
-    if (rm?.senderId && rm?.owner) return `${rm.owner}-${rm.senderId}`;
-    return String(rm?.senderId || rm?.memberId || rm?.owner || '');
+    if (rm?.senderId && rm?.memberId) return `${rm.memberId}-${rm.senderId}`; // for direct messages
+    if (rm?.roomId) return rm.roomId; // for channels
+    return '';
   }
 
   private isCallbackQuery(rawMessage: Message): boolean {
