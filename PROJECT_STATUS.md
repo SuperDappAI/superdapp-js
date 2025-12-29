@@ -28,7 +28,7 @@
   - [x] Extensible architecture for custom logic
   - [x] Event-driven message processing
 
-### 🛠️ CLI Tool (superagent)
+### 🛠️ CLI Tool (superdapp)
 
 - [x] **init** - Project scaffolding with templates
 - [x] **configure** - Environment setup and validation

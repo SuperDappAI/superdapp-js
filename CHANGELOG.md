@@ -44,11 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### CLI Tool
 
-- **superagent create**: Create new agent projects
-- **superagent configure**: Environment setup
-- **superagent run**: Local development server
-- **superagent status**: Check agent status
-- **superagent status**: Agent monitoring
+- **superdapp create**: Create new agent projects
+- **superdapp configure**: Environment setup
+- **superdapp run**: Local development server
+- **superdapp status**: Check agent status
+- **superdapp status**: Agent monitoring
 
 #### Runtime Support
 

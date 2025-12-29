@@ -43,30 +43,30 @@ A professional-grade Node.js/TypeScript SDK and CLI for building AI agents on th
 You can now use a positional argument for the project directory:
 
 ```bash
-superagent create my-awesome-agent
+superdapp create my-awesome-agent
 ```
 
 ### Example
 
 ```bash
-superagent create my-agent
+superdapp create my-agent
 cd my-agent
 npm install
-superagent configure
-superagent run
+superdapp configure
+superdapp run
 ```
 
 ---
 
 ## 🧑‍💻 CLI Commands
 
-- `superagent create [directory]` – Create a new agent project (supports positional or --name)
-- `superagent configure` – Configure API keys and environment variables
-- `superagent run` – Run the agent locally for testing (supports multiple environment file formats)
+- `superdapp create [directory]` – Create a new agent project (supports positional or --name)
+- `superdapp configure` – Configure API keys and environment variables
+- `superdapp run` – Run the agent locally for testing (supports multiple environment file formats)
 
 ### Environment File Support
 
-The `superagent run` command automatically detects your runtime and supports multiple environment file formats:
+The `superdapp run` command automatically detects your runtime and supports multiple environment file formats:
 
 - **Node.js**: `.env` files
 - **AWS Lambda**: `env.json` files
@@ -128,7 +128,7 @@ For comprehensive documentation, visit our **[Documentation Hub](./docs/README.m
 - **[CLI Guide](./docs/cli-guide.md)** - Complete command-line interface documentation
 - **[API Reference](./docs/api-reference.md)** - Complete SDK reference
 - **[Deployment Guide](./docs/deployment.md)** - Deploy to production
- - **[Tunneling (ngrok)](./docs/tunneling.md)** - Expose your local webhook
+- **[Tunneling (ngrok)](./docs/tunneling.md)** - Expose your local webhook
 
 ## 🔧 Advanced Usage
 
@@ -174,7 +174,11 @@ import type {
   ApiResponse,
 } from '@superdapp/agents';
 
-const handleCommand: CommandHandler = async ({ message, replyMessage, roomId }) => {
+const handleCommand: CommandHandler = async ({
+  message,
+  replyMessage,
+  roomId,
+}) => {
   // Fully typed message object
   const messageText = (message.body as any)?.m?.body;
   // ... handler logic
@@ -191,7 +195,7 @@ try {
   await agent.processRequest(webhookBody);
 } catch (error) {
   if (error.message.includes('API_TOKEN')) {
-    console.error('Invalid API token. Run: superagent configure');
+    console.error('Invalid API token. Run: superdapp configure');
   } else {
     console.error('Request processing failed:', error);
   }

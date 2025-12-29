@@ -14,13 +14,13 @@ The SuperDapp JavaScript/TypeScript SDK has been successfully implemented and is
 - ✅ **ES Module & CommonJS** - Dual module support for compatibility
   sonn
 
-### 2. **CLI Tool (superagent)**
+### 2. **CLI Tool (superdapp)**
 
-- ✅ **Project Creation** - `superagent create` creates new projects
-- ✅ **Configuration Management** - `superagent configure` for API keys
-- ✅ **Local Development** - `superagent run` for testing
-- ✅ **Status** - `superagent status` to check agent status
-- ✅ **Status Monitoring** - `superagent status` for health checks
+- ✅ **Project Creation** - `superdapp create` creates new projects
+- ✅ **Configuration Management** - `superdapp configure` for API keys
+- ✅ **Local Development** - `superdapp run` for testing
+- ✅ **Status** - `superdapp status` to check agent status
+- ✅ **Status Monitoring** - `superdapp status` for health checks
 
 ### 3. **Project Templates**
 
@@ -102,11 +102,11 @@ The SuperDapp JS SDK is **immediately ready** for:
 
 ```bash
 npm install -g @superdapp/agents
-superagent create my-agent
+superdapp create my-agent
 cd my-agent
 npm install
-superagent configure
-superagent run
+superdapp configure
+superdapp run
 ```
 
 ### SDK Usage
@@ -124,11 +124,11 @@ await agent.initialize();
 ### CLI Commands
 
 ```bash
-superagent create my-bot    # Create new project
-superagent configure --api-key YOUR_KEY   # Set up credentials
-superagent run --port 3000                # Run locally
+superdapp create my-bot    # Create new project
+superdapp configure --api-key YOUR_KEY   # Set up credentials
+superdapp run --port 3000                # Run locally
 wrangler deploy                            # Deploy to Cloudflare
-superagent status                          # Check agent status
+superdapp status                          # Check agent status
 ```
 
 ## 🏆 ACHIEVEMENT SUMMARY

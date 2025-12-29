@@ -10,7 +10,7 @@ import { StatusCommand } from './commands/status';
 const program = new Command();
 
 program
-  .name('superagent')
+  .name('superdapp')
   .description('SuperDapp AI Agents SDK and CLI')
   .version('1.0.0');
 

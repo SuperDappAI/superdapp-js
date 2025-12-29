@@ -50,16 +50,16 @@ The SuperDapp Agents SDK provides a modern, webhook-based architecture for build
 
 ```bash
 # Initialize a new project
-superagent create my-agent
+superdapp create my-agent
 
 # Configure environment
-superagent configure
+superdapp configure
 
 # Run locally
-superagent run
+superdapp run
 
 # Check status
-superagent status
+superdapp status
 ```
 
 ## 📦 Installation
@@ -79,7 +79,10 @@ npm install @superdapp/agents
 ```typescript
 import { SuperDappAgent } from '@superdapp/agents';
 
-const agent = new SuperDappAgent({ apiToken: process.env.API_TOKEN!, baseUrl: process.env.API_BASE_URL });
+const agent = new SuperDappAgent({
+  apiToken: process.env.API_TOKEN!,
+  baseUrl: process.env.API_BASE_URL,
+});
 
 agent.addCommand('/start', async ({ roomId }) => {
   await agent.sendConnectionMessage(roomId, 'Hello!');

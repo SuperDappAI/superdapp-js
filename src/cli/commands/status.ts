@@ -70,7 +70,7 @@ export class StatusCommand extends Command {
       if (error instanceof Error && error.message.includes('API_TOKEN')) {
         console.log(
           chalk.yellow(
-            '\nTip: Run "superagent configure" to set up your API token.'
+            '\nTip: Run "superdapp configure" to set up your API token.'
           )
         );
       }

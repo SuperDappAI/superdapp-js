@@ -9,13 +9,13 @@ Welcome to the SuperDapp Agents SDK! This guide will help you get started with b
 You can use a positional argument for the project directory:
 
 ```bash
-superagent create my-awesome-agent
+superdapp create my-awesome-agent
 ```
 
 ### 2. Configure Your Environment
 
 ```bash
-superagent configure
+superdapp configure
 ```
 
 Or manually create a `.env` file:
@@ -28,7 +28,7 @@ API_BASE_URL=https://api.superdapp.ai
 ### 3. Run Your Agent
 
 ```bash
-superagent run
+superdapp run
 ```
 
 ## 💬 Sending Simple Messages
