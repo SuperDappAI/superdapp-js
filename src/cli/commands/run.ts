@@ -28,7 +28,7 @@ export class RunCommand extends Command {
       try {
         await fs.access(packagePath);
       } catch {
-        spinner.fail('No package.json found. Run "superagent create" first.');
+        spinner.fail('No package.json found. Run "superdapp create" first.');
         return;
       }
 
@@ -37,9 +37,7 @@ export class RunCommand extends Command {
       try {
         runtimeInfo = await detectRuntime(process.cwd());
       } catch (error) {
-        spinner.fail(
-          'Failed to detect runtime. Run "superagent create" first.'
-        );
+        spinner.fail('Failed to detect runtime. Run "superdapp create" first.');
         return;
       }
 
@@ -52,7 +50,7 @@ export class RunCommand extends Command {
         await fs.access(envPath);
       } catch {
         spinner.fail(
-          `No ${envFileName} file found. Run "superagent configure" first.`
+          `No ${envFileName} file found. Run "superdapp configure" first.`
         );
         console.log(
           chalk.gray(

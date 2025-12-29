@@ -675,7 +675,7 @@ ${awsSection}
 
 2. Configure your environment:
   \`\`\`
-  superagent configure
+  superdapp configure
   \`\`\`
 
 ${
