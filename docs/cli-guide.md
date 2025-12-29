@@ -376,21 +376,7 @@ superdapp create my-agent
 superdapp run  # Will fail without API token
 ```
 
-### 3. Configure Environment First
-
-```bash
-# ✅ Always configure before running
-superdapp create my-agent
-cd my-agent
-superdapp configure
-superdapp run
-
-# ❌ Don't skip configuration
-superdapp create my-agent
-superdapp run  # Will fail without API token
-```
-
-### 4. Use Development Mode
+### 3. Use Development Mode
 
 ```bash
 # ✅ Use watch mode for development
@@ -407,4 +393,3 @@ superdapp run
 - [Quick Start Guide](./quick-start.md) - Get started with your first agent
 - [API Reference](./api-reference.md) - Complete SDK documentation and advanced patterns
 - [Deployment Guide](./deployment.md) - Deploy to production
-- [API Reference](./api-reference.md) - Complete SDK documentation
