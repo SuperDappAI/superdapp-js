@@ -48,7 +48,7 @@ jobs:
         run: npm audit --audit-level moderate
 
       - name: Check dependencies
-        run: npx depcheck
+        run: npx depcheck --config=.depcheckrc
 
   publish:
     needs: [test, security]
