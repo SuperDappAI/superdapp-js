@@ -1,0 +1,7 @@
+{
+    "ignores": [
+        "dotenv",
+        "@types/jest",
+        "ts-jest"
+    ]
+}
