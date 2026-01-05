@@ -5,6 +5,10 @@
     "lib": [
       "ES2022"
     ],
+    "types": [
+      "node",
+      "jest"
+    ],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
@@ -48,6 +52,7 @@
   "exclude": [
     "node_modules",
     "dist",
+    "src/__tests__/**/*",
     "**/*.test.ts",
     "**/*.spec.ts",
     "examples/**/*.ts"
