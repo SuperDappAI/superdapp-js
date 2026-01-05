@@ -1,0 +1,12 @@
+{
+    "ignores": [
+        "dotenv",
+        "@types/jest",
+        "ts-jest",
+        "eslint",
+        "jest",
+        "prettier",
+        "tsx",
+        "typescript"
+    ]
+}

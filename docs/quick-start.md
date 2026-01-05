@@ -95,7 +95,7 @@ Now that your platform is set up, let's create your first agent!
 You can use a positional argument for the project directory:
 
 ```bash
-superagent create my-awesome-agent
+superdapp create my-awesome-agent
 ```
 
 ### 2. Configure Your Environment
@@ -103,7 +103,7 @@ superagent create my-awesome-agent
 Use the API token you generated in the Platform Setup section above:
 
 ```bash
-superagent configure
+superdapp configure
 ```
 
 When prompted, enter your API token from Step 2 of Platform Setup.
@@ -120,7 +120,7 @@ API_BASE_URL=https://api.superdapp.ai
 ### 3. Run Your Agent
 
 ```bash
-superagent run
+superdapp run
 ```
 
 This will start your agent's webhook server, typically on port 3000.

@@ -1,15 +1,15 @@
 # CLI Guide
 
-The SuperDapp Agents SDK includes a powerful command-line interface (CLI) tool called `superagent` that helps you manage your AI agents efficiently.
+The SuperDapp Agents SDK includes a powerful command-line interface (CLI) tool called `superdapp` that helps you manage your AI agents efficiently.
 
 ## 🚦 CLI Commands Overview
 
-| Command     | Description                        | Usage                           |
-| ----------- | ---------------------------------- | ------------------------------- |
-| `create`    | Create a new agent project         | `superagent create [directory]` |
-| `configure` | Configure API keys and environment | `superagent configure`          |
-| `run`       | Run the agent locally for testing  | `superagent run [options]`      |
-| `status`    | Check agent status and health      | `superagent status`             |
+| Command     | Description                        | Usage                          |
+| ----------- | ---------------------------------- | ------------------------------ |
+| `create`    | Create a new agent project         | `superdapp create [directory]` |
+| `configure` | Configure API keys and environment | `superdapp configure`          |
+| `run`       | Run the agent locally for testing  | `superdapp run [options]`      |
+| `status`    | Check agent status and health      | `superdapp status`             |
 
 ## 📁 Project Initialization
 
@@ -17,20 +17,20 @@ The SuperDapp Agents SDK includes a powerful command-line interface (CLI) tool c
 
 ```bash
 # Initialize with positional argument (recommended)
-superagent create my-awesome-agent
+superdapp create my-awesome-agent
 
 # Initialize with legacy flag
-superagent create --name my-awesome-agent
+superdapp create --name my-awesome-agent
 
 # Initialize with auto-confirmation
-superagent create my-agent -y
+superdapp create my-agent -y
 ```
 
 ### Example Workflow
 
 ```bash
 # 1. Create a new project
-superagent create my-agent -y
+superdapp create my-agent -y
 
 # 2. Navigate to project directory
 cd my-agent
@@ -39,10 +39,10 @@ cd my-agent
 npm install
 
 # 4. Configure environment
-superagent configure
+superdapp configure
 
 # 5. Run the agent
-superagent run
+superdapp run
 ```
 
 ## ⚙️ Environment Configuration
@@ -50,7 +50,7 @@ superagent run
 ### Interactive Configuration
 
 ```bash
-superagent configure
+superdapp configure
 ```
 
 This command will:
@@ -85,10 +85,10 @@ NODE_ENV=development
 ### Basic Run
 
 ```bash
-superagent run
+superdapp run
 ```
 
-The `superagent run` command automatically detects your runtime environment and uses the appropriate environment file format:
+The `superdapp run` command automatically detects your runtime environment and uses the appropriate environment file format:
 
 - **Node.js**: Uses `.env` files
 - **AWS Lambda**: Uses `env.json` files (detected by `template.yaml` or `samconfig.toml`)
@@ -98,16 +98,16 @@ The `superagent run` command automatically detects your runtime environment and 
 
 ```bash
 # Run with file watching
-superagent run --watch
+superdapp run --watch
 
 # Run with debug logging
-superagent run --debug
+superdapp run --debug
 
 # Run on specific port
-superagent run --port 3001
+superdapp run --port 3001
 
 # Use custom environment file
-superagent run --env custom.env
+superdapp run --env custom.env
 ```
 
 ### Available Options
@@ -124,13 +124,13 @@ superagent run --env custom.env
 
 ```bash
 # Development with hot reload
-superagent run --watch --debug --port 3001
+superdapp run --watch --debug --port 3001
 
 # Production mode
-NODE_ENV=production superagent run
+NODE_ENV=production superdapp run
 
 # Use custom environment file
-superagent run --env production.env
+superdapp run --env production.env
 ```
 
 ### Environment File Formats
@@ -171,7 +171,7 @@ NODE_ENV=development
 ### Check Status
 
 ```bash
-superagent status
+superdapp status
 ```
 
 This command will:
@@ -198,10 +198,10 @@ The status command provides:
 
 ```bash
 # Create with interactive prompts
-superagent create
+superdapp create
 
 # Create with specific options
-superagent create --name my-agent
+superdapp create --name my-agent
 ```
 
 ### Create Options
@@ -216,7 +216,7 @@ superagent create --name my-agent
 
 ```bash
 # Create a new Node.js agent
-superagent create my-agent
+superdapp create my-agent
 
 # Navigate to the project
 cd my-agent
@@ -225,17 +225,17 @@ cd my-agent
 npm install
 
 # Configure your API keys
-superagent configure
+superdapp configure
 
 # Run the agent
-superagent run
+superdapp run
 ```
 
 ### Example: Creating a Cloudflare Workers Agent
 
 ```bash
 # Create a new Cloudflare Workers agent
-superagent create my-agent
+superdapp create my-agent
 
 # Navigate to the project
 cd my-agent
@@ -244,17 +244,17 @@ cd my-agent
 npm install
 
 # Configure your API keys
-superagent configure
+superdapp configure
 
 # Run the agent
-superagent run
+superdapp run
 ```
 
 ### Example: Creating an AWS Lambda Agent
 
 ```bash
 # Create a new AWS Lambda agent
-superagent create my-agent
+superdapp create my-agent
 
 # Navigate to the project
 cd my-agent
@@ -263,10 +263,10 @@ cd my-agent
 npm install
 
 # Configure your API keys
-superagent configure
+superdapp configure
 
 # Run the agent
-superagent run
+superdapp run
 ```
 
 ## 🔧 Advanced CLI Usage
@@ -278,7 +278,7 @@ superagent run
 npm install -g @superdapp/agents
 
 # Verify installation
-superagent --version
+superdapp --version
 ```
 
 ### Local Development
@@ -288,20 +288,20 @@ superagent --version
 npm link
 
 # Use local version
-superagent --help
+superdapp --help
 ```
 
 ### Environment-Specific Commands
 
 ```bash
 # Development environment
-NODE_ENV=development superagent run
+NODE_ENV=development superdapp run
 
 # Production environment
-NODE_ENV=production superagent run
+NODE_ENV=production superdapp run
 
 # Test environment
-NODE_ENV=test superagent run
+NODE_ENV=test superdapp run
 ```
 
 ## 🐛 Troubleshooting
@@ -312,17 +312,17 @@ NODE_ENV=test superagent run
 
 ```bash
 # Reconfigure API token
-superagent configure
+superdapp configure
 
 # Check token validity
-superagent status
+superdapp status
 ```
 
 #### 2. Port Conflicts
 
 ```bash
 # Use different port
-superagent run --port 3001
+superdapp run --port 3001
 
 # Check port availability
 lsof -i :3000
@@ -344,7 +344,7 @@ npm install -g @superdapp/agents
 
 ```bash
 # Enable debug logging
-superagent run --debug
+superdapp run --debug
 
 # Check logs
 tail -f logs/agent.log
@@ -356,48 +356,34 @@ tail -f logs/agent.log
 
 ```bash
 # ✅ Good
-superagent create my-agent
+superdapp create my-agent
 
 # ❌ Avoid
-superagent create --name my-agent
+superdapp create --name my-agent
 ```
 
 ### 2. Configure Environment First
 
 ```bash
 # ✅ Always configure before running
-superagent create my-agent
+superdapp create my-agent
 cd my-agent
-superagent configure
-superagent run
+superdapp configure
+superdapp run
 
 # ❌ Don't skip configuration
-superagent create my-agent
-superagent run  # Will fail without API token
+superdapp create my-agent
+superdapp run  # Will fail without API token
 ```
 
-### 3. Configure Environment First
-
-```bash
-# ✅ Always configure before running
-superagent create my-agent
-cd my-agent
-superagent configure
-superagent run
-
-# ❌ Don't skip configuration
-superagent create my-agent
-superagent run  # Will fail without API token
-```
-
-### 4. Use Development Mode
+### 3. Use Development Mode
 
 ```bash
 # ✅ Use watch mode for development
-superagent run --watch
+superdapp run --watch
 
 # ❌ Don't manually restart during development
-superagent run
+superdapp run
 # ... edit files ...
 # ... manually restart ...
 ```
@@ -407,4 +393,3 @@ superagent run
 - [Quick Start Guide](./quick-start.md) - Get started with your first agent
 - [API Reference](./api-reference.md) - Complete SDK documentation and advanced patterns
 - [Deployment Guide](./deployment.md) - Deploy to production
-- [API Reference](./api-reference.md) - Complete SDK documentation

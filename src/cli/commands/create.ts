@@ -75,7 +75,7 @@ export class CreateCommand extends Command {
       console.log(`\n${chalk.blue('Next steps:')}`);
       console.log(`  cd ${config.directory}`);
       console.log(`  npm install`);
-      console.log(`  superagent configure`);
+      console.log(`  superdapp configure`);
 
       if (config.runtime === 'node') {
         console.log(`  npm run dev`);

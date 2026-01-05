@@ -3,6 +3,8 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [main, develop]
+    tags:
+      - 'v*'
   pull_request:
     branches: [main]
 
@@ -12,7 +14,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [20.x]
 
     steps:
       - uses: actions/checkout@v4
@@ -48,12 +50,12 @@ jobs:
         run: npm audit --audit-level moderate
 
       - name: Check dependencies
-        run: npx depcheck
+        run: npx depcheck --config=.depcheckrc
 
   publish:
     needs: [test, security]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
       - uses: actions/checkout@v4
@@ -70,40 +72,17 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Validate version
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "Tag version ($TAG_VERSION) != package.json ($PKG_VERSION)"
+            exit 1
+          fi
+          echo "Version validated!"
+
       - name: Publish to NPM
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-  deploy-staging:
-    needs: [test, security]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy to Vercel (Staging)
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./
-
-  deploy-production:
-    needs: [test, security]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Deploy to Vercel (Production)
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          working-directory: ./
