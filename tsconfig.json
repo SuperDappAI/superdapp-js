@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ESNext",
+    "module": "CommonJS",
     "lib": [
       "ES2022"
     ],
@@ -26,7 +26,7 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "baseUrl": "./src",
     "paths": {
       "@/*": [
