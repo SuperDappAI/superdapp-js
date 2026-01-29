@@ -31,16 +31,22 @@ export * from './payouts';
 export * from './wallet';
 
 // AI types only (no implementation to avoid loading AI dependencies)
-export type { AiConfig, AiProvider, GenerateTextOptions, StreamTextOptions, AgentRunOptions } from './ai/types';
+export type {
+  AiConfig,
+  AiProvider,
+  GenerateTextOptions,
+  StreamTextOptions,
+  AgentRunOptions,
+} from './ai/types';
 
 // Enhanced AI exports (lazy loaded)
-export type { 
+export type {
   EnhancedAgentRunOptions,
   AgentHandoff,
   GuardrailsConfig,
   HumanApprovalOptions,
   AgentEvent,
-  TracingData
+  TracingData,
 } from './ai/enhanced-client';
 
 // OpenAI Agents provider types (lazy loaded)
@@ -48,8 +54,19 @@ export type {
   OpenAIAgentOptions,
   OpenAIAgentResult,
   OpenAIAgentEvent,
-  OpenAIAgentsNotAvailableError
+  OpenAIAgentsNotAvailableError,
 } from './ai/providers/openai-agents';
 
 // Enhanced AI client factory (lazy loaded to avoid loading dependencies)
 export { createEnhancedAIClient, EnhancedAIClient } from './ai/enhanced-client';
+
+// Edge-compatible AI client (for Cloudflare Workers, Vercel Edge, etc.)
+export {
+  EdgeAIClient,
+  createEdgeAIClient,
+  type EdgeAIProvider,
+  type EdgeAIConfig,
+  type EdgeGenerateOptions,
+  type EdgeImageGenerationOptions,
+  type EdgeChatMessage,
+} from './ai/edge-client';

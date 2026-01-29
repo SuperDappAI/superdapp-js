@@ -37,3 +37,6 @@ export * from './client';
 
 // Enhanced AI features
 export * from './enhanced-client';
+
+// Edge-compatible AI client (for Cloudflare Workers, Vercel Edge, etc.)
+export * from './edge-client';
