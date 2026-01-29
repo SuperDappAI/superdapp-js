@@ -204,22 +204,34 @@ export class EdgeAIClient {
     controller?: AbortController
   ): Promise<string | null> {
     try {
-      // Newer models (gpt-4o, gpt-5, o1, o3, etc.) use max_completion_tokens
+      // Newer models (gpt-4o, gpt-5, o1, o3, o4-mini, etc.) use max_completion_tokens
       // Older models (gpt-4, gpt-3.5-turbo) use max_tokens
       const isNewerModel =
         this.config.model.startsWith('gpt-4o') ||
         this.config.model.startsWith('gpt-5') ||
         this.config.model.startsWith('o1') ||
-        this.config.model.startsWith('o3');
+        this.config.model.startsWith('o3') ||
+        this.config.model.startsWith('o4');
+
+      // Reasoning models (o1, o3, o4-mini, etc.) don't support custom temperature
+      // Only the default (1) value is supported
+      const isReasoningModel =
+        this.config.model.startsWith('o1') ||
+        this.config.model.startsWith('o3') ||
+        this.config.model.startsWith('o4');
 
       const requestBody: Record<string, unknown> = {
         model: this.config.model,
         messages,
-        temperature: options.temperature,
         top_p: options.topP,
         frequency_penalty: options.frequencyPenalty,
         presence_penalty: options.presencePenalty,
       };
+
+      // Only set temperature for non-reasoning models
+      if (!isReasoningModel && options.temperature !== undefined) {
+        requestBody.temperature = options.temperature;
+      }
 
       // Use appropriate token limit parameter based on model
       if (options.maxTokens) {
