@@ -213,9 +213,10 @@ export class EdgeAIClient {
         this.config.model.startsWith('o3') ||
         this.config.model.startsWith('o4');
 
-      // Reasoning models (o1, o3, o4-mini, etc.) don't support custom temperature
+      // Reasoning models and newer GPT-5 models don't support custom temperature
       // Only the default (1) value is supported
       const isReasoningModel =
+        this.config.model.startsWith('gpt-5') ||
         this.config.model.startsWith('o1') ||
         this.config.model.startsWith('o3') ||
         this.config.model.startsWith('o4');
