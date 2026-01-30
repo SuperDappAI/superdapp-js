@@ -39,6 +39,18 @@ export type {
   AgentRunOptions,
 } from './ai/types';
 
+// AI client functions (uses Vercel AI SDK under the hood)
+// These handle all model-specific quirks automatically
+export { generateText, streamText, runAgent } from './ai/client';
+
+// AI configuration and model loading
+export {
+  loadModel,
+  loadAIConfig,
+  isSupportedProvider,
+  getSupportedProviders,
+} from './ai/config';
+
 // Enhanced AI exports (lazy loaded)
 export type {
   EnhancedAgentRunOptions,

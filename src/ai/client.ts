@@ -29,6 +29,7 @@ export async function generateText(
       model,
       temperature: options.temperature,
       maxTokens: options.maxTokens,
+      maxOutputTokens: options.maxOutputTokens,
       topP: options.topP,
       topK: options.topK,
       frequencyPenalty: options.frequencyPenalty,
@@ -36,6 +37,11 @@ export async function generateText(
       seed: options.seed,
       stop: options.stop,
     };
+
+    // Add system prompt if provided
+    if (options.system) {
+      generateOptions.system = options.system;
+    }
 
     if (typeof input === 'string') {
       generateOptions.prompt = input;
