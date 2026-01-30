@@ -275,7 +275,9 @@ export class EdgeAIClient {
       const json = (await res.json()) as {
         choices?: Array<{ message?: { content?: string } }>;
       };
-      return json?.choices?.[0]?.message?.content ?? null;
+      const content = json?.choices?.[0]?.message?.content ?? null;
+      console.log('[EdgeAI] OpenAI response received, content length:', content?.length ?? 0);
+      return content;
     } catch (e) {
       console.warn('[EdgeAI] OpenAI call error:', e);
       return null;
