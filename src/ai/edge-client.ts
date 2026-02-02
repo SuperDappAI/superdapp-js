@@ -274,9 +274,29 @@ export class EdgeAIClient {
 
       const json = (await res.json()) as {
         choices?: Array<{ message?: { content?: string } }>;
+        output_text?: string; // Some newer models use this
       };
-      const content = json?.choices?.[0]?.message?.content ?? null;
-      console.log('[EdgeAI] OpenAI response received, content length:', content?.length ?? 0);
+
+      // Try standard chat completion format first
+      let content = json?.choices?.[0]?.message?.content ?? null;
+
+      // Some newer OpenAI models (like gpt-5) might use output_text
+      if (!content && json?.output_text) {
+        content = json.output_text;
+      }
+
+      console.log(
+        '[EdgeAI] OpenAI response received, content length:',
+        content?.length ?? 0,
+        'choices:',
+        json?.choices?.length ?? 0
+      );
+
+      // If still no content, log the structure for debugging
+      if (!content) {
+        console.warn('[EdgeAI] Empty content, response keys:', Object.keys(json || {}));
+      }
+
       return content;
     } catch (e) {
       console.warn('[EdgeAI] OpenAI call error:', e);
