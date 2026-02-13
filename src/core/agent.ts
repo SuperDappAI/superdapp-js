@@ -104,6 +104,23 @@ export class SuperDappAgent {
   }
 
   /**
+   * update connection message (DM)
+   */
+
+  async updateConnectionMessage(
+    roomId: string,
+    messageId: string,
+    message: string,
+    options?: { isSilent?: boolean }
+  ) {
+    const messageBody = { body: formatBody({ body: message, type: 'chat' }) };
+    return this.client.updateConnectionMessage(roomId, messageId, {
+      message: messageBody,
+      isSilent: options?.isSilent || false,
+    });
+  }
+
+  /**
    * Convenience: Send a DM using sender and receiver IDs. Internally builds the connection id
    * as `${senderId}-${receiverId}` and delegates to the client.
    */
@@ -159,6 +176,14 @@ export class SuperDappAgent {
       type: chatType || 'chat',
     });
     const messageBody = { body: formattedMessage };
+
+    if (chatType === 'channel') {
+      return this.client.sendChannelMessage(roomId, {
+        message: messageBody,
+        isSilent: options?.isSilent || false,
+      });
+    }
+
     return this.client.sendConnectionMessage(roomId, {
       message: messageBody,
       isSilent: options?.isSilent || false,
