@@ -6,7 +6,7 @@ import * as agentsModule from '@openai/agents';
 // Mock the AI SDK and Agents SDK
 jest.mock('ai');
 jest.mock('@openai/agents');
-jest.mock('../../llm/config');
+jest.mock('../../ai-service/config');
 
 const mockLoadModel = loadModel as jest.MockedFunction<typeof loadModel>;
 const mockGenerateText = aiModule.generateText as jest.MockedFunction<typeof aiModule.generateText>;

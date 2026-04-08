@@ -2,15 +2,15 @@ import {
   EnhancedAIClient, 
   createEnhancedAIClient,
   EnhancedAgentRunOptions 
-} from '../../llm/enhanced-client';
-import * as configModule from '../../llm/config';
-import * as openaiAgentsProvider from '../../llm/providers/openai-agents';
-import * as aiClient from '../../llm/client';
+} from '../../ai-service/enhanced-client';
+import * as configModule from '../../ai-service/config';
+import * as openaiAgentsProvider from '../../ai-service/providers/openai-agents';
+import * as aiClient from '../../ai-service/client';
 
 // Mock dependencies
-jest.mock('../../llm/config');
-jest.mock('../../llm/providers/openai-agents');
-jest.mock('../../llm/client');
+jest.mock('../../ai-service/config');
+jest.mock('../../ai-service/providers/openai-agents');
+jest.mock('../../ai-service/client');
 
 const mockConfigModule = configModule as jest.Mocked<typeof configModule>;
 const mockIsOpenAIAgentsAvailable = openaiAgentsProvider.isOpenAIAgentsAvailable as jest.MockedFunction<typeof openaiAgentsProvider.isOpenAIAgentsAvailable>;

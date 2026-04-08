@@ -2,7 +2,7 @@ import { SuperDappAgent } from '../../core/agent';
 import { BotConfig } from '../../types';
 
 // Mock the AI client module
-jest.mock('../../llm/client', () => ({
+jest.mock('../../ai-service/client', () => ({
   generateText: jest.fn().mockResolvedValue('Generated AI response'),
   streamText: jest.fn().mockResolvedValue(
     (async function* () {
@@ -60,7 +60,7 @@ describe('SuperDappAgent AI Integration', () => {
       expect(result).toBe('Generated AI response');
 
       // Verify the mock was called with the right arguments
-      const aiClientModule = jest.requireMock('../../llm/client');
+      const aiClientModule = jest.requireMock('../../ai-service/client');
       expect(aiClientModule.generateText).toHaveBeenCalledWith('Hello, AI!', {
         config: configWithAI.ai,
       });
@@ -90,7 +90,7 @@ describe('SuperDappAgent AI Integration', () => {
       expect(chunks).toEqual(['chunk1', 'chunk2']);
 
       // Verify the mock was called with the right arguments
-      const aiClientModule = jest.requireMock('../../llm/client');
+      const aiClientModule = jest.requireMock('../../ai-service/client');
       expect(aiClientModule.streamText).toHaveBeenCalledWith(messages, {
         config: configWithAI.ai,
       });
@@ -118,7 +118,7 @@ describe('SuperDappAgent AI Integration', () => {
       expect(result).toEqual({ outputText: 'Agent response' });
 
       // Verify the mock was called with the right arguments
-      const aiClientModule = jest.requireMock('../../llm/client');
+      const aiClientModule = jest.requireMock('../../ai-service/client');
       expect(aiClientModule.runAgent).toHaveBeenCalledWith({
         ...options,
         config: configWithAI.ai,
