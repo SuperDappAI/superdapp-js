@@ -179,12 +179,12 @@ export class SuperDappWalletBridge extends EventEmitter {
     error?: string;
   }> {
     try {
-      const response = await this.httpClient.post('/wallet-bridge/transaction-request', request);
+      await this.httpClient.post('/wallet-bridge/transaction-request', request);
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
   }

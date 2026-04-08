@@ -5,15 +5,13 @@
  * enabling dynamic blockchain connections for payout execution.
  */
 
-import { 
+import {
   createPublicClient as viemCreatePublicClient,
   createWalletClient as viemCreateWalletClient,
   http,
   type PublicClient,
   type WalletClient,
   type Chain,
-  type Transport,
-  type Account
 } from 'viem';
 import { privateKeyToAccount, mnemonicToAccount } from 'viem/accounts';
 import { getChainMetadata } from './chain-config';
