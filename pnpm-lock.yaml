@@ -20,9 +20,6 @@ importers:
       '@openai/agents':
         specifier: ^0.1.11
         version: 0.1.11(ws@8.18.3)(zod@3.25.76)
-      '@openai/agents-extensions':
-        specifier: ^0.1.5
-        version: 0.1.5(@openai/agents@0.1.11(ws@8.18.3)(zod@3.25.76))(ws@8.18.3)(zod@3.25.76)
       ai:
         specifier: ^5.0.171
         version: 5.0.171(zod@3.25.76)
@@ -57,6 +54,9 @@ importers:
       '@eslint/js':
         specifier: ^9.39.4
         version: 9.39.4
+      '@jest/globals':
+        specifier: ^29.7.0
+        version: 29.7.0
       '@types/inquirer':
         specifier: ^9.0.9
         version: 9.0.9
@@ -639,13 +639,6 @@ packages:
     peerDependenciesMeta:
       zod:
         optional: true
-
-  '@openai/agents-extensions@0.1.5':
-    resolution: {integrity: sha512-sIEuGBQvYE6Ax0+OCLgQU2mfDWYB4hz78TQ+6dXHIm9Zk4XeQLQDoEwQFWBt2IUrzHsqYGYF7vyqZJQN6C3lmQ==}
-    peerDependencies:
-      '@openai/agents': '>=0.0.0'
-      ws: ^8.18.1
-      zod: ^3.25.40
 
   '@openai/agents-openai@0.1.11':
     resolution: {integrity: sha512-TYYbY7o1cNxtOIO4F1a20qkqDT1Iwr9ZEi0MO2sEaeioK8rGB/Ux54iFvsA3IblUYyK+5fD25vr4vXFasvg2Kg==}
@@ -3136,17 +3129,6 @@ snapshots:
       - '@cfworker/json-schema'
       - supports-color
       - ws
-
-  '@openai/agents-extensions@0.1.5(@openai/agents@0.1.11(ws@8.18.3)(zod@3.25.76))(ws@8.18.3)(zod@3.25.76)':
-    dependencies:
-      '@ai-sdk/provider': 2.0.1
-      '@openai/agents': 0.1.11(ws@8.18.3)(zod@3.25.76)
-      '@types/ws': 8.18.1
-      debug: 4.4.3
-      ws: 8.18.3
-      zod: 3.25.76
-    transitivePeerDependencies:
-      - supports-color
 
   '@openai/agents-openai@0.1.11(ws@8.18.3)(zod@3.25.76)':
     dependencies:
