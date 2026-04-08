@@ -11,7 +11,7 @@ import { createHttpsAgent, log, isCloudflareWorkers } from '../utils/adapters';
 
 // Minimal ambient types for environments where DOM lib isn't present
 type FetchRequestInit = {
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'PUT';
   headers?: Record<string, string>;
   body?: string;
   signal?: unknown;
@@ -94,7 +94,7 @@ export class SuperDappClient {
   }
 
   private async fetchJson<T = unknown>(
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'PUT',
     path: string,
     body?: unknown
   ): Promise<T> {
@@ -108,9 +108,11 @@ export class SuperDappClient {
       },
     } as const;
     const req: FetchRequestInit = { ...init };
-    if (method === 'POST') {
+
+    if (['POST', 'PUT'].includes(method) && body !== undefined) {
       req.body = JSON.stringify(body ?? {});
     }
+
     log(`(fetch) ${method} ${url}`);
     const fetchUnknown: unknown = (globalThis as unknown as { fetch?: unknown })
       .fetch;
@@ -315,6 +317,18 @@ export class SuperDappClient {
   }
 
   /**
+   * Get contact by cognito id (agent-bots internal route)
+   */
+  async getContactByCognitoId(cognitoId: string): Promise<ApiResponse> {
+    const path = `${AGENT_BOTS_ENDPOINT}contacts/by-cognito/${encodeURIComponent(cognitoId)}`;
+    if (this.useFetch) {
+      return this.fetchJson('GET', path);
+    }
+    const response = await this.axios.get(path);
+    return response.data;
+  }
+
+  /**
    * Alias for getBotInfo (compatibilidade)
    */
   async getMe(): Promise<ApiResponse<BotInfoResponse>> {
@@ -330,14 +344,20 @@ export class SuperDappClient {
   async updateConnectionMessage(
     connectionId: string,
     messageId: string,
-    message: string | { body: string }
+    options: SendMessageOptions
   ): Promise<ApiResponse> {
-    const payload = { message };
+    if (this.useFetch) {
+      return this.fetchJson(
+        'PUT',
+        `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(connectionId)}/messages/${encodeURIComponent(messageId)}`,
+        options
+      );
+    }
     const response = await this.axios.put(
       `${AGENT_BOTS_CONNECTIONS_ENDPOINT}/${encodeURIComponent(
         connectionId
       )}/messages/${encodeURIComponent(messageId)}`,
-      payload
+      options
     );
     return response.data;
   }
