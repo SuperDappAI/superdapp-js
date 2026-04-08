@@ -1,3 +1,5 @@
+import { AiConfig } from './ai-service';
+
 // Core exports
 export { SuperDappClient } from './core/client';
 export { SuperDappAgent } from './core/agent';
@@ -30,18 +32,17 @@ export * from './payouts';
 // Wallet exports
 export * from './wallet';
 
-// AI types only (no implementation to avoid loading AI dependencies)
 export type {
   AiConfig,
   AiProvider,
   GenerateTextOptions,
   StreamTextOptions,
   AgentRunOptions,
-} from './ai/types';
+} from './ai-service/types';
 
 // AI client functions (uses Vercel AI SDK under the hood)
 // These handle all model-specific quirks automatically
-export { generateText, streamText, runAgent } from './ai/client';
+export { generateText, streamText, runAgent } from './ai-service/client';
 
 // AI configuration and model loading
 export {
@@ -49,7 +50,7 @@ export {
   loadAIConfig,
   isSupportedProvider,
   getSupportedProviders,
-} from './ai/config';
+} from './ai-service/config';
 
 // Enhanced AI exports (lazy loaded)
 export type {
@@ -59,7 +60,7 @@ export type {
   HumanApprovalOptions,
   AgentEvent,
   TracingData,
-} from './ai/enhanced-client';
+} from './ai-service/enhanced-client';
 
 // OpenAI Agents provider types (lazy loaded)
 export type {
@@ -67,10 +68,10 @@ export type {
   OpenAIAgentResult,
   OpenAIAgentEvent,
   OpenAIAgentsNotAvailableError,
-} from './ai/providers/openai-agents';
+} from './ai-service/providers/openai-agents';
 
 // Enhanced AI client factory (lazy loaded to avoid loading dependencies)
-export { createEnhancedAIClient, EnhancedAIClient } from './ai/enhanced-client';
+export { createEnhancedAIClient, EnhancedAIClient } from './ai-service/enhanced-client';
 
 // Edge-compatible AI client (for Cloudflare Workers, Vercel Edge, etc.)
 export {
@@ -81,4 +82,4 @@ export {
   type EdgeGenerateOptions,
   type EdgeImageGenerationOptions,
   type EdgeChatMessage,
-} from './ai/edge-client';
+} from './ai-service/edge-client';

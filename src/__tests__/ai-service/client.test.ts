@@ -1,12 +1,12 @@
-import { generateText, streamText, runAgent } from '../../ai/client';
-import { loadModel } from '../../ai/config';
+import { generateText, streamText, runAgent } from '../../ai-service/client';
+import { loadModel } from '../../ai-service/config';
 import * as aiModule from 'ai';
 import * as agentsModule from '@openai/agents';
 
 // Mock the AI SDK and Agents SDK
 jest.mock('ai');
 jest.mock('@openai/agents');
-jest.mock('../../ai/config');
+jest.mock('../../llm/config');
 
 const mockLoadModel = loadModel as jest.MockedFunction<typeof loadModel>;
 const mockGenerateText = aiModule.generateText as jest.MockedFunction<typeof aiModule.generateText>;

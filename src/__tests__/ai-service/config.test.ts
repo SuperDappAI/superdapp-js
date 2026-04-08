@@ -1,12 +1,11 @@
+import { AdvancedAIProvider } from '../../ai-service';
 import {
   loadModel,
   loadAIConfig,
   isSupportedProvider,
   getSupportedProviders,
   AIConfigError,
-  type AdvancedAIProvider,
-  type AdvancedAIConfig,
-} from '../../ai/config';
+} from '../../ai-service/config';
 
 // Mock the AI SDK modules
 jest.mock('@ai-sdk/openai', () => ({

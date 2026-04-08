@@ -218,7 +218,7 @@ export class SuperDappAgent {
 
   private async createAiClient(): Promise<AIClient> {
     // Dynamic import to avoid loading AI dependencies when not needed
-    const { generateText, streamText, runAgent } = await import('../ai/client');
+    const { generateText, streamText, runAgent } = await import('../ai-service/client');
 
     return {
       generateText: (input: any, options: any = {}) => {

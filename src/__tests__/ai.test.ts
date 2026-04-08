@@ -1,4 +1,4 @@
-import { AI_PROVIDERS, AIConfig, AIProvider } from '../ai';
+import { AI_PROVIDERS, AIConfig, AIProvider } from '../ai-service';
 
 describe('AI Module', () => {
   describe('AI_PROVIDERS constant', () => {
@@ -55,7 +55,7 @@ describe('AI Module', () => {
 
   describe('AI module exports', () => {
     it('should export AI constants and types', async () => {
-      const aiModule = await import('../ai');
+      const aiModule = await import('../ai-service');
       
       expect(aiModule.AI_PROVIDERS).toBeDefined();
       expect(Array.isArray(aiModule.AI_PROVIDERS)).toBe(true);
@@ -64,7 +64,7 @@ describe('AI Module', () => {
     });
 
     it('should export AI configuration functions', async () => {
-      const aiModule = await import('../ai');
+      const aiModule = await import('../ai-service');
       
       // Check that configuration functions are exported
       expect(typeof aiModule.loadModel).toBe('function');
@@ -75,7 +75,7 @@ describe('AI Module', () => {
     });
 
     it('should export AI client functions for internal use', async () => {
-      const aiModule = await import('../ai');
+      const aiModule = await import('../ai-service');
       
       // These functions are exported for internal use by the agent's getAiClient() method
       // Users should access these through agent.getAiClient() rather than direct imports

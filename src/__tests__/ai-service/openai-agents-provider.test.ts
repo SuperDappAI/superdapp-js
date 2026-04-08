@@ -4,7 +4,7 @@ import {
   isOpenAIAgentsAvailable,
   createOpenAIAgentOptions,
   OpenAIAgentsNotAvailableError,
-} from '../../ai/providers/openai-agents';
+} from '../../llm/providers/openai-agents';
 import * as openaiAgents from '@openai/agents';
 
 // Mock the OpenAI Agents SDK

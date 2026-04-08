@@ -244,6 +244,11 @@ async function createModel(config: AIConfig): Promise<unknown> {
  */
 export async function loadModel(config?: Partial<AIConfig>): Promise<unknown> {
   try {
+
+    console.log('config', config);
+    if (!config) {
+      return '';
+    }
     const aiConfig = loadAIConfig(config);
     const model = await createModel(aiConfig);
     // Return the native AI SDK v5 model directly (no aisdk wrapper needed)
