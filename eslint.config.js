@@ -19,8 +19,11 @@ export default [
         Buffer: 'readonly',
         URL: 'readonly',
         setTimeout: 'readonly',
+        clearTimeout: 'readonly',
         global: 'readonly',
         require: 'readonly',
+        AbortController: 'readonly',
+        AbortSignal: 'readonly',
       },
     },
     plugins: {

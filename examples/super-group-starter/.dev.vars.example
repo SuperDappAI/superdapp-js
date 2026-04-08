@@ -1,0 +1,6 @@
+# Used by wrangler dev --local or when using [vars]
+# DO NOT COMMIT REAL SECRETS
+API_BASE_URL="https://api.superdapp.ai"
+API_TOKEN=""
+# Optional base path, e.g. "/bot"
+BASE_PATH="/"

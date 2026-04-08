@@ -64,7 +64,7 @@ export const webhookEventSchema = z.object({
 // Command handler validation
 export const commandHandlerSchema = z.object({
   command: z.string().min(1),
-  handler: z.function().args(z.any()).returns(z.promise(z.void())),
+  handler: z.function(),
 });
 
 // Validation functions

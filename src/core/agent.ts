@@ -9,8 +9,24 @@ import {
   ReplyMarkupAction,
   Message,
   MessageContent,
+  AIAgentConfig,
 } from '../types';
 import { formatBody } from '../utils/messageFormatter';
+
+// AI Client interface for minimal coupling
+interface AIClient {
+  generateText(
+    input:
+      | string
+      | Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    options?: any
+  ): Promise<string>;
+  streamText(
+    input: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    options?: any
+  ): Promise<AsyncIterable<string>>;
+  runAgent(options?: any): Promise<{ outputText: string }>;
+}
 
 export interface SuperDappAgentOptions {
   secret?: string | undefined;
@@ -21,9 +37,16 @@ export class SuperDappAgent {
   private client: SuperDappClient;
   private commands: AgentCommands = {};
   private messages: AgentMessages = {};
+  private aiConfig?: AIAgentConfig;
+  private aiClient?: AIClient;
 
   constructor(config: BotConfig) {
     this.client = new SuperDappClient(config);
+
+    // Store AI config if provided
+    if (config.ai) {
+      this.aiConfig = config.ai;
+    }
 
     this.webhookAgent = new WebhookAgent();
 
@@ -73,8 +96,42 @@ export class SuperDappAgent {
     message: string,
     options?: { isSilent?: boolean }
   ) {
-    const messageBody = { body: formatBody(message) };
+    const messageBody = { body: formatBody({ body: message, type: 'chat' }) };
     return this.client.sendConnectionMessage(roomId, {
+      message: messageBody,
+      isSilent: options?.isSilent || false,
+    });
+  }
+
+  /**
+   * update connection message (DM)
+   */
+
+  async updateConnectionMessage(
+    roomId: string,
+    messageId: string,
+    message: string,
+    options?: { isSilent?: boolean }
+  ) {
+    const messageBody = { body: formatBody({ body: message, type: 'chat' }) };
+    return this.client.updateConnectionMessage(roomId, messageId, {
+      message: messageBody,
+      isSilent: options?.isSilent || false,
+    });
+  }
+
+  /**
+   * Convenience: Send a DM using sender and receiver IDs. Internally builds the connection id
+   * as `${senderId}-${receiverId}` and delegates to the client.
+   */
+  async sendConnectionMessageByUsers(
+    senderId: string,
+    receiverId: string,
+    message: string,
+    options?: { isSilent?: boolean }
+  ) {
+    const messageBody = { body: formatBody({ body: message, type: 'chat' }) };
+    return this.client.sendConnectionMessageByUsers(senderId, receiverId, {
       message: messageBody,
       isSilent: options?.isSilent || false,
     });
@@ -88,7 +145,9 @@ export class SuperDappAgent {
     message: string,
     options?: { isSilent?: boolean }
   ) {
-    const messageBody = { body: formatBody(message) };
+    const messageBody = {
+      body: formatBody({ body: message, type: 'channel' }),
+    };
     return this.client.sendChannelMessage(channelId, {
       message: messageBody,
       isSilent: options?.isSilent || false,
@@ -103,15 +162,28 @@ export class SuperDappAgent {
     roomId: string,
     message: string,
     replyMarkup: ReplyMarkupAction[][],
-    options?: { isSilent?: boolean }
+    options?: { isSilent?: boolean },
+    chatType?: 'chat' | 'channel'
   ) {
     const markup = {
       ...(type === 'multiselect' ? { type } : {}),
       actions: replyMarkup,
     };
 
-    const formattedMessage = formatBody(message, markup);
+    const formattedMessage = formatBody({
+      body: message,
+      reply_markup: markup,
+      type: chatType || 'chat',
+    });
     const messageBody = { body: formattedMessage };
+
+    if (chatType === 'channel') {
+      return this.client.sendChannelMessage(roomId, {
+        message: messageBody,
+        isSilent: options?.isSilent || false,
+      });
+    }
+
     return this.client.sendConnectionMessage(roomId, {
       message: messageBody,
       isSilent: options?.isSilent || false,
@@ -123,6 +195,42 @@ export class SuperDappAgent {
    */
   getClient(): SuperDappClient {
     return this.client;
+  }
+
+  /**
+   * Get the AI client for LLM operations
+   * @throws Error if AI is not configured
+   */
+  async getAiClient(): Promise<AIClient> {
+    if (!this.aiConfig) {
+      throw new Error(
+        'AI is not configured for this agent. Please provide ai configuration in BotConfig to use AI features.'
+      );
+    }
+
+    if (!this.aiClient) {
+      // Lazy load the AI client to avoid import issues when AI is not used
+      this.aiClient = await this.createAiClient();
+    }
+
+    return this.aiClient;
+  }
+
+  private async createAiClient(): Promise<AIClient> {
+    // Dynamic import to avoid loading AI dependencies when not needed
+    const { generateText, streamText, runAgent } = await import('../ai-service/client');
+
+    return {
+      generateText: (input: any, options: any = {}) => {
+        return generateText(input, { ...options, config: this.aiConfig });
+      },
+      streamText: (input: any, options: any = {}) => {
+        return streamText(input, { ...options, config: this.aiConfig });
+      },
+      runAgent: (options: any = {}) => {
+        return runAgent({ ...options, config: this.aiConfig });
+      },
+    };
   }
 
   private createCommandWrapper(handler: CommandHandler) {
@@ -278,9 +386,14 @@ export class SuperDappAgent {
   }
 
   private getRoomId(message: MessageData): string {
-    return message.rawMessage.memberId !== message.rawMessage.senderId
-      ? `${message.rawMessage.memberId}-${message.rawMessage.senderId}`
-      : `${message.rawMessage.owner}-${message.rawMessage.senderId}`;
+    const rm = message.rawMessage;
+    if (rm?.senderId && rm?.memberId) return `${rm.memberId}-${rm.senderId}`; // for direct messages
+    if (rm?.roomId) return rm.roomId; // for channels
+
+    // Throw explicit error for unknown message shapes to prevent invalid API calls
+    throw new Error(
+      'Unable to determine roomId: message must have either roomId (for channels) or both senderId and memberId (for direct messages)'
+    );
   }
 
   private isCallbackQuery(rawMessage: Message): boolean {

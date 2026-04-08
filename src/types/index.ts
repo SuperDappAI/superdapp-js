@@ -1,6 +1,14 @@
 export interface BotConfig {
   apiToken: string;
   baseUrl: string;
+  ai?: AIAgentConfig;
+}
+
+export interface AIAgentConfig {
+  provider?: 'openai' | 'anthropic' | 'google';
+  model?: string;
+  apiKey?: string;
+  baseUrl?: string;
 }
 
 export interface UserInfo {
@@ -51,6 +59,7 @@ export interface Message {
   timestamp: string;
   isBot: boolean;
   channelId?: string;
+  roomId?: string;
 }
 
 export interface MessageData {

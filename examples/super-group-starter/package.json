@@ -1,0 +1,39 @@
+{
+  "name": "superdapp-super-group-starter",
+  "version": "1.0.0",
+  "description": "Starter example showing admin DM setup and public super-group commands, Cloudflare-ready",
+  "main": "src/worker.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "wrangler dev --port 8788",
+    "tunnel": "npx -y ngrok http ${PORT:-8788}",
+    "tunnel:static": "PORT=8788 ./scripts/start-ngrok-static.sh",
+    "dev:tunnel": "npx -y concurrently -k -n 'dev,ngrok' -c blue,magenta \"npm:dev\" \"npm:tunnel\"",
+    "dev:tunnel:static": "npx -y concurrently -k -n 'dev,ngrok' -c blue,magenta \"npm:dev\" \"npm:tunnel:static\"",
+    "dev:wrangler": "wrangler dev --port 8788",
+    "dev:wrangler:tunnel": "npx -y concurrently -k -n 'dev,ngrok' -c blue,magenta \"wrangler dev ${npm_config_config:+--config $npm_config_config} --port 8788\" \"npx -y ngrok http ${PORT:-8788}\"",
+    "dev:wrangler:tunnel:static": "npx -y concurrently -k -n 'dev,ngrok' -c blue,magenta \"wrangler dev ${npm_config_config:+--config $npm_config_config} --port 8788\" \"PORT=8788 ./scripts/start-ngrok-static.sh\"",
+    "deploy": "wrangler deploy"
+  },
+  "keywords": [
+    "superdapp",
+    "agents",
+    "example",
+    "group",
+    "cloudflare",
+    "starter"
+  ],
+  "author": "SuperDapp Team",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240208.0",
+    "@types/node": "^20.12.12",
+    "concurrently": "^9.0.1",
+    "typescript": "^5.4.5",
+    "wrangler": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

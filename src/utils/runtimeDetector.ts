@@ -86,7 +86,14 @@ export async function detectRuntime(
 }
 
 export function getEnvFileContent(
-  config: { apiToken: string; apiUrl?: string },
+  config: { 
+    apiToken: string; 
+    apiUrl?: string;
+    aiProvider?: string;
+    aiModel?: string;
+    aiApiKey?: string;
+    aiBaseUrl?: string;
+  },
   format: 'dotenv' | 'json' | 'devvars'
 ): string {
   switch (format) {
@@ -98,16 +105,39 @@ API_TOKEN=${config.apiToken}
         content += `API_BASE_URL=${config.apiUrl}\n`;
       }
       content += `NODE_ENV=development\nPORT=8787\n`;
+
+      // Add AI configuration if present
+      if (config.aiProvider && config.aiModel && config.aiApiKey) {
+        content += `\n# AI Integration Configuration\n`;
+        content += `AI_PROVIDER=${config.aiProvider}\n`;
+        content += `AI_MODEL=${config.aiModel}\n`;
+        content += `AI_API_KEY=${config.aiApiKey}\n`;
+        if (config.aiBaseUrl) {
+          content += `AI_BASE_URL=${config.aiBaseUrl}\n`;
+        }
+      }
       return content;
 
     case 'json':
+      const jsonConfig: Record<string, any> = {
+        API_TOKEN: config.apiToken,
+        API_BASE_URL: config.apiUrl || 'https://api.superdapp.ai',
+        NODE_ENV: 'production',
+      };
+
+      // Add AI configuration if present
+      if (config.aiProvider && config.aiModel && config.aiApiKey) {
+        jsonConfig.AI_PROVIDER = config.aiProvider;
+        jsonConfig.AI_MODEL = config.aiModel;
+        jsonConfig.AI_API_KEY = config.aiApiKey;
+        if (config.aiBaseUrl) {
+          jsonConfig.AI_BASE_URL = config.aiBaseUrl;
+        }
+      }
+
       return JSON.stringify(
         {
-          myBotFunction: {
-            API_TOKEN: config.apiToken,
-            API_BASE_URL: config.apiUrl || 'https://api.superdapp.ai',
-            NODE_ENV: 'production',
-          },
+          myBotFunction: jsonConfig,
         },
         null,
         2
@@ -119,6 +149,16 @@ API_TOKEN=${config.apiToken}
         devvarsContent += `API_BASE_URL=${config.apiUrl}\n`;
       }
       devvarsContent += `NODE_ENV=development\n`;
+
+      // Add AI configuration if present
+      if (config.aiProvider && config.aiModel && config.aiApiKey) {
+        devvarsContent += `AI_PROVIDER=${config.aiProvider}\n`;
+        devvarsContent += `AI_MODEL=${config.aiModel}\n`;
+        devvarsContent += `AI_API_KEY=${config.aiApiKey}\n`;
+        if (config.aiBaseUrl) {
+          devvarsContent += `AI_BASE_URL=${config.aiBaseUrl}\n`;
+        }
+      }
       return devvarsContent;
 
     default:
@@ -136,6 +176,13 @@ API_TOKEN=your_api_token_here
 API_BASE_URL=https://api.superdapp.ai
 NODE_ENV=development # or production
 PORT=8787
+
+# AI Integration Configuration (optional)
+# Uncomment and configure to enable AI features
+# AI_PROVIDER=openai # or anthropic, google
+# AI_MODEL=gpt-4 # or claude-3-sonnet-20240229, gemini-pro
+# AI_API_KEY=your_ai_api_key_here
+# AI_BASE_URL=https://api.openai.com/v1 # optional custom base URL
 `;
 
     case 'json':
@@ -145,6 +192,11 @@ PORT=8787
             API_TOKEN: 'your_api_token_here',
             API_BASE_URL: 'https://api.superdapp.ai',
             NODE_ENV: 'production',
+            // AI Configuration (optional)
+            // AI_PROVIDER: 'openai',
+            // AI_MODEL: 'gpt-4',
+            // AI_API_KEY: 'your_ai_api_key_here',
+            // AI_BASE_URL: 'https://api.openai.com/v1'
           },
         },
         null,
@@ -155,6 +207,12 @@ PORT=8787
       return `API_TOKEN=your_api_token_here
 API_BASE_URL=https://api.superdapp.ai
 NODE_ENV=development
+
+# AI Integration Configuration (optional)
+# AI_PROVIDER=openai
+# AI_MODEL=gpt-4
+# AI_API_KEY=your_ai_api_key_here
+# AI_BASE_URL=https://api.openai.com/v1
 `;
 
     default:

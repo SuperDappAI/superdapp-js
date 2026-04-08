@@ -112,6 +112,9 @@ describe('Payouts Module Types', () => {
       version: '1.0',
       hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
       description: 'Test payout',
+      totals: {
+        amountWei: '1000000000'
+      },
       options: {
         batchTransactions: true,
         gasStrategy: 'standard',
@@ -205,6 +208,9 @@ describe('Payouts Module Types', () => {
       groupId: 'group-456',
       version: '1.0',
       hash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+      totals: {
+        amountWei: '0'
+      }
     };
 
     expect(manifest).toBeDefined();

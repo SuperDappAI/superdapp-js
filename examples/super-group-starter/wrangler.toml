@@ -1,0 +1,25 @@
+name = "super-group-starter"
+main = "src/worker.ts"
+compatibility_date = "2025-06-04"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+# Prefer setting via `wrangler secret put` for tokens
+# API_BASE_URL = "https://api.superdapp.ai"
+# BASE_PATH = "/"
+
+[[d1_databases]]
+# The binding name your Worker will use (env.DB)
+binding = "DB"
+database_name = "super-group-starter-db"
+# Replace with your database_id from `wrangler d1 create super-group-starter-db`
+database_id = "<DEV_DATABASE_ID>"
+
+[env.dev]
+name = "super-group-starter-dev"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[env.production]
+name = "super-group-starter"
