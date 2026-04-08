@@ -105,6 +105,11 @@ export async function reconcilePush(
           const log = receipt.logs[logIndex];
           if (!log) continue;
 
+          // Check if this log is from the airdrop contract/token
+          if (log.address && log.address.toLowerCase() !== airdrop.toLowerCase()) {
+            continue;
+          }
+
           // Check if this is a Transfer event
           if (log.topics[0] === TRANSFER_EVENT_SIGNATURE && log.topics.length >= 3) {
             try {
@@ -192,12 +197,15 @@ export async function reconcilePush(
 }
 
 /**
- * Quick reconciliation check that only verifies totals match
- * 
+ * Quick reconciliation check that verifies full reconciliation success
+ *
+ * This checks that all recipients received expected amounts, totals match,
+ * and no errors occurred during reconciliation.
+ *
  * @param publicClient - Viem public client for reading blockchain data
- * @param manifest - Original payout manifest with expected totals
+ * @param manifest - Original payout manifest with expected recipients and amounts
  * @param txHashes - Array of transaction hashes to analyze
- * @returns Promise resolving to boolean indicating if totals match
+ * @returns Promise resolving to boolean indicating if reconciliation succeeded completely
  */
 export async function quickReconcileCheck(
   publicClient: PublicClient,

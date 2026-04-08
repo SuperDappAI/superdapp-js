@@ -389,7 +389,11 @@ export class SuperDappAgent {
     const rm = message.rawMessage;
     if (rm?.senderId && rm?.memberId) return `${rm.memberId}-${rm.senderId}`; // for direct messages
     if (rm?.roomId) return rm.roomId; // for channels
-    return '';
+
+    // Throw explicit error for unknown message shapes to prevent invalid API calls
+    throw new Error(
+      'Unable to determine roomId: message must have either roomId (for channels) or both senderId and memberId (for direct messages)'
+    );
   }
 
   private isCallbackQuery(rawMessage: Message): boolean {

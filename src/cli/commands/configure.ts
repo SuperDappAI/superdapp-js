@@ -210,6 +210,8 @@ export class ConfigureCommand extends Command {
     }
 
     return {
+      apiToken: options.apiToken || '',
+      apiUrl: options.apiUrl || '',
       aiProvider: (aiConfig as any).aiProvider,
       aiModel: (aiConfig as any).aiModel,
       aiApiKey: (aiConfig as any).aiApiKey,

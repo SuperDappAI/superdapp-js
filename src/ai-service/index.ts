@@ -1,15 +1,6 @@
 // AI Module - Model-agnostic AI integration
 // All AI functionality is loaded dynamically to avoid requiring AI dependencies when not used
 
-// AI utility types for SuperDapp integration
-export interface AIConfig {
-  provider: 'openai' | 'anthropic' | 'google';
-  apiKey: string;
-  model?: string;
-  temperature?: number;
-  maxTokens?: number;
-}
-
 // Basic AI utilities
 export const AI_PROVIDERS = ['openai', 'anthropic', 'google'] as const;
 export type AIProvider = (typeof AI_PROVIDERS)[number];
@@ -28,7 +19,7 @@ export {
   AIConfigError,
 } from './config';
 export type {
-  AIConfig as AdvancedAIConfig,
+  AIConfig,
   AIProvider as AdvancedAIProvider,
 } from './config';
 

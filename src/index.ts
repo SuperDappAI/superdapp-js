@@ -1,5 +1,3 @@
-import { AiConfig } from './ai-service';
-
 // Core exports
 export { SuperDappClient } from './core/client';
 export { SuperDappAgent } from './core/agent';

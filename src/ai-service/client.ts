@@ -1,5 +1,4 @@
 import { generateText as vercelGenerateText, streamText as vercelStreamText } from 'ai';
-import { loadModel } from './config';
 import type {
   AgentRunOptions,
   GenerateTextOptions,
@@ -21,6 +20,7 @@ export async function generateText(
 ): Promise<string> {
   try {
     // Dynamic import to avoid circular dependencies and optional loading
+    const { loadModel } = await import('./config');
     const model = await loadModel(options.config as any);
 
     // Handle different input types - AI SDK v5 compatible

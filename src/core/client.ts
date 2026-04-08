@@ -339,13 +339,33 @@ export class SuperDappClient {
 
   /**
    * Update a direct message in a connection (DM)
-   * Accepts a string or an object with { body }
+   *
+   * Accepts both legacy format (string | { body: string }) and new format (SendMessageOptions).
+   * For backward compatibility, legacy formats are automatically converted to SendMessageOptions.
+   *
+   * @param connectionId - Connection ID
+   * @param messageId - Message ID to update
+   * @param messageOrOptions - Message content as string, { body: string }, or full SendMessageOptions
+   * @returns Promise resolving to API response
    */
   async updateConnectionMessage(
     connectionId: string,
     messageId: string,
-    options: SendMessageOptions
+    messageOrOptions: SendMessageOptions | string | { body: string }
   ): Promise<ApiResponse> {
+    // Normalize legacy format to new SendMessageOptions
+    let options: SendMessageOptions;
+    if (typeof messageOrOptions === 'string') {
+      // Legacy format: plain string
+      options = { message: { body: messageOrOptions } };
+    } else if ('body' in messageOrOptions && typeof messageOrOptions.body === 'string') {
+      // Legacy format: { body: string }
+      options = { message: messageOrOptions as { body: string } };
+    } else {
+      // New format: SendMessageOptions
+      options = messageOrOptions as SendMessageOptions;
+    }
+
     if (this.useFetch) {
       return this.fetchJson(
         'PUT',

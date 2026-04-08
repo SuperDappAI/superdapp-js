@@ -1,10 +1,11 @@
 /**
  * Payouts Builder Module
- * 
+ *
  * Provides utilities for building and validating payout manifests
  */
 
 import { createHash, randomUUID } from 'crypto';
+import { getAddress } from 'viem';
 import { TokenInfo, WinnerRow, NormalizedWinner, PayoutManifest } from './types';
 
 /**
@@ -57,30 +58,7 @@ export function validateAndChecksumAddress(address: string): string | null {
  */
 function toChecksumAddress(address: string): string {
   // Use viem's getAddress which provides proper EIP-55 checksumming
-  try {
-    const { getAddress } = require('viem');
-    return getAddress(address);
-  } catch (error) {
-    // Fallback to original implementation if viem is not available
-    const cleanAddress = address.replace(/^0x/i, '').toLowerCase();
-    
-    // For this implementation, we'll return a properly formatted address
-    // In production, this should use Keccak-256 hash for proper EIP-55 checksumming
-    let result = '0x';
-    for (let i = 0; i < cleanAddress.length; i++) {
-      const char = cleanAddress[i];
-      if (!char) continue;
-      
-      // Simple pattern for demo - alternate case based on position
-      if (i % 4 < 2) {
-        result += char.toUpperCase();
-      } else {
-        result += char;
-      }
-    }
-    
-    return result;
-  }
+  return getAddress(address);
 }
 
 /**
